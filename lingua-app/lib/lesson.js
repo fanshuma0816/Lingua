@@ -3,6 +3,8 @@
 // is set, enrich() upgrades the simulated parts (translations, word meanings +
 // fresh examples, target-language quiz) with real model output.
 
+import { AI, chatComplete, parseJSON } from "./ai";
+
 const STOP = new Set(("the a an and or but of to in on for with at by from as is are was were be been being this that these those it its i you he she we they my your our their not no so if then than into about over under out up down el la los las de que y a en un una por con para se su lo le les des du le la un une et ou de à dans pour qui ne pas ce cette der die das und ist im den").split(" "));
 const POS = ["noun", "verb", "adjective", "adverb", "phrase"];
 export const LEVELS = ["A1 — Beginner", "A2 — Elementary", "B1 — Intermediate", "B2 — Upper-intermediate", "C1 — Advanced"];
@@ -108,11 +110,9 @@ export function generateLesson(text, lang, level, goal) {
   };
 }
 
-// ---- OpenAI enrichment (only runs when a key is present) ----
+// ---- LLM enrichment (only runs when a key is present) ----
 export async function enrich(base, { text, lang, level, goal }) {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) return base;
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  if (!AI.key) return base;
   const topSents = base.sents.slice(0, 10);
   const vocab = base.vocab.map(v => v.word);
 
@@ -126,18 +126,11 @@ Keep everything at or slightly above ${level}.
 Sentences: ${JSON.stringify(topSents)}
 Words: ${JSON.stringify(vocab)}`;
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model, temperature: 0.4,
-      response_format: { type: "json_object" },
-      messages: [{ role: "system", content: sys }, { role: "user", content: user }],
-    }),
-  });
-  if (!res.ok) throw new Error("openai " + res.status);
-  const data = await res.json();
-  const parsed = JSON.parse(data.choices[0].message.content);
+  const raw = await chatComplete(
+    [{ role: "system", content: sys }, { role: "user", content: user }],
+    { json: true, temp: 0.4, max: 1500 }
+  );
+  const parsed = parseJSON(raw);
 
   // merge translations
   if (Array.isArray(parsed.translations)) {
