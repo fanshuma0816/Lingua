@@ -9,9 +9,10 @@ const DB={ get(k,d){try{return JSON.parse(localStorage.getItem("lingua:"+k))??d}
 
 const UI_TEXT={
   en:{
-    interfaceLanguage:"Interface language", english:"English", chinese:"中文", clearLocalData:"Clear local data", newMaterial:"New material",
-    continue:"Continue", previous:"Previous", back:"Back", next:"Next", finish:"Finish", exitSession:"Exit session", play:"Play", stop:"Stop",
+    interfaceLanguage:"Interface language", english:"English", chinese:"中文", clearLocalData:"Clear local data", clearConfirm:"Clear all local learning data (draft, notes, ratings, progress)?", newMaterial:"New material",
+    continue:"Continue", previous:"Previous", back:"Back", next:"Next", finish:"Finish", exitSession:"Exit session", play:"Play", stop:"Stop", restart:"restart",
     playAll:"Play all · read along", syncHint:"Each line lights up as it's read · tap any line to replay",
+    fullSourceAudio:"Full source audio", fullSourceRead:"Full-source read-aloud", audioUnsupported:"Audio not supported in this browser",
     buildingTitle:"Building your lesson…",
     buildingSteps:["Reading your text…","Splitting it into sentences…","Translating each line…","Finding the key words…","Writing fresh examples…","Preparing your quiz…","Almost ready…"],
     buildingNote:"A real AI is translating your text and writing the lesson — this usually takes 20–40 seconds. Thanks for your patience!",
@@ -25,7 +26,8 @@ const UI_TEXT={
     goals:["General fluency","Conversation & speaking","Reading comprehension","Vocabulary building","Exam preparation"],
     levels:["A1 — Beginner","A2 — Elementary","B1 — Intermediate","B2 — Upper-intermediate","C1 — Advanced"],
     previewTitle:"Here's your text", previewSub:"A quick read on your material before we begin.", topics:"Topics:",
-    recommendedLevel:"Recommended level", estimatedTime:"Estimated time", vocabulary:"Vocabulary", characters:"Characters",
+    recommendedLevel:"Recommended level", estimatedTime:"Estimated time", vocabulary:"Vocabulary", characters:"Characters", chars:"chars",
+    wordCount:(n)=>`${n} words`, diffLabels:["","Comfortable review","An easy read","Right at your level","A gentle stretch","Challenging"],
     difficultyForYou:"Difficulty for you", basedOnLevel:(a,b)=>`Based on your level (${a}) vs the text's (${b}).`,
     session:"The session", stepsInBlocks:(s,b)=>`${s} steps in ${b} blocks`, start:(m)=>`Start · ~${m} min`,
     planNames:["Learning","Grammar & Vocabulary","Testing","Practicing","Using"],
@@ -41,20 +43,26 @@ const UI_TEXT={
     quizLoading:"Writing a few questions about your text…", whichHeard:"Which sentence did you hear?", whichMatches:"Which sentence matches the text?",
     niceRight:"Nice — that's right.", notQuite:"Not quite — the highlighted one is it. Try replaying above.",
     selfLow:"0% · nothing yet", selfHigh:"100% · all of it",
-    sr:{teacher:"Trust your ears. Play each line, then choose the sentence you heard.",purpose:"A short listening check, Delft-style, to sharpen how you catch spoken language.",check:"Nailing these? Great ear. A few tricky? Replay and try once more — no rush."},
-    understand:{teacher:(lang)=>`One last full listen. Play it through with ${lang} text — it should feel clear now.`,purpose:"Delft builds up to full comprehension before you speak. Notice how much more you catch than at the very start.",check:"Feels clearer than the first time? That's your progress showing."},
-    timed:{title:(subs)=>`Practice · ${subs?"with subtitles":"no subtitles"}`,teacherSubs:"Time to speak. I'll play each line, then it's your turn to read it aloud before the gentle timer moves you on.",teacherNoSubs:"Ears only now. I'll play each line — you repeat it from memory. Reveal the text only if you need to peek.",purpose:"Speaking sentences straight from your text is how Delft gets you conversing — you practise exactly what you'll be able to say.",how:"How this works",tips:["One sentence fills the screen — just focus on that.","Listen, then read aloud during the countdown.","It auto-advances, but Back, Replay and Pause are always there."],ready:"I'm ready — start",breath:"Take a breath first — it won't start until you press the button.",done:(n)=>`You practised all ${n} sentences. Press Continue when you're ready.`,again:"Practise again",doneCheck:"Said each one out loud? That's exactly it. Another round never hurts.",listen:"Listen",yourTurn:"Your turn — read aloud",hide:"Hide text",reveal:"Reveal text",replay:"Replay",pause:"Pause",resume:"Resume",skip:"Skip"},
-    aiUse:{title:"Practice with AI",teacher:"Let's actually use it. First write a little, then have a short chat — all with today's words.",purpose:"Delft conversations use only words and sentences from your text, so you can communicate with confidence from the very first try.",writeTab:"Part 1 · Write",chatTab:"Part 2 · Talk",unlock:"Finish unlocks once you've got feedback in Part 1 and completed the Part 2 chat.",feedback:"Get feedback",reading:"Reading…",teacherReading:"Your teacher is reading your writing…",checking:"Checking grammar, vocabulary and sentence flow — just a few seconds.",nextTalk:"Next · talk with the AI",writePlaceholder:(lang)=>`Write your answer in ${lang}…`},
-    listen:{teacher:"Let's just listen first. Play it once and let the sound wash over you — no need to catch every word.",purpose:"The Delft Method starts the way you learned your first language: ears before rules. This builds your feel for the sound and rhythm.",player:"Complete material",sub:"Full audio · no subtitles",rate:"Before we dig in — how much can you understand right now?",check:"Caught the mood or a few words? Perfect — that's all we need here. We'll check your growth at the end."},
-    watch:{teacher:"Now let's make sense of it. Play along and read the meaning in a language you already know.",purpose:"Delft gives you the translation up front, so the text makes sense before you study it — no guessing, no frustration.",check:"Does the story make sense now? If a line still feels murky, tap it again — take your time."},
-    read:{teacher:(lang)=>`Let's connect sound to spelling. Read along in ${lang} while you listen.`,purpose:"Hearing and seeing the words together helps them stick — using the same kind of recordings Delft learners rely on.",check:"Following along comfortably? Lovely. If not, replay a line or two before we move on."},
-    comp:{teacher:"Quick check — no pressure at all. Pick the sentence that matches what you read.",purpose:"Delft checks understanding after every text. It's not a test of you — it just tells us if you're ready to go deeper.",check:"Got them? Wonderful. Missed one? Pop back to Listen & Read — that's exactly how it's meant to work."},
-    gram:{title:"Under the microscope",teacher:"Let's slow right down — one sentence at a time. We'll unpack the words and phrases together, like a teacher sitting beside you.",purpose:"Delft teaches grammar through real examples from your own text — no rules or jargon — so you pick up patterns you can actually reuse.",sentence:(i,n)=>`Sentence ${i} of ${n}`,phrases:"Phrases & collocations",wordOrder:"Word order:",wordOrderText:"notice how this sentence is built — that structure repeats across the text.",slow:"Take it slow — just this one sentence for now.",noWords:"No standout new words in this sentence — enjoy the breather.",summaryTitle:"Let's pull it together",summaryTeacher:"Great work going through each sentence. Here's everything in one place to lock it in.",allVocab:"All key vocabulary",patterns:"Grammar patterns you met",review:"Review from Sentence 1",summaryCheck:"Feeling shaky on a sentence? No problem — head back to Sentence 1 and walk through again. Repetition is the whole idea.",next:"Next sentence",previous:"Previous sentence",seeSummary:"See summary"},
+    sr:{teacher:"Trust your ears. Play each line, then choose the sentence you heard.",purpose:"This sharpens the bridge between sound and meaning, one small decision at a time.",check:"Nailing these? Great ear. A few tricky? Replay and try once more — no rush."},
+    understand:{teacher:(lang)=>`One last full listen. Play it through with ${lang} text — it should feel clear now.`,purpose:"You have met the meaning, the sound, and the useful patterns. This pass helps everything settle together.",check:"Feels clearer than the first time? That's your progress showing."},
+    timed:{title:(subs)=>`Practice · ${subs?"with subtitles":"no subtitles"}`,teacherSubs:"Time to speak. I'll play each line, then it's your turn to read it aloud before the gentle timer moves you on.",teacherNoSubs:"Ears only now. I'll play each line — you repeat it from memory. Reveal the text only if you need to peek.",purpose:"Speaking full sentences gives your mouth a path to follow, so the language starts to feel usable.",how:"How this works",tips:["One sentence fills the screen — just focus on that.","Listen, then read aloud during the countdown.","It auto-advances, but Back, Replay and Pause are always there."],ready:"I'm ready — start",breath:"Take a breath first — it won't start until you press the button.",done:(n)=>`You practised all ${n} sentences. Press Continue when you're ready.`,again:"Practise again",doneCheck:"Said each one out loud? That's exactly it. Another round never hurts.",listen:"Listen",yourTurn:"Your turn — read aloud",hide:"Hide text",reveal:"Reveal text",replay:"Replay",pause:"Pause",resume:"Resume",skip:"Skip"},
+    aiUse:{title:"Practice with AI",teacher:"Let's actually use it. First write a little, then have a short chat — all with today's words.",purpose:"This turns the lesson into something you can say back, gently and in context.",writeTab:"Part 1 · Write",chatTab:"Part 2 · Talk",unlock:"Finish unlocks once you've got feedback in Part 1 and completed the Part 2 chat.",feedback:"Get feedback",reading:"Reading…",teacherReading:"Your teacher is reading your writing…",checking:"Checking grammar, vocabulary and sentence flow — just a few seconds.",nextTalk:"Next · talk with the AI",writePlaceholder:(lang)=>`Write your answer in ${lang}…`,question:(topic,lang)=>`Based on the passage — "${topic}" — what's your view? Write 3–4 sentences in ${lang} using today's words.`,saved:(n)=>`${n} words · saved locally`,feedbackTitle:(sim)=>`Feedback & suggested revision${sim?" · simulated":""}`,grammar:"Grammar",vocab:"Vocabulary",sentence:"Sentence construction",revision:"Suggested revision",mockGrammar:"Tenses look consistent. Check subject–verb agreement in your longer sentence.",mockVocab:"Nice reuse of today's words — add one connective phrase to link ideas.",mockSentence:"Clear structure. Try varying sentence length to sound more natural.",mockNote:"Showing sample feedback — the live AI check didn't respond just now, so try again in a moment for specific notes and a corrected draft."},
+    chat:{notice:(name,lang,n)=>`You're talking with ${name}, face to face, in ${lang}. ${name} speaks first — listen, then answer out loud or type. About ${n} exchanges.`,thinking:"thinking",speaking:"speaking",yourTurn:"listening — your turn",sayAgain:"Say it again",exchange:(n,total)=>`Exchange ${n} of ${total}`,listening:"Listening — tap when done",speakAnswer:"Hold the floor · speak your answer",speakIn:(lang)=>`Speak in ${lang}. Your words appear below — edit if you like, then reply.`,typeIn:(lang)=>`Type your reply in ${lang} below (voice input works in Chrome/Edge).`,placeholder:(lang)=>`Your reply in ${lang}…`,looksGood:"Looks good",shortSentence:"Say at least a short sentence",replyTo:(name)=>`Reply to ${name}`,showTranscript:"Show transcript",feedbackTitle:(sim)=>`Conversation feedback${sim?" · simulated":""}`,fluency:"Fluency",mockDone:(lang)=>`You held a voice exchange in ${lang} using today's words — exactly the goal.`},
+    done:{friend:"friend",title:(name)=>`You did it, ${name}!`,sub:(n)=>`You stayed with it through all ${n} steps. Showing up and finishing is the hard part — and you just did.`,explored:(topics)=>`Today you explored ${topics}`,more:"Bring a few more texts and we'll start to see which topics you love most — and where you spend your time.",steps:"Steps",words:"Words",sentences:"Sentences",blocks:"Blocks",comp:"Your comprehension · before vs after",rate:"One more time — how much can you understand now?",reveal:"Reveal my progress",before:"Before",after:"After",gain:(d)=>`+${d}% understanding — look at you go!`,again:"A second pass will lift this — you've got it",take:"What you're taking with you",review:"Review this lesson",new:"Bring new material"},
+    phraseNote:"A natural pairing worth keeping together — try reusing it in a sentence of your own.",
+    refTitle:"Research basis", refText:"This flow is based on the Delft Method: understand a meaningful text first, absorb frequent words and grammar in context, then move toward conversation.", refSources:"Sources: Montens & Sciarone, Nederlands voor buitenlanders: de Delftse methode; TU Delft Centre for Languages.",
+    grammarFocus:["Common tenses used in the passage","Word order & sentence position","Connective & opinion phrases"],
+    listen:{teacher:"Let's just listen first. Play it once and let the sound wash over you — no need to catch every word.",purpose:"Your brain starts by noticing rhythm, familiar sounds, and the shape of the language before it has to explain anything.",player:"Complete material",sub:"Full audio · no subtitles",rate:"Before we dig in — how much can you understand right now?",check:"Caught the mood or a few words? Perfect — that's all we need here. We'll check your growth at the end."},
+    watch:{teacher:"Now let's make sense of it. Play along and read the meaning in a language you already know.",purpose:"Meaning comes first here, so the text feels less like a puzzle and more like a story you can follow.",check:"Does the story make sense now? If a line still feels murky, tap it again — take your time."},
+    read:{teacher:(lang)=>`Let's connect sound to spelling. Read along in ${lang} while you listen.`,purpose:"Seeing the words while hearing them helps your eyes and ears agree on what is happening.",check:"Following along comfortably? Lovely. If not, replay a line or two before we move on."},
+    comp:{teacher:"Quick check — no pressure at all. Pick the sentence that matches what you read.",purpose:"A small check gives you a clear signal: either you are ready to go deeper, or one more listen will help.",check:"Got them? Wonderful. Missed one? Pop back to Listen & Read — that's exactly how it's meant to work."},
+    gram:{title:"Under the microscope",teacher:"Let's slow right down — one sentence at a time. We'll unpack the words and phrases together, like a teacher sitting beside you.",purpose:"You are learning patterns from your own text, so grammar stays connected to meaning instead of floating around as rules.",sentence:(i,n)=>`Sentence ${i} of ${n}`,phrases:"Phrases & collocations",wordOrder:"Word order:",wordOrderText:"notice how this sentence is built — that structure repeats across the text.",slow:"Take it slow — just this one sentence for now.",noWords:"No standout new words in this sentence — enjoy the breather.",summaryTitle:"Let's pull it together",summaryTeacher:"Great work going through each sentence. Here's everything in one place to lock it in.",allVocab:"All key vocabulary",patterns:"Grammar patterns you met",review:"Review from Sentence 1",summaryCheck:"Feeling shaky on a sentence? No problem — head back to Sentence 1 and walk through again. Repetition is the whole idea.",next:"Next sentence",previous:"Previous sentence",seeSummary:"See summary"},
   },
   zh:{
-    interfaceLanguage:"界面语言", english:"English", chinese:"中文", clearLocalData:"清除本地数据", newMaterial:"新材料",
-    continue:"继续", previous:"上一步", back:"返回", next:"下一步", finish:"完成", exitSession:"退出学习", play:"播放", stop:"停止",
+    interfaceLanguage:"界面语言", english:"English", chinese:"中文", clearLocalData:"清除本地数据", clearConfirm:"清除所有本地学习数据（草稿、笔记、评分和进度）？", newMaterial:"新材料",
+    continue:"继续", previous:"上一步", back:"返回", next:"下一步", finish:"完成", exitSession:"退出学习", play:"播放", stop:"停止", restart:"重新开始",
     playAll:"全部播放 · 跟读", syncHint:"朗读时对应句子会高亮 · 点击任意句子可重播",
+    fullSourceAudio:"完整原文音频", fullSourceRead:"完整朗读", audioUnsupported:"当前浏览器不支持音频",
     buildingTitle:"正在生成你的课程…",
     buildingSteps:["读取文本…","切分句子…","逐句翻译…","寻找关键词…","生成新例句…","准备小测验…","快好了…"],
     buildingNote:"AI 正在翻译文本并生成课程，通常需要 20–40 秒。谢谢耐心等待！",
@@ -68,7 +76,8 @@ const UI_TEXT={
     goals:["综合流利度","对话与口语","阅读理解","词汇积累","考试准备"],
     levels:["A1 — 入门","A2 — 初级","B1 — 中级","B2 — 中高级","C1 — 高级"],
     previewTitle:"这是你的文本概览", previewSub:"开始前先快速了解这份材料。", topics:"主题：",
-    recommendedLevel:"推荐水平", estimatedTime:"预计时间", vocabulary:"词汇", characters:"字符数",
+    recommendedLevel:"推荐水平", estimatedTime:"预计时间", vocabulary:"词汇", characters:"字符数", chars:"字符",
+    wordCount:(n)=>`${n} 个词`, diffLabels:["","舒适复习","比较轻松","正适合你","温和挑战","有挑战"],
     difficultyForYou:"对你的难度", basedOnLevel:(a,b)=>`基于你的水平（${a}）和文本水平（${b}）估算。`,
     session:"学习流程", stepsInBlocks:(s,b)=>`${s} 个步骤，分成 ${b} 个模块`, start:(m)=>`开始 · 约 ${m} 分钟`,
     planNames:["学习","语法与词汇","测试","练习","使用"],
@@ -84,15 +93,20 @@ const UI_TEXT={
     quizLoading:"正在根据文本生成几个问题…", whichHeard:"你听到的是哪一句？", whichMatches:"哪一句符合文本意思？",
     niceRight:"答对了，很好。", notQuite:"还差一点，高亮的是正确答案。可以重播后再试。",
     selfLow:"0% · 还不太懂", selfHigh:"100% · 全部理解",
-    sr:{teacher:"相信你的耳朵。播放每一句，然后选择你听到的句子。",purpose:"这是一个 Delft 风格的小听力检查，帮助你更敏锐地捕捉口语。",check:"做得顺的话很好；如果有几句难，重播再试一次，不急。"},
-    understand:{teacher:(lang)=>`最后完整听一遍。配合 ${lang} 原文播放，现在应该清楚很多。`,purpose:"Delft 会先把理解建立扎实，再进入表达。留意你比一开始多听懂了多少。",check:"比第一次清楚了吗？这就是你的进步。"},
-    timed:{title:(subs)=>`练习 · ${subs?"带字幕":"无字幕"}`,teacherSubs:"开始说出来。我会播放每一句，然后轮到你在温和倒计时里朗读。",teacherNoSubs:"现在只靠耳朵。我会播放每一句，你凭记忆复述；需要时可以再显示文本。",purpose:"直接练习文本里的句子，是 Delft 帮你开口的方式：你练的就是你马上能说的话。",how:"练习方式",tips:["屏幕一次只显示一句，专注这一句就好。","先听，然后在倒计时里读出来。","会自动进入下一句，但返回、重播、暂停一直可用。"],ready:"我准备好了，开始",breath:"先深呼吸，按下按钮前不会开始。",done:(n)=>`你已经练完 ${n} 个句子。准备好后点继续。`,again:"再练一遍",doneCheck:"每一句都说出来了吗？就是这样。多来一轮也很好。",listen:"听",yourTurn:"轮到你 · 读出来",hide:"隐藏文本",reveal:"显示文本",replay:"重播",pause:"暂停",resume:"继续",skip:"跳过"},
-    aiUse:{title:"和 AI 练习",teacher:"现在真正用起来。先写一点，再进行一段短对话，尽量用今天的词。",purpose:"Delft 的对话会围绕文本里的词句展开，让你从第一轮就能有信心表达。",writeTab:"Part 1 · 写作",chatTab:"Part 2 · 对话",unlock:"完成 Part 1 反馈和 Part 2 对话后，就可以结束课程。",feedback:"获取反馈",reading:"阅读中…",teacherReading:"老师正在阅读你的写作…",checking:"正在检查语法、词汇和句子流畅度，几秒钟就好。",nextTalk:"下一步 · 和 AI 对话",writePlaceholder:(lang)=>`用 ${lang} 写下你的回答…`},
-    listen:{teacher:"先只听一遍。播放后让声音自然进入耳朵，不需要每个词都听懂。",purpose:"Delft Method 像母语习得一样，从声音开始，而不是先背规则。这样可以先建立语感和节奏感。",player:"完整材料",sub:"完整音频 · 无字幕",rate:"正式学习前，你现在大概能理解多少？",check:"听出了大意或几个词就很好。最后我们会再对比一次你的进步。"},
-    watch:{teacher:"现在先把意思看懂。边播放边读你已经熟悉的语言里的含义。",purpose:"Delft 会先给出翻译，让文本在正式学习前变得清楚，减少猜测和挫败感。",check:"现在故事更清楚了吗？如果某一句还模糊，点它再听一次，慢慢来。"},
+    sr:{teacher:"相信你的耳朵。播放每一句，然后选择你听到的句子。",purpose:"这个小判断会把声音和意思连起来，一次只练一个清晰选择。",check:"做得顺的话很好；如果有几句难，重播再试一次，不急。"},
+    understand:{teacher:(lang)=>`最后完整听一遍。配合 ${lang} 原文播放，现在应该清楚很多。`,purpose:"你已经见过意思、声音和常用结构了。最后这一遍会帮它们自然合在一起。",check:"比第一次清楚了吗？这就是你的进步。"},
+    timed:{title:(subs)=>`练习 · ${subs?"带字幕":"无字幕"}`,teacherSubs:"开始说出来。我会播放每一句，然后轮到你在温和倒计时里朗读。",teacherNoSubs:"现在只靠耳朵。我会播放每一句，你凭记忆复述；需要时可以再显示文本。",purpose:"练完整句会让嘴巴有路可走，语言会慢慢变成你能说出口的东西。",how:"练习方式",tips:["屏幕一次只显示一句，专注这一句就好。","先听，然后在倒计时里读出来。","会自动进入下一句，但返回、重播、暂停一直可用。"],ready:"我准备好了，开始",breath:"先深呼吸，按下按钮前不会开始。",done:(n)=>`你已经练完 ${n} 个句子。准备好后点继续。`,again:"再练一遍",doneCheck:"每一句都说出来了吗？就是这样。多来一轮也很好。",listen:"听",yourTurn:"轮到你 · 读出来",hide:"隐藏文本",reveal:"显示文本",replay:"重播",pause:"暂停",resume:"继续",skip:"跳过"},
+    aiUse:{title:"和 AI 练习",teacher:"现在真正用起来。先写一点，再进行一段短对话，尽量用今天的词。",purpose:"这一步把课程变成你能回应、能表达的内容，轻一点，但要真的开口。",writeTab:"Part 1 · 写作",chatTab:"Part 2 · 对话",unlock:"完成 Part 1 反馈和 Part 2 对话后，就可以结束课程。",feedback:"获取反馈",reading:"阅读中…",teacherReading:"老师正在阅读你的写作…",checking:"正在检查语法、词汇和句子流畅度，几秒钟就好。",nextTalk:"下一步 · 和 AI 对话",writePlaceholder:(lang)=>`用 ${lang} 写下你的回答…`,question:(topic,lang)=>`根据这段材料 “${topic}”，你怎么看？请用 ${lang} 写 3–4 句，并尽量用今天的词。`,saved:(n)=>`${n} 个词 · 已本地保存`,feedbackTitle:(sim)=>`反馈和建议修改${sim?" · 模拟":""}`,grammar:"语法",vocab:"词汇",sentence:"句子结构",revision:"建议修改",mockGrammar:"时态整体一致。较长句子里可以再检查主语和动词是否对应。",mockVocab:"今天的词用得不错，可以再加一个连接短语让意思更连贯。",mockSentence:"结构清楚。试着变化一下句子长度，会更自然。",mockNote:"正在显示示例反馈；实时 AI 刚才没有响应，稍后可再试一次获得更具体的修改。"},
+    chat:{notice:(name,lang,n)=>`你正在和 ${name} 面对面用 ${lang} 对话。${name} 会先说，听完后你可以开口回答，也可以打字。大约 ${n} 轮。`,thinking:"思考中",speaking:"正在说话",yourTurn:"正在听你说",sayAgain:"再说一遍",exchange:(n,total)=>`第 ${n} / ${total} 轮`,listening:"正在听 · 说完后点击",speakAnswer:"轮到你 · 说出回答",speakIn:(lang)=>`请用 ${lang} 说。你的话会出现在下面，可以修改后再发送。`,typeIn:(lang)=>`请在下面用 ${lang} 打字回复（Chrome/Edge 支持语音输入）。`,placeholder:(lang)=>`用 ${lang} 回复…`,looksGood:"看起来不错",shortSentence:"至少说一个短句",replyTo:(name)=>`回复 ${name}`,showTranscript:"显示对话记录",feedbackTitle:(sim)=>`对话反馈${sim?" · 模拟":""}`,fluency:"流利度",mockDone:(lang)=>`你已经用 ${lang} 完成了一段语音交流，并且用到了今天的词，这正是目标。`},
+    done:{friend:"同学",title:(name)=>`${name}，你完成了！`,sub:(n)=>`你完整走完了 ${n} 个学习步骤。真正难的是开始并坚持到最后，而你已经做到了。`,explored:(topics)=>`今天你学习了 ${topics}`,more:"多带几段文本来，我们会慢慢看出你喜欢哪些主题、常在哪些地方投入时间。",steps:"步骤",words:"词汇",sentences:"句子",blocks:"模块",comp:"理解度 · 前后对比",rate:"最后再问一次：现在你大概能理解多少？",reveal:"查看我的进步",before:"之前",after:"之后",gain:(d)=>`理解度 +${d}% ，很漂亮`,again:"再来一遍会继续提升，你已经在路上了",take:"你带走的内容",review:"复习这节课",new:"导入新材料"},
+    phraseNote:"这是一个自然搭配，建议把它当成一组一起记，并试着自己造句。",
+    refTitle:"研究依据", refText:"这套流程基于 Delft Method：先理解一段有意义的文本，再在上下文里吸收高频词和语法，最后过渡到真实表达。", refSources:"来源：Montens & Sciarone《Nederlands voor buitenlanders: de Delftse methode》；TU Delft Centre for Languages。",
+    grammarFocus:["文本里的常见时态","语序和句子位置","连接词与表达观点的短语"],
+    listen:{teacher:"先只听一遍。播放后让声音自然进入耳朵，不需要每个词都听懂。",purpose:"大脑会先捕捉节奏、熟悉的声音和语言轮廓，不必马上解释每个细节。",player:"完整材料",sub:"完整音频 · 无字幕",rate:"正式学习前，你现在大概能理解多少？",check:"听出了大意或几个词就很好。最后我们会再对比一次你的进步。"},
+    watch:{teacher:"现在先把意思看懂。边播放边读你已经熟悉的语言里的含义。",purpose:"先有意思，文本就不再像谜题，而更像一段你能跟上的故事。",check:"现在故事更清楚了吗？如果某一句还模糊，点它再听一次，慢慢来。"},
     read:{teacher:(lang)=>`把声音和拼写连起来。听的时候一起阅读 ${lang} 原文。`,purpose:"同时听到和看到单词，会更容易记住。",check:"能跟上了吗？如果还不稳，先重播一两句再继续。"},
-    comp:{teacher:"快速检查一下，没有压力。选择和文本意思相符的句子。",purpose:"Delft 会在每篇文本后检查理解。这不是考你，只是看看是否准备好进入更细的学习。",check:"完成了吗？很好。错了一题也没关系，回到“听读结合”再过一遍就对了。"},
-    gram:{title:"逐句拆解",teacher:"我们放慢速度，一次只看一句。一起拆解词汇和短语，就像老师坐在旁边。",purpose:"Delft 用你自己的文本讲语法，不先堆规则术语，让你从真实例句里学到能复用的模式。",sentence:(i,n)=>`第 ${i} / ${n} 句`,phrases:"短语与固定搭配",wordOrder:"语序：",wordOrderText:"留意这句话的结构，类似结构会在文本里反复出现。",slow:"慢慢来，现在只专注这一句。",noWords:"这一句没有特别突出的新词，轻松一下。",summaryTitle:"整理一下",summaryTeacher:"逐句学完了，很棒。这里把重点放在一起，帮助你巩固。",allVocab:"全部重点词汇",patterns:"遇到的语法模式",review:"从第 1 句复习",summaryCheck:"如果某一句还不稳，回到第 1 句再走一遍。重复本来就是学习的一部分。",next:"下一句",previous:"上一句",seeSummary:"查看总结"},
+    comp:{teacher:"快速检查一下，没有压力。选择和文本意思相符的句子。",purpose:"一个小检查会给你清楚的信号：可以继续深入，或者先多听一遍。",check:"完成了吗？很好。错了一题也没关系，回到“听读结合”再过一遍就对了。"},
+    gram:{title:"逐句拆解",teacher:"我们放慢速度，一次只看一句。一起拆解词汇和短语，就像老师坐在旁边。",purpose:"你会从自己的文本里学结构，所以语法不会漂在空中，而是一直连着意思。",sentence:(i,n)=>`第 ${i} / ${n} 句`,phrases:"短语与固定搭配",wordOrder:"语序：",wordOrderText:"留意这句话的结构，类似结构会在文本里反复出现。",slow:"慢慢来，现在只专注这一句。",noWords:"这一句没有特别突出的新词，轻松一下。",summaryTitle:"整理一下",summaryTeacher:"逐句学完了，很棒。这里把重点放在一起，帮助你巩固。",allVocab:"全部重点词汇",patterns:"遇到的语法模式",review:"从第 1 句复习",summaryCheck:"如果某一句还不稳，回到第 1 句再走一遍。重复本来就是学习的一部分。",next:"下一句",previous:"上一句",seeSummary:"查看总结"},
   }
 };
 const UIContext=createContext({uiLang:"en",setUiLang:()=>{},t:UI_TEXT.en});
@@ -118,6 +132,36 @@ const PARTNER={Spanish:{name:"Lucía",face:"👩🏻"},French:{name:"Camille",fa
   Italian:{name:"Giulia",face:"👩🏻"},Portuguese:{name:"Sofia",face:"👩🏽"},Dutch:{name:"Sanne",face:"👩🏼"},
   Japanese:{name:"Yuki",face:"🧑🏻"},Korean:{name:"Minji",face:"👩🏻"},"Mandarin Chinese":{name:"Mei",face:"👩🏻"},
   Arabic:{name:"Layla",face:"🧕🏽"},Russian:{name:"Anna",face:"👩🏼"},English:{name:"Alex",face:"🧑🏼"},_:{name:"your partner",face:"🧑"}};
+const CHAT_FALLBACK={
+  Dutch:["Laten we even in het Nederlands kletsen. Vertel me eens wat je interessant vond.",
+    w=>`Gebruik het woord "${w}" in een korte zin.`,"Wat vind jij daarvan?","Waarom denk je dat?","Zeg nog één volledige zin."],
+  Spanish:["Charlemos un momento en español. Cuéntame algo que te pareció interesante.",
+    w=>`Usa la palabra "${w}" en una frase corta.`,"¿Qué opinas de eso?","¿Por qué piensas eso?","Di una frase completa más."],
+  French:["Parlons un peu en français. Dis-moi ce que tu as trouvé intéressant.",
+    w=>`Utilise le mot « ${w} » dans une phrase courte.`,"Qu'est-ce que tu en penses ?","Pourquoi tu penses cela ?","Dis encore une phrase complète."],
+  German:["Lass uns kurz auf Deutsch sprechen. Erzähl mir, was du interessant fandest.",
+    w=>`Benutze das Wort "${w}" in einem kurzen Satz.`,"Was denkst du darüber?","Warum denkst du das?","Sag noch einen ganzen Satz."],
+  Italian:["Parliamo un attimo in italiano. Raccontami cosa hai trovato interessante.",
+    w=>`Usa la parola "${w}" in una frase breve.`,"Che cosa ne pensi?","Perché lo pensi?","Di' ancora una frase completa."],
+  Portuguese:["Vamos conversar um pouco em português. Conta-me uma coisa que achaste interessante.",
+    w=>`Usa a palavra "${w}" numa frase curta.`,"O que achas disso?","Por que pensas isso?","Diz mais uma frase completa."],
+  Japanese:["日本語で少し話しましょう。おもしろいと思ったことを一つ教えてください。",
+    w=>`「${w}」を使って短い文を作ってください。`,"どう思いますか。","どうしてそう思いますか。","もう一つ文で言ってください。"],
+  Korean:["한국어로 잠깐 이야기해 봐요. 흥미로웠던 것을 하나 말해 주세요.",
+    w=>`"${w}"라는 단어를 써서 짧은 문장을 만들어 보세요.`,"어떻게 생각해요?","왜 그렇게 생각해요?","문장 하나를 더 말해 주세요."],
+  "Mandarin Chinese":["我们用中文简单聊一聊。告诉我一个你觉得有意思的地方。",
+    w=>`请用“${w}”造一个短句。`,"你怎么看？","你为什么这么想？","再说一个完整的句子。"],
+  Arabic:["لنتحدث قليلا بالعربية. أخبرني بشيء وجدته مثيرا للاهتمام.",
+    w=>`استخدم كلمة "${w}" في جملة قصيرة.`,"ما رأيك في ذلك؟","لماذا تعتقد ذلك؟","قل جملة كاملة أخرى."],
+  Russian:["Давай немного поговорим по-русски. Расскажи, что тебе показалось интересным.",
+    w=>`Используй слово «${w}» в коротком предложении.`,"Что ты об этом думаешь?","Почему ты так думаешь?","Скажи ещё одно полное предложение."],
+  English:["Let's chat in English. Tell me one thing you found interesting.",
+    w=>`Use the word "${w}" in a sentence.`,"What's your opinion?","Why do you think so?","Give me one more full sentence."],
+};
+function chatFallback(lang,word){
+  const list=CHAT_FALLBACK[lang]||CHAT_FALLBACK.English;
+  return list.map(x=>typeof x==="function"?x(word||"it"):x);
+}
 const TTS_OK=typeof window!=="undefined" && "speechSynthesis" in window;
 // High-quality AI voice via /api/tts, with the browser voice as fallback.
 // ttsMode caches the outcome so we don't re-probe the API on every click.
@@ -327,16 +371,17 @@ function Purpose({children}){ return <div className="purpose">{children}</div>; 
 function CheckIn({children}){ return <div className="checkin"><span>💛</span><span>{children}</span></div>; }
 
 function FullPlayer({text,lang,label,sub}){
+  const {t}=useUI();
   const [playing,setPlaying]=useState(false); const [rate,setRate]=useState(1);
   useEffect(()=>()=>stopSpeak(),[]);
   function toggle(){ if(playing){stopSpeak();setPlaying(false);return;} const u=speak(text,lang,rate); if(u){u.onend=()=>setPlaying(false);setPlaying(true);} }
   function setR(r){ setRate(r); if(playing){const u=speak(text,lang,r); if(u)u.onend=()=>setPlaying(false);} }
   return (<div className="player">
     <button className="playbtn" onClick={toggle}>{playing?"❚❚":"▶"}</button>
-    <div style={{flex:1}}><div style={{fontWeight:600}}>{label||"Full source audio"}</div>
-      <div className="tiny muted">{TTS_OK?(sub||"Full-source read-aloud"):"Audio not supported in this browser"}</div></div>
+    <div style={{flex:1}}><div style={{fontWeight:600}}>{label||t.fullSourceAudio}</div>
+      <div className="tiny muted">{TTS_OK?(sub||t.fullSourceRead):t.audioUnsupported}</div></div>
     <div className="row" style={{gap:6}}>{[0.75,1,1.25].map(r=><button key={r} className={"rate"+(rate===r?" on":"")} onClick={()=>setR(r)}>{r}×</button>)}
-      <button className="sbtn" title="restart" onClick={()=>setR(rate)}>↺</button></div>
+      <button className="sbtn" title={t.restart} onClick={()=>setR(rate)}>↺</button></div>
   </div>);
 }
 function Say({text,lang,rate=1}){ const {t}=useUI(); return <button className="sbtn saybtn" title={t.play} aria-label={t.play} onClick={()=>speak(text,lang,rate)}><span>▶</span><span>{t.play}</span></button>; }
@@ -466,7 +511,7 @@ function InputScreen({onNext}){
       <textarea style={{minHeight:220}} value={raw} onChange={e=>setRaw(e.target.value)} placeholder={t.textPlaceholder}/>
       <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
         <span className="tiny muted">{t.cleanNote}</span>
-        <span className="tiny" style={{fontWeight:600,color:over?"hsl(0 72% 45%)":"hsl(var(--muted-foreground))"}}>{count.toLocaleString()} / {LIMIT.toLocaleString()} chars</span></div>
+        <span className="tiny" style={{fontWeight:600,color:over?"hsl(0 72% 45%)":"hsl(var(--muted-foreground))"}}>{count.toLocaleString()} / {LIMIT.toLocaleString()} {t.chars}</span></div>
     </div>
     <div className="grid3" style={{marginTop:16}}>
       <div><label className="fld">{t.targetLanguage}</label><select value={lang} onChange={e=>setLang(e.target.value)}><option value="">{t.select}</option>{LANGS.map(l=><option key={l}>{l}</option>)}</select></div>
@@ -485,7 +530,7 @@ function Preview({lesson,onStart,onBack}){
   const {t}=useUI();
   const heavy=lesson.vocabCount>12;
   const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
-  const diffLabel=["","Comfortable review","An easy read","Right at your level","A gentle stretch","Challenging"][lesson.diff];
+  const diffLabel=t.diffLabels[lesson.diff];
   return (<div>
     <h1>{t.previewTitle}</h1><p className="sub">{t.previewSub}</p>
     <div className="row wrap" style={{gap:7,marginBottom:16}}>
@@ -495,7 +540,7 @@ function Preview({lesson,onStart,onBack}){
     <div className="grid4" style={{marginBottom:14}}>
       <Stat k={t.recommendedLevel} v={lesson.recommended.split(" — ")[0]}/>
       <Stat k={t.estimatedTime} v={t.min(total)}/>
-      <Stat k={t.vocabulary} v={lesson.vocabCount+" words"}/>
+      <Stat k={t.vocabulary} v={t.wordCount(lesson.vocabCount)}/>
       <Stat k={t.characters} v={lesson.charCount.toLocaleString()}/>
     </div>
     <div className="card card-p" style={{marginBottom:16}}>
@@ -512,8 +557,8 @@ function Preview({lesson,onStart,onBack}){
           <span><div style={{fontWeight:600}}>{t.planNames[i]||b.name}</div><div className="tiny muted">{(t.planItems[i]||b.items).join(" · ")}</div></span></span>
         <span className="tiny muted">~{Math.max(1,Math.round(b.min*scale))} min</span></div>))}
       <div className="ref">
-        The flow follows the <b>Delft Method</b> (Delftse methode), a research-based approach to language learning developed at Delft University of Technology: understand a text first, absorb its high-frequency words and grammar in context, then move to conversation.<br/>
-        Sources: Montens, F. &amp; Sciarone, A. G., <i>Nederlands voor buitenlanders: de Delftse methode</i> (Boom); TU Delft Centre for Languages, “About the Delftse methode.”
+        <b>{t.refTitle}.</b> {t.refText}<br/>
+        {t.refSources}
       </div>
     </div>
     {heavy && <div className="checkin" style={{marginTop:16,background:"hsl(var(--warm)/.08)",borderColor:"hsl(var(--warm)/.3)"}}><span>💡</span>
@@ -641,7 +686,7 @@ function GrammarStep({lesson,onComplete}){
     aiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen}))}).then(d=>{
       if(cancel) return; setLoadingKw(false);
       if(d&&Array.isArray(d.items)){ setExpl(prev=>{ const n={...prev};
-        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,example:it.example||null,pos:it.pos||null}; });
+        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,pos:it.pos||null}; });
         return n; }); }
     });
     return ()=>{cancel=true;};
@@ -658,7 +703,7 @@ function GrammarStep({lesson,onComplete}){
       <h3 className="lbl">{t.gram.allVocab}</h3>
       <div className="row wrap" style={{gap:7,marginBottom:16}}>{vocab.map(v=><span key={v.word} className="badge">{v.word}</span>)}</div>
       <h3 className="lbl">{t.gram.patterns}</h3>
-      <ul className="clean">{lesson.grammarFocus.map((g,i)=><li key={i}>{g}</li>)}</ul>
+      <ul className="clean">{(t.grammarFocus||lesson.grammarFocus).map((g,i)=><li key={i}>{g}</li>)}</ul>
     </div>
     <CheckIn>{t.gram.summaryCheck}</CheckIn>
     <div style={{marginTop:14}}><button className="btn btn-outline btn-sm" onClick={()=>{setGi(0);setView("study");}}>↩ {t.gram.review}</button></div>
@@ -703,7 +748,7 @@ function GrammarStep({lesson,onComplete}){
       {phrases.length>0 && (<><h3 className="lbl" style={{marginTop:16}}>{t.gram.phrases}</h3>
         {phrases.map((p,j)=>(<div className="wcard" key={j}>
           <div className="row" style={{justifyContent:"space-between"}}><b>{p}</b><Say text={p} lang={lang} rate={0.75}/></div>
-          <div className="tiny muted" style={{marginTop:6}}>A natural pairing worth keeping together — try reusing it in a sentence of your own.</div>
+          <div className="tiny muted" style={{marginTop:6}}>{t.phraseNote}</div>
         </div>))}</>)}
 
       <div className="tiny muted" style={{marginTop:14}}><b>{t.gram.wordOrder}</b> {t.gram.wordOrderText}</div>
@@ -803,17 +848,18 @@ function PracticeAI({lesson,onComplete}){
   </div>);
 }
 function AIWrite({lesson,onNext,onDone}){
-  const {t}=useUI();
+  const {t,uiLang}=useUI();
   const {lang,level,vocab,sents}=lesson;
   const topic=(sents[0]||"the topic").replace(/[.!?。！？]+$/,"");
-  const question=`Based on the passage — "${topic.length>90?topic.slice(0,90)+"…":topic}" — what's your view? Write 3–4 sentences in ${lang} using today's words.`;
+  const shortTopic=topic.length>90?topic.slice(0,90)+"…":topic;
+  const question=t.aiUse.question(shortTopic,lang);
   const [textv,setTextv]=useState(DB.get("aiPractice","")); const [fb,setFb]=useState(null); // null | "loading" | {real} | "mock"
   useEffect(()=>DB.set("aiPractice",textv),[textv]);
   async function getFeedback(){
     setFb("loading"); onDone&&onDone();
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim()})});
+        body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim(),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
       if(!r.ok) throw new Error("no api");
       const d=await r.json(); setFb(d);
     }catch(e){ setFb("mock"); }
@@ -825,7 +871,7 @@ function AIWrite({lesson,onNext,onDone}){
       <div className="tface">👩‍🏫</div><div style={{fontWeight:500}}>{question}</div></div></div>
     <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={t.aiUse.writePlaceholder(lang)}/>
     <div className="row" style={{justifyContent:"space-between",marginTop:12}}>
-      <span className="tiny muted">{textv.trim().split(/\s+/).filter(Boolean).length} words · saved locally</span>
+      <span className="tiny muted">{t.aiUse.saved(textv.trim().split(/\s+/).filter(Boolean).length)}</span>
       <button className="btn btn-primary btn-sm" disabled={textv.trim().length<12||fb==="loading"} onClick={getFeedback}>{fb==="loading"?t.aiUse.reading:t.aiUse.feedback}</button></div>
     {fb==="loading" && <div className="card card-p" style={{marginTop:16}}>
       <div className="row" style={{gap:11}}><div className="tface pulse">👩‍🏫</div>
@@ -834,17 +880,17 @@ function AIWrite({lesson,onNext,onDone}){
       <div className="track" style={{marginTop:12,overflow:"hidden"}}><span className="indet"/></div>
     </div>}
     {(real||fb==="mock") && (<div className="card card-p" style={{marginTop:16}}>
-      <h3 className="lbl">Feedback &amp; suggested revision{real?"":" · simulated"}</h3>
+      <h3 className="lbl">{t.aiUse.feedbackTitle(!real)}</h3>
       {real ? (<>
-        <div style={{marginBottom:8}}>✅ <b>Grammar.</b> <span className="muted">{fb.grammar}</span></div>
-        <div style={{marginBottom:8}}>✅ <b>Vocabulary.</b> <span className="muted">{fb.vocabulary}</span></div>
-        <div style={{marginBottom:8}}>✅ <b>Sentence construction.</b> <span className="muted">{fb.sentence}</span></div>
-        {fb.revision && <div style={{marginTop:10}}><b>Suggested revision:</b><div className="card card-p" style={{marginTop:6,background:"hsl(var(--secondary))"}}>{fb.revision}</div></div>}
+        <div style={{marginBottom:8}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{fb.grammar}</span></div>
+        <div style={{marginBottom:8}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{fb.vocabulary}</span></div>
+        <div style={{marginBottom:8}}>✅ <b>{t.aiUse.sentence}.</b> <span className="muted">{fb.sentence}</span></div>
+        {fb.revision && <div style={{marginTop:10}}><b>{t.aiUse.revision}:</b><div className="card card-p" style={{marginTop:6,background:"hsl(var(--secondary))"}}>{fb.revision}</div></div>}
       </>) : (<>
-        <div style={{marginBottom:8}}>✅ <b>Grammar.</b> <span className="muted">Tenses look consistent. Check subject–verb agreement in your longer sentence.</span></div>
-        <div style={{marginBottom:8}}>✅ <b>Vocabulary.</b> <span className="muted">Nice reuse of today's words — add one connective phrase to link ideas.</span></div>
-        <div style={{marginBottom:8}}>✅ <b>Sentence construction.</b> <span className="muted">Clear structure. Try varying sentence length to sound more natural.</span></div>
-        <div className="tiny muted" style={{marginTop:8}}>Showing sample feedback — the live AI check didn't respond just now, so try again in a moment for specific notes and a corrected draft.</div>
+        <div style={{marginBottom:8}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{t.aiUse.mockGrammar}</span></div>
+        <div style={{marginBottom:8}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{t.aiUse.mockVocab}</span></div>
+        <div style={{marginBottom:8}}>✅ <b>{t.aiUse.sentence}.</b> <span className="muted">{t.aiUse.mockSentence}</span></div>
+        <div className="tiny muted" style={{marginTop:8}}>{t.aiUse.mockNote}</div>
       </>)}
       <div style={{marginTop:14}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>
     </div>)}
@@ -852,14 +898,14 @@ function AIWrite({lesson,onNext,onDone}){
 }
 
 function AIChat({lesson,onDone}){
+  const {t,uiLang}=useUI();
   const {lang,level,vocab,topics,grammarFocus,sents}=lesson;
   const vwords=vocab.slice(0,6).map(v=>v.word);
   const topic=(topics&&topics.join(", "))||"the text";
   const grammar=(grammarFocus&&grammarFocus.join("; "))||"";
   const sample=(sents||[]).slice(0,8).join(" ");
   const partner=PARTNER[lang]||PARTNER._;
-  const fallback=[`Let's chat in ${lang}. Tell me one thing you found interesting.`,
-    `Use the word "${vwords[0]||"it"}" in a sentence.`,`What's your opinion?`,`Why do you think so?`,`Give me one more full sentence.`];
+  const fallback=chatFallback(lang,vwords[0]);
   const [msgs,setMsgs]=useState([]); const [draft,setDraft]=useState("");
   const [busy,setBusy]=useState(false); const [turns,setTurns]=useState(0);
   const [speaking,setSpeaking]=useState(false);
@@ -899,7 +945,7 @@ function AIChat({lesson,onDone}){
   async function finish(list){ setDone(true); onDone&&onDone();
     if(mockRef.current) return;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list)})});
+        body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
       if(r.ok) setEvalz(await r.json()); }catch(e){} }
 
   async function send(){ if(!full||busy) return; stopMic();
@@ -916,17 +962,17 @@ function AIChat({lesson,onDone}){
   const lastAi=[...msgs].reverse().find(m=>m.who==="ai");
   return (<div>
     <div className="notice" style={{marginBottom:14}}><span>🗣️</span>
-      <span>You're talking with <b>{partner.name}</b>, face to face, in <b>{lang}</b>. {partner.name} speaks first — listen, then <b>hold the mic and say your answer</b> out loud (or type). About {MAX_TURNS} exchanges.</span></div>
+      <span>{t.chat.notice(partner.name,lang,MAX_TURNS)}</span></div>
 
     {/* the person you're talking with */}
     <div className="card card-p" style={{textAlign:"center",background:"hsl(var(--secondary))"}}>
       <div style={{fontSize:60,lineHeight:1,filter:speaking?"none":"grayscale(.15)"}}>{partner.face}</div>
       <div style={{fontWeight:700,marginTop:6}}>{partner.name}</div>
-      <div className="tiny muted">{busy?"…thinking":speaking?"🔊 speaking…":"listening — your turn"}</div>
+      <div className="tiny muted">{busy?"…"+t.chat.thinking:speaking?"🔊 "+t.chat.speaking+"…":t.chat.yourTurn}</div>
       {lastAi && <div style={{fontWeight:500,fontSize:17,margin:"12px auto 0",maxWidth:520}}>{lastAi.t}</div>}
       <div className="row" style={{gap:8,justifyContent:"center",marginTop:10}}>
-        {lastAi && <button className="btn btn-outline btn-sm" onClick={()=>sayAI(lastAi.t)}>🔊 Say it again</button>}
-        <span className="tiny muted">Exchange {Math.min(turns+1,MAX_TURNS)} of {MAX_TURNS}</span>
+        {lastAi && <button className="btn btn-outline btn-sm" onClick={()=>sayAI(lastAi.t)}>🔊 {t.chat.sayAgain}</button>}
+        <span className="tiny muted">{t.chat.exchange(Math.min(turns+1,MAX_TURNS),MAX_TURNS)}</span>
       </div>
     </div>
 
@@ -934,83 +980,84 @@ function AIChat({lesson,onDone}){
       {/* voice-first reply */}
       {SR ? (<div style={{textAlign:"center"}}>
         <button className={"btn "+(listening?"btn-primary":"btn-outline")} style={{fontSize:17,padding:"14px 26px",borderRadius:999}}
-          onClick={listening?stopMic:startMic}>{listening?"● Listening — tap when done":"🎤 Hold the floor · speak your answer"}</button>
-        <div className="tiny muted" style={{marginTop:8}}>Speak in {lang}. Your words appear below — edit if you like, then reply.</div>
-      </div>) : <div className="tiny muted" style={{marginBottom:6}}>Type your reply in {lang} below (voice input works in Chrome/Edge).</div>}
-      <textarea style={{minHeight:56,marginTop:12}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={"Your reply in "+lang+"…"}/>
+          onClick={listening?stopMic:startMic}>{listening?"● "+t.chat.listening:"🎤 "+t.chat.speakAnswer}</button>
+        <div className="tiny muted" style={{marginTop:8}}>{t.chat.speakIn(lang)}</div>
+      </div>) : <div className="tiny muted" style={{marginBottom:6}}>{t.chat.typeIn(lang)}</div>}
+      <textarea style={{minHeight:56,marginTop:12}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={t.chat.placeholder(lang)}/>
       <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
-        <span className="tiny muted">{full?"Looks good ✓":"Say at least a short sentence"}</span>
-        <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>Reply to {partner.name} →</button></div>
+        <span className="tiny muted">{full?t.chat.looksGood+" ✓":t.chat.shortSentence}</span>
+        <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>{t.chat.replyTo(partner.name)} →</button></div>
 
       {/* transcript, tucked below so it feels like a conversation, not a chat log */}
-      {msgs.length>1 && <details style={{marginTop:14}}><summary className="tiny muted" style={{cursor:"pointer"}}>Show transcript</summary>
+      {msgs.length>1 && <details style={{marginTop:14}}><summary className="tiny muted" style={{cursor:"pointer"}}>{t.chat.showTranscript}</summary>
         <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}</div>))}</div></details>}
     </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
-        <h3 className="lbl">Conversation feedback{evalz?"":" · simulated"}</h3>
+        <h3 className="lbl">{t.chat.feedbackTitle(!evalz)}</h3>
         {evalz ? (<div>
           <div style={{marginBottom:8}}>🎉 {evalz.praise}</div>
-          <div style={{marginBottom:6}}>✅ <b>Grammar.</b> <span className="muted">{evalz.grammar}</span></div>
-          <div style={{marginBottom:6}}>✅ <b>Vocabulary.</b> <span className="muted">{evalz.vocabulary}</span></div>
-          <div>✅ <b>Fluency.</b> <span className="muted">{evalz.fluency}</span></div>
-        </div>) : (<div className="muted">You held a voice exchange in {lang} using today's words — exactly the goal. 🎉</div>)}
+          <div style={{marginBottom:6}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{evalz.grammar}</span></div>
+          <div style={{marginBottom:6}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{evalz.vocabulary}</span></div>
+          <div>✅ <b>{t.chat.fluency}.</b> <span className="muted">{evalz.fluency}</span></div>
+        </div>) : (<div className="muted">{t.chat.mockDone(lang)}</div>)}
       </div>)}
   </div>);
 }
 
 /* ---------- celebration ---------- */
 function Done({lesson,onNew,onReview}){
-  const name=(DB.get("email","")||"").split("@")[0]||"friend";
+  const {t}=useUI();
+  const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const before=DB.get("selfBefore",30);
   const [after,setAfter]=useState(DB.get("selfAfter",null)); const [tmp,setTmp]=useState(70);
   const delta=after!=null?after-before:0;
   return (<div>
     <div className="celebrate">
       <div style={{fontSize:52,lineHeight:1}}>🎉</div>
-      <h1 style={{marginTop:10}}>You did it, {name}! 👏</h1>
-      <p className="sub" style={{maxWidth:470,margin:"8px auto 0"}}>You stayed with it through all {STEPS.length} steps of the full Delft cycle. Showing up and finishing is the hard part — and you just did. 🌟</p>
+      <h1 style={{marginTop:10}}>{t.done.title(name)}</h1>
+      <p className="sub" style={{maxWidth:470,margin:"8px auto 0"}}>{t.done.sub(STEPS.length)}</p>
     </div>
 
     <div className="card card-p" style={{margin:"18px 0",background:"hsl(var(--warm)/.07)",borderColor:"hsl(var(--warm)/.25)",textAlign:"center"}}>
       <div style={{fontSize:26}}>📚✨</div>
-      <div style={{fontWeight:600,marginTop:6}}>Today you explored {lesson.topics.slice(0,2).join(" & ")}</div>
+      <div style={{fontWeight:600,marginTop:6}}>{t.done.explored(lesson.topics.slice(0,2).join(" & "))}</div>
       <div className="row wrap" style={{gap:7,justifyContent:"center",marginTop:10}}>{lesson.topics.map(t=><span key={t} className="badge badge-warm">{t}</span>)}</div>
-      <div className="tiny muted" style={{marginTop:10}}>Bring a few more texts and we'll start to see which topics you love most — and where you spend your time. 💛</div>
+      <div className="tiny muted" style={{marginTop:10}}>{t.done.more}</div>
     </div>
 
     <div className="grid4" style={{marginBottom:18}}>
-      <Stat k="🏁 Steps" v={STEPS.length+" / "+STEPS.length}/>
-      <Stat k="📖 Words" v={lesson.vocabCount}/>
-      <Stat k="🗣️ Sentences" v={Math.min(8,lesson.sents.length)}/>
-      <Stat k="🧩 Blocks" v={PLAN_BLOCKS.length}/>
+      <Stat k={"🏁 "+t.done.steps} v={STEPS.length+" / "+STEPS.length}/>
+      <Stat k={"📖 "+t.done.words} v={lesson.vocabCount}/>
+      <Stat k={"🗣️ "+t.done.sentences} v={Math.min(8,lesson.sents.length)}/>
+      <Stat k={"🧩 "+t.done.blocks} v={PLAN_BLOCKS.length}/>
     </div>
 
     <div className="card card-p" style={{marginBottom:18}}>
-      <h3 className="lbl">📈 Your comprehension · before vs after</h3>
+      <h3 className="lbl">📈 {t.done.comp}</h3>
       {after==null ? (<div>
-        <SelfRate value={tmp} prompt="One more time — how much can you understand now?" onChange={setTmp}/>
-        <div style={{marginTop:14}}><button className="btn btn-outline btn-sm" onClick={()=>{setAfter(tmp);DB.set("selfAfter",tmp);}}>Reveal my progress ✨</button></div>
+        <SelfRate value={tmp} prompt={t.done.rate} onChange={setTmp}/>
+        <div style={{marginTop:14}}><button className="btn btn-outline btn-sm" onClick={()=>{setAfter(tmp);DB.set("selfAfter",tmp);}}>{t.done.reveal} ✨</button></div>
       </div>) : (<div>
         <div style={{marginBottom:12}}>
-          <div className="row" style={{justifyContent:"space-between",marginBottom:5}}><span className="tiny muted">Before</span><span className="tiny" style={{fontWeight:600}}>{before}%</span></div>
+          <div className="row" style={{justifyContent:"space-between",marginBottom:5}}><span className="tiny muted">{t.done.before}</span><span className="tiny" style={{fontWeight:600}}>{before}%</span></div>
           <div className="gbar"><span className="before" style={{width:before+"%"}}/></div></div>
         <div>
-          <div className="row" style={{justifyContent:"space-between",marginBottom:5}}><span className="tiny muted">After</span><span className="tiny" style={{fontWeight:600}}>{after}%</span></div>
+          <div className="row" style={{justifyContent:"space-between",marginBottom:5}}><span className="tiny muted">{t.done.after}</span><span className="tiny" style={{fontWeight:600}}>{after}%</span></div>
           <div className="gbar"><span className="after" style={{width:after+"%"}}/></div></div>
         <div style={{textAlign:"center",marginTop:14}}>
-          {delta>0 ? <span className="badge badge-success" style={{fontSize:14,padding:"6px 14px"}}>▲ +{delta}% understanding — look at you go! 🚀</span>
-            : <span className="badge" style={{fontSize:14,padding:"6px 14px"}}>A second pass will lift this — you've got it 💪</span>}
+          {delta>0 ? <span className="badge badge-success" style={{fontSize:14,padding:"6px 14px"}}>▲ {t.done.gain(delta)}</span>
+            : <span className="badge" style={{fontSize:14,padding:"6px 14px"}}>{t.done.again}</span>}
         </div>
       </div>)}
     </div>
 
     <div className="card card-p" style={{marginBottom:20}}>
-      <h3 className="lbl">🎒 What you're taking with you</h3>
+      <h3 className="lbl">🎒 {t.done.take}</h3>
       <div className="row wrap" style={{gap:7}}>{lesson.vocab.map(v=><span key={v.word} className="badge">{v.word}</span>)}</div>
     </div>
 
     <div className="row" style={{justifyContent:"center",gap:10}}>
-      <button className="btn btn-outline" onClick={onReview}>↺ Review this lesson</button>
-      <button className="btn btn-primary" onClick={onNew}>Bring new material →</button>
+      <button className="btn btn-outline" onClick={onReview}>↺ {t.done.review}</button>
+      <button className="btn btn-primary" onClick={onNew}>{t.done.new} →</button>
     </div>
   </div>);
 }
@@ -1026,7 +1073,7 @@ function App(){
   async function loadLesson(d){ setText(d.text); DB.set("progress",0); DB.set("selfAfter",null); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); setScreen("preview"); }
     catch(e){ setLesson(generateLesson(d.text,d.lang,d.level,d.goal)); setScreen("preview"); } }
-  function clearAll(){ if(confirm("Clear all local learning data (draft, notes, ratings, progress)?")){DB.clearAll();location.reload();} }
+  function clearAll(){ if(confirm(t.clearConfirm)){DB.clearAll();location.reload();} }
   return (<UIContext.Provider value={{uiLang,setUiLang,t}}><div className="app">
     {screen!=="login" && screen!=="lesson" && (<div className="topbar"><Brand/>
       <div className="row wrap" style={{justifyContent:"flex-end"}}><LanguageSwitch/><button className="btn btn-ghost btn-sm muted" onClick={clearAll}>{t.clearLocalData}</button>

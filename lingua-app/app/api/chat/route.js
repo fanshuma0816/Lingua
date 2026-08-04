@@ -13,7 +13,8 @@ export async function POST(req) {
 
     if (b.mode === "feedback") {
       const sys = "You are a warm, encouraging language teacher. Reply ONLY with minified JSON.";
-      const user = `A ${b.level} learner of ${b.lang} answered the prompt "${b.question}". Their writing:\n"""${b.text}"""\nReturn JSON {"grammar": <one short encouraging note in English>, "vocabulary": <one short note in English>, "sentence": <one short note in English>, "revision": <an improved version of their text in ${b.lang}>}. Be specific and kind.`;
+      const feedbackLanguage = b.feedbackLanguage || "English";
+      const user = `A ${b.level} learner of ${b.lang} answered the prompt "${b.question}". Their writing:\n"""${b.text}"""\nReturn JSON {"grammar": <one short encouraging note in ${feedbackLanguage}>, "vocabulary": <one short note in ${feedbackLanguage}>, "sentence": <one short note in ${feedbackLanguage}>, "revision": <an improved version of their text in ${b.lang}>}. Be specific and kind.`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true });
       return Response.json(parseJSON(out));
     }
@@ -21,6 +22,7 @@ export async function POST(req) {
     if (b.mode === "chat") {
       const sys = `You are a warm ${b.lang} conversation partner sitting across from a ${b.level} learner — like a real person chatting face to face, not a chatbot.
 Speak ONLY in ${b.lang}. Never use English.
+If this is the first message, open naturally in ${b.lang}; do not say the English name of the language unless that is itself ${b.lang}. For Dutch, for example, say "Nederlands", not "Dutch".
 The learner just studied THIS text:
 """${(b.sample || "").slice(0, 700)}"""
 Ask concrete, specific questions ABOUT that text's ideas and details (not vague "what did you think?"). Give the learner something real to react to, so they always have something to say.
@@ -33,8 +35,9 @@ Keep EVERY reply to ONE short, natural sentence ending in a question, at or just
 
     if (b.mode === "evaluate") {
       const sys = "You are a kind language teacher. Reply ONLY with minified JSON.";
+      const feedbackLanguage = b.feedbackLanguage || "English";
       const conv = (b.history || []).map(m => `${m.role}: ${m.content}`).join("\n");
-      const user = `Here is a short ${b.lang} practice conversation with a ${b.level} learner:\n${conv}\nReturn JSON {"praise": <one warm sentence in English>, "grammar": <one short tip in English>, "vocabulary": <one short tip in English>, "fluency": <one short tip in English>}.`;
+      const user = `Here is a short ${b.lang} practice conversation with a ${b.level} learner:\n${conv}\nReturn JSON {"praise": <one warm sentence in ${feedbackLanguage}>, "grammar": <one short tip in ${feedbackLanguage}>, "vocabulary": <one short tip in ${feedbackLanguage}>, "fluency": <one short tip in ${feedbackLanguage}>}.`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true });
       return Response.json(parseJSON(out));
     }
