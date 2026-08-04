@@ -37,8 +37,22 @@ function pickVocab(text, n) {
   uniq.sort((a, b) => (b.length + (freq[b] || 0)) - (a.length + (freq[a] || 0)));
   return uniq.slice(0, n);
 }
+const ABBR = "Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|vs|etc|e\\.g|i\\.e|bijv|enz|nr|resp|approx|no|No|Inc|Ltd|Co";
 function sentencesOf(text) {
-  return (text.match(/[^.!?。！？]+[.!?。！？]?/g) || []).map(s => s.replace(/\s+/g, " ").trim()).filter(s => s.length > 12);
+  if (!text) return [];
+  let t = text.replace(/\s*[•·▪‣◦]\s*/g, "\n");
+  const primary = new RegExp("(?<!\\b(?:" + ABBR + ")\\.)(?<=[.!?…。！？])\\s+(?=[\\p{Lu}\"“'(\\[])|\\s*[;；]\\s+(?=[\\p{Lu}])|\\s*\\n+\\s*", "u");
+  const secondary = /(?<=[\p{Ll})\]])(?<!\b\p{Lu}[\p{Ll}à-ÿ]{2,})\s+(?=[\p{Lu}][\p{Ll}à-ÿ]{3,}\b(?!\s+[\p{Lu}]))/u;
+  const MAX = 110, out = [];
+  for (let p of t.split(primary)) {
+    if (p == null) continue;
+    p = p.replace(/\s+/g, " ").trim(); if (!p) continue;
+    if (p.length > MAX) p.split(secondary).forEach(x => { x = x.trim(); if (x) out.push(x); });
+    else out.push(p);
+  }
+  const merged = [];
+  for (const s of out) { if (s.length < 10 && merged.length) merged[merged.length - 1] += " " + s; else merged.push(s); }
+  return merged.filter(s => s.length > 3);
 }
 function contextFor(word, sents) { return sents.find(x => x.toLowerCase().includes(word.toLowerCase())) || null; }
 function levelIdx(l) { const p = (l || "").slice(0, 2); return Math.max(0, LEVELS.findIndex(x => x.startsWith(p))); }

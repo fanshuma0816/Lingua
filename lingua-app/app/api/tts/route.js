@@ -14,7 +14,7 @@ export async function POST(req) {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts",
+        model: process.env.OPENAI_TTS_MODEL || "tts-1",
         voice: VOICE,
         input: (text || "").slice(0, 4000),
         speed: rate || 1,

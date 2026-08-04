@@ -10,10 +10,44 @@ const DB={ get(k,d){try{return JSON.parse(localStorage.getItem("lingua:"+k))??d}
 const LANG_CODE={Spanish:"es-ES",French:"fr-FR",German:"de-DE",Italian:"it-IT",Portuguese:"pt-PT",
   Dutch:"nl-NL",English:"en-US",Japanese:"ja-JP",Korean:"ko-KR","Mandarin Chinese":"zh-CN",Arabic:"ar-SA",Russian:"ru-RU"};
 const TTS_OK=typeof window!=="undefined" && "speechSynthesis" in window;
-function speak(text,lang,rate=1){ if(!TTS_OK)return null; window.speechSynthesis.cancel();
+// High-quality AI voice via /api/tts, with the browser voice as fallback.
+// ttsMode caches the outcome so we don't re-probe the API on every click.
+let ttsMode=null;            // null=unknown, "api", "browser"
+let activeHandle=null;
+function browserSpeak(handle,text,lang,rate){
+  if(!("speechSynthesis" in window)){ if(handle.onend)handle.onend(); return; }
+  window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance((text||"").slice(0,4500)); u.lang=LANG_CODE[lang]||"en-US"; u.rate=rate;
-  window.speechSynthesis.speak(u); return u; }
-function stopSpeak(){ if(TTS_OK) window.speechSynthesis.cancel(); }
+  u.onend=()=>{ if(!handle._cancelled&&handle.onend)handle.onend(); };
+  handle._synth=true; window.speechSynthesis.speak(u);
+}
+function speak(text,lang,rate=1){
+  stopSpeak();
+  const handle={_cancelled:false,onend:null};
+  activeHandle=handle;
+  if(ttsMode==="browser"){ browserSpeak(handle,text,lang,rate); return handle; }
+  (async()=>{
+    try{
+      const res=await fetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:(text||"").slice(0,4000),lang,rate})});
+      if(res.ok && (res.headers.get("content-type")||"").includes("audio")){
+        ttsMode="api";
+        const url=URL.createObjectURL(await res.blob());
+        if(handle._cancelled){ URL.revokeObjectURL(url); return; }
+        const a=new Audio(url); handle._audio=a;
+        a.onended=()=>{ URL.revokeObjectURL(url); if(!handle._cancelled&&handle.onend)handle.onend(); };
+        try{ await a.play(); }catch(e){ if(!handle._cancelled) browserSpeak(handle,text,lang,rate); }
+        return;
+      }
+      ttsMode="browser";
+    }catch(e){ /* network/route error → fall back */ }
+    if(!handle._cancelled) browserSpeak(handle,text,lang,rate);
+  })();
+  return handle;
+}
+function stopSpeak(){
+  if(activeHandle){ activeHandle._cancelled=true; if(activeHandle._audio){ try{activeHandle._audio.pause();}catch(e){} } activeHandle=null; }
+  if(typeof window!=="undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+}
 
 function cleanText(raw){ let t=raw||"";
   t=t.replace(/\[(music|applause|laughter|inaudible|crosstalk|silence)\]/gi," ");
@@ -30,7 +64,23 @@ function pickVocab(text,n){ const ws=words(text); const freq={};
   const uniq=[...new Set(ws)].filter(w=>!STOP.has(w)&&w.length>3);
   uniq.sort((a,b)=>(b.length+(freq[b]||0))-(a.length+(freq[a]||0)));
   return uniq.slice(0,n); }
-function sentencesOf(text){ return (text.match(/[^.!?。！？]+[.!?。！？]?/g)||[]).map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s.length>12); }
+const ABBR="Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|vs|etc|e\\.g|i\\.e|bijv|enz|nr|resp|approx|no|No|Inc|Ltd|Co";
+function sentencesOf(text){
+  if(!text) return [];
+  let t=text.replace(/\s*[•·▪‣◦]\s*/g,"\n");
+  const primary=new RegExp("(?<!\\b(?:"+ABBR+")\\.)(?<=[.!?…。！？])\\s+(?=[\\p{Lu}\"“'(\\[])|\\s*[;；]\\s+(?=[\\p{Lu}])|\\s*\\n+\\s*","u");
+  const secondary=/(?<=[\p{Ll})\]])(?<!\b\p{Lu}[\p{Ll}à-ÿ]{2,})\s+(?=[\p{Lu}][\p{Ll}à-ÿ]{3,}\b(?!\s+[\p{Lu}]))/u;
+  const MAX=110,out=[];
+  for(let p of t.split(primary)){
+    if(p==null) continue;
+    p=p.replace(/\s+/g," ").trim(); if(!p) continue;
+    if(p.length>MAX) p.split(secondary).forEach(x=>{x=x.trim();if(x)out.push(x);});
+    else out.push(p);
+  }
+  const merged=[];
+  for(const s of out){ if(s.length<10&&merged.length) merged[merged.length-1]+=" "+s; else merged.push(s); }
+  return merged.filter(s=>s.length>3);
+}
 function contextFor(word,sents){ const s=sents.find(x=>x.toLowerCase().includes(word.toLowerCase())); return s||null; }
 function expressionsInSentence(s){ const ws=words(s); const out=[]; for(let i=0;i<ws.length-1;i++){ const a=ws[i],b=ws[i+1];
   if(a.length>3&&b.length>3&&!STOP.has(a)&&!STOP.has(b)){ out.push(a+" "+b); } } return out.slice(0,2); }
@@ -507,11 +557,21 @@ function PracticeAI({lesson,onComplete}){
   </div>);
 }
 function AIWrite({lesson,onNext,onDone}){
-  const {lang,vocab,sents}=lesson;
+  const {lang,level,vocab,sents}=lesson;
   const topic=(sents[0]||"the topic").replace(/[.!?。！？]+$/,"");
   const question=`Based on the passage — "${topic.length>90?topic.slice(0,90)+"…":topic}" — what's your view? Write 3–4 sentences in ${lang} using today's words.`;
-  const [textv,setTextv]=useState(DB.get("aiPractice","")); const [fb,setFb]=useState(false);
+  const [textv,setTextv]=useState(DB.get("aiPractice","")); const [fb,setFb]=useState(null); // null | "loading" | {real} | "mock"
   useEffect(()=>DB.set("aiPractice",textv),[textv]);
+  async function getFeedback(){
+    setFb("loading"); onDone&&onDone();
+    try{
+      const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim()})});
+      if(!r.ok) throw new Error("no api");
+      const d=await r.json(); setFb(d);
+    }catch(e){ setFb("mock"); }
+  }
+  const real=fb && fb!=="loading" && fb!=="mock";
   return (<div>
     <div className="row wrap" style={{gap:7,marginBottom:14}}>{vocab.slice(0,8).map(v=><span key={v.word} className="badge">{v.word}</span>)}</div>
     <div className="card card-p" style={{marginBottom:14}}><div className="row" style={{gap:10}}>
@@ -519,46 +579,98 @@ function AIWrite({lesson,onNext,onDone}){
     <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={"Write your answer in "+lang+"…"}/>
     <div className="row" style={{justifyContent:"space-between",marginTop:12}}>
       <span className="tiny muted">{textv.trim().split(/\s+/).filter(Boolean).length} words · saved locally</span>
-      <button className="btn btn-primary btn-sm" disabled={textv.trim().length<12} onClick={()=>{setFb(true);onDone&&onDone();}}>Get feedback</button></div>
-    {fb && (<div className="card card-p" style={{marginTop:16}}>
-      <h3 className="lbl">Feedback &amp; suggested revision · simulated</h3>
-      <div style={{marginBottom:8}}>✅ <b>Grammar.</b> <span className="muted">Tenses are consistent. Check subject–verb agreement in your longer sentence.</span></div>
-      <div style={{marginBottom:8}}>✅ <b>Vocabulary.</b> <span className="muted">Nice reuse of today's words — add one connective phrase to link ideas.</span></div>
-      <div style={{marginBottom:8}}>✅ <b>Sentence construction.</b> <span className="muted">Clear structure. Try varying sentence length to sound more natural.</span></div>
-      <div className="tiny muted" style={{marginTop:8}}>Real, specific feedback and a corrected version appear here once the OpenAI API is connected.</div>
+      <button className="btn btn-primary btn-sm" disabled={textv.trim().length<12||fb==="loading"} onClick={getFeedback}>{fb==="loading"?"Reading…":"Get feedback"}</button></div>
+    {fb==="loading" && <div className="card card-p" style={{marginTop:16}} ><span className="muted">✍️ Your teacher is reading your writing…</span></div>}
+    {(real||fb==="mock") && (<div className="card card-p" style={{marginTop:16}}>
+      <h3 className="lbl">Feedback &amp; suggested revision{real?"":" · simulated"}</h3>
+      {real ? (<>
+        <div style={{marginBottom:8}}>✅ <b>Grammar.</b> <span className="muted">{fb.grammar}</span></div>
+        <div style={{marginBottom:8}}>✅ <b>Vocabulary.</b> <span className="muted">{fb.vocabulary}</span></div>
+        <div style={{marginBottom:8}}>✅ <b>Sentence construction.</b> <span className="muted">{fb.sentence}</span></div>
+        {fb.revision && <div style={{marginTop:10}}><b>Suggested revision:</b><div className="card card-p" style={{marginTop:6,background:"hsl(var(--secondary))"}}>{fb.revision}</div></div>}
+      </>) : (<>
+        <div style={{marginBottom:8}}>✅ <b>Grammar.</b> <span className="muted">Tenses look consistent. Check subject–verb agreement in your longer sentence.</span></div>
+        <div style={{marginBottom:8}}>✅ <b>Vocabulary.</b> <span className="muted">Nice reuse of today's words — add one connective phrase to link ideas.</span></div>
+        <div style={{marginBottom:8}}>✅ <b>Sentence construction.</b> <span className="muted">Clear structure. Try varying sentence length to sound more natural.</span></div>
+        <div className="tiny muted" style={{marginTop:8}}>This is the simulated version — add an OpenAI key for real, specific feedback and a corrected draft.</div>
+      </>)}
       <div style={{marginTop:14}}><button className="btn btn-primary btn-sm" onClick={onNext}>Next · talk with the AI →</button></div>
     </div>)}
   </div>);
 }
+
 function AIChat({lesson,onDone}){
-  const {lang,vocab}=lesson;
-  const w1=vocab[0]?vocab[0].word:"today's topic"; const w2=vocab[1]?vocab[1].word:"this idea";
+  const {lang,level,vocab}=lesson;
+  const vwords=vocab.slice(0,6).map(v=>v.word);
   const script=[`Hi! Let's chat about what you read. In ${lang}, tell me one thing you found interesting.`,
-    `Good! Now try using the word "${w1}" in a full sentence.`,
-    `Nice. Last one — give me your opinion about "${w2}" in a complete sentence.`];
-  const [msgs,setMsgs]=useState([{who:"ai",t:script[0]}]);
-  const [turn,setTurn]=useState(0); const [draft,setDraft]=useState(""); const [done,setDone]=useState(false);
-  useEffect(()=>{ speak(script[0],lang); return ()=>stopSpeak(); },[]);
+    `Good! Now try using the word "${vwords[0]||"it"}" in a full sentence.`,
+    `Nice. Last one — give me your opinion in a complete sentence.`];
+  const [msgs,setMsgs]=useState([]);           // {who:"ai"|"me", t}
+  const [draft,setDraft]=useState(""); const [busy,setBusy]=useState(false);
+  const [turns,setTurns]=useState(0); const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null);
+  const mockRef=useRef(false);
+  const MAX_TURNS=3;
+
+  async function aiReply(history){
+    try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({mode:"chat",lang,level,vocab:vwords,history})});
+      if(!r.ok) throw new Error("no api"); const d=await r.json(); return d.reply||null;
+    }catch(e){ return null; }
+  }
+  // opening line: try the model, else fall back to the script
+  useEffect(()=>{ (async()=>{
+    setBusy(true);
+    const reply=await aiReply([]);
+    if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); speak(reply,lang); }
+    else { mockRef.current=true; setMsgs([{who:"ai",t:script[0]}]); speak(script[0],lang); }
+    setBusy(false);
+  })(); return ()=>stopSpeak(); },[]);
+
   const full=draft.trim().split(/\s+/).filter(Boolean).length>=4;
-  function send(){ if(!full)return; const nm=[...msgs,{who:"me",t:draft.trim()}]; const nx=turn+1;
-    if(nx<script.length){ nm.push({who:"ai",t:script[nx]}); setMsgs(nm); setTurn(nx); setDraft(""); speak(script[nx],lang); }
-    else { setMsgs(nm); setDraft(""); setDone(true); onDone&&onDone(); } }
+  function toHistory(list){ return list.map(m=>({role:m.who==="ai"?"assistant":"user",content:m.t})); }
+
+  async function finish(list){
+    setDone(true); onDone&&onDone();
+    if(mockRef.current) return;
+    try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list)})});
+      if(r.ok) setEvalz(await r.json());
+    }catch(e){}
+  }
+
+  async function send(){
+    if(!full||busy) return;
+    const withMe=[...msgs,{who:"me",t:draft.trim()}]; const nx=turns+1;
+    setMsgs(withMe); setDraft(""); setTurns(nx);
+    if(nx>=MAX_TURNS){ finish(withMe); return; }
+    if(mockRef.current){ const line=script[nx]||script[script.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); speak(line,lang); return; }
+    setBusy(true);
+    const reply=await aiReply(toHistory(withMe));
+    const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) speak(reply,lang);
+    setBusy(false);
+  }
+
   return (<div>
-    <div className="tiny muted" style={{marginBottom:12}}>Your AI partner speaks each line aloud (tap ▶ to hear again). Reply with at least one complete sentence in {lang}.</div>
+    <div className="tiny muted" style={{marginBottom:12}}>Your AI partner speaks each line aloud (tap ▶ to hear again). Reply with at least one complete sentence in {lang}.{mockRef.current?" · (simulated — add an OpenAI key for a live partner)":""}</div>
     <div className="card card-p">
       <div className="chat">{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}
-        {m.who==="ai" && <button className="sbtn" style={{marginLeft:8,verticalAlign:"middle"}} onClick={()=>speak(m.t,lang)}>▶</button>}</div>))}</div>
+        {m.who==="ai" && <button className="sbtn" style={{marginLeft:8,verticalAlign:"middle"}} onClick={()=>speak(m.t,lang)}>▶</button>}</div>))}
+        {busy && <div className="bubble ai muted">…</div>}</div>
       {!done ? (<div style={{marginTop:14}}>
         <textarea style={{minHeight:64}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={"Reply in "+lang+" — at least one full sentence…"}/>
         <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
           <span className="tiny muted">{full?"Looks like a full sentence ✓":"Write at least a complete sentence (4+ words)"}</span>
-          <button className="btn btn-primary btn-sm" disabled={!full} onClick={send}>Send</button></div>
+          <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>Send</button></div>
       </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
-        <h3 className="lbl">Conversation feedback · simulated</h3>
-        <div className="muted">You held a short exchange and used today's words in full sentences — exactly the goal. 🎉 In the connected version, a real AI voice partner replies live and gives specific feedback on your grammar, word choice and fluency.</div>
+        <h3 className="lbl">Conversation feedback{evalz?"":" · simulated"}</h3>
+        {evalz ? (<div>
+          <div style={{marginBottom:8}}>🎉 {evalz.praise}</div>
+          <div style={{marginBottom:6}}>✅ <b>Grammar.</b> <span className="muted">{evalz.grammar}</span></div>
+          <div style={{marginBottom:6}}>✅ <b>Vocabulary.</b> <span className="muted">{evalz.vocabulary}</span></div>
+          <div>✅ <b>Fluency.</b> <span className="muted">{evalz.fluency}</span></div>
+        </div>) : (<div className="muted">You held a short exchange and used today's words in full sentences — exactly the goal. 🎉 Add an OpenAI key for a live AI voice partner that replies in {lang} and gives specific feedback.</div>)}
       </div>)}
     </div>
-    <div className="tiny muted" style={{marginTop:12}}>This is a preview of the conversation experience. Live back-and-forth with a real AI voice is wired in once the OpenAI API is connected.</div>
   </div>);
 }
 
