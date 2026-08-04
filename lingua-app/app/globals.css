@@ -117,3 +117,7 @@
 
 @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.6; transform:scale(1.09); } }
 .pulse { animation: pulse 1.4s ease-in-out infinite; }
+
+/* indeterminate loading bar (AI thinking) */
+.track > span.indet { width:38%; background:hsl(var(--primary)); animation: indet 1.15s ease-in-out infinite; }
+@keyframes indet { 0% { margin-left:-40%; } 100% { margin-left:100%; } }

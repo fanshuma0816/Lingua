@@ -91,6 +91,14 @@ function quizItems(sents, pool, count) {
   return items;
 }
 
+// Estimate realistic study minutes from length, vocabulary, sentences and difficulty.
+function estimateMinutes(chars, sentCount, vocabCount, diff) {
+  const s = Math.min(8, sentCount || 0);
+  const base = 8 + (chars || 0) / 500 + (vocabCount || 10) * 0.4 + s * 0.8;
+  const mult = 0.85 + (diff || 3) * 0.08; // 1..5 stars -> ~0.93 .. 1.25
+  return Math.max(8, Math.round(base * mult));
+}
+
 export function generateLesson(text, lang, level, goal) {
   const chars = text.length; const sents = sentencesOf(text);
   const vocabCount = Math.min(16, Math.max(8, Math.round(chars / 150)));
@@ -102,6 +110,7 @@ export function generateLesson(text, lang, level, goal) {
     lang, level, goal, charCount: chars, sents, vocab, vocabCount, vlist, recommended,
     topics: inferTopics(text),
     diff: Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level)))),
+    estMin: estimateMinutes(chars, sents.length, vocabCount, Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level))))),
     grammarFocus: ["Common tenses used in the passage", "Word order & sentence position", "Connective & opinion phrases"],
     comprehension: quizItems(simple, vlist, 3),
     recognition: quizItems(sents, vlist, 3),

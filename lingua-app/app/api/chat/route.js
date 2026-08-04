@@ -4,6 +4,7 @@
 import { AI, chatComplete, parseJSON } from "../../../lib/ai";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req) {
   if (!AI.key) return new Response(null, { status: 204 });
@@ -18,7 +19,7 @@ export async function POST(req) {
     }
 
     if (b.mode === "chat") {
-      const sys = `You are a friendly ${b.lang} conversation partner for a ${b.level} learner. Speak ONLY in ${b.lang}. Keep every reply to ONE short, simple sentence that ends with a question. Gently encourage the learner to use these words: ${(b.vocab || []).join(", ")}. Stay warm and patient.`;
+      const sys = `You are a friendly ${b.lang} conversation partner for a ${b.level} learner. Speak ONLY in ${b.lang}. Ask about today's topic: "${b.topic || "the text"}". Encourage the learner to use today's words (${(b.vocab || []).join(", ")})${b.grammar ? " and grammar (" + b.grammar + ")" : ""}. Keep EVERY reply to ONE short, simple sentence that ends with a question. Aim for about 5 exchanges. Be warm, patient and encouraging.`;
       const messages = [{ role: "system", content: sys }, ...(Array.isArray(b.history) ? b.history : [])];
       const out = await chatComplete(messages, { temp: 0.7, max: 120 });
       return Response.json({ reply: out.trim() });

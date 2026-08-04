@@ -1,6 +1,7 @@
 import { generateLesson, enrich, cleanText } from "../../../lib/lesson";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;   // reasoning models can take 20–40s; avoid the default 10s timeout
 
 export async function POST(req) {
   try {

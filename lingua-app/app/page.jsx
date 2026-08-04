@@ -21,21 +21,39 @@ function browserSpeak(handle,text,lang,rate){
   u.onend=()=>{ if(!handle._cancelled&&handle.onend)handle.onend(); };
   handle._synth=true; window.speechSynthesis.speak(u);
 }
+// ---- audio cache: never pay twice for the same clip ----
+const audioMem = (typeof window!=="undefined") ? new Map() : null; // key -> objectURL (this session)
+const IDB={
+  open(){ return new Promise((res,rej)=>{ if(typeof indexedDB==="undefined") return rej(); const r=indexedDB.open("lingua-audio",1);
+    r.onupgradeneeded=()=>r.result.createObjectStore("clips"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async get(k){ try{ const db=await this.open(); return await new Promise(res=>{ const q=db.transaction("clips","readonly").objectStore("clips").get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }catch(e){ return null; } },
+  async put(k,blob){ try{ const db=await this.open(); db.transaction("clips","readwrite").objectStore("clips").put(blob,k); }catch(e){} },
+};
+function cacheKey(text,lang,rate){ return lang+"|"+rate+"|"+(text||"").slice(0,4000); }
+function playUrl(handle,url){ if(handle._cancelled) return; const a=new Audio(url); handle._audio=a;
+  a.onended=()=>{ if(!handle._cancelled&&handle.onend)handle.onend(); }; a.play().catch(()=>{}); }
+
 function speak(text,lang,rate=1){
   stopSpeak();
   const handle={_cancelled:false,onend:null};
   activeHandle=handle;
   if(ttsMode==="browser"){ browserSpeak(handle,text,lang,rate); return handle; }
+  const key=cacheKey(text,lang,rate);
   (async()=>{
+    // 1) in-memory cache (this session) — free & instant
+    let url=audioMem && audioMem.get(key);
+    // 2) IndexedDB cache (persists across reloads) — free
+    if(!url){ const blob=await IDB.get(key); if(blob){ url=URL.createObjectURL(blob); audioMem&&audioMem.set(key,url); } }
+    if(url){ ttsMode="api"; playUrl(handle,url); return; }
+    // 3) not cached → call the API (the ONLY path that costs money)
     try{
       const res=await fetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:(text||"").slice(0,4000),lang,rate})});
       if(res.ok && (res.headers.get("content-type")||"").includes("audio")){
         ttsMode="api";
-        const url=URL.createObjectURL(await res.blob());
-        if(handle._cancelled){ URL.revokeObjectURL(url); return; }
-        const a=new Audio(url); handle._audio=a;
-        a.onended=()=>{ URL.revokeObjectURL(url); if(!handle._cancelled&&handle.onend)handle.onend(); };
-        try{ await a.play(); }catch(e){ if(!handle._cancelled) browserSpeak(handle,text,lang,rate); }
+        const blob=await res.blob();
+        IDB.put(key,blob);                                   // save for next time
+        const u2=URL.createObjectURL(blob); audioMem&&audioMem.set(key,u2);
+        playUrl(handle,u2);
         return;
       }
       ttsMode="browser";
@@ -124,14 +142,21 @@ function quizItems(sents,pool,count){ const items=[]; const used=new Set(); cons
     for(let i=opts.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[opts[i],opts[j]]=[opts[j],opts[i]];}
     items.push({correct,options:opts}); } return items; }
 
+function estimateMinutes(chars,sentCount,vocabCount,diff){
+  const s=Math.min(8,sentCount||0);
+  const base=8 + (chars||0)/500 + (vocabCount||10)*0.4 + s*0.8;
+  const mult=0.85 + (diff||3)*0.08;
+  return Math.max(8,Math.round(base*mult));
+}
 function generateLesson(text,lang,level,goal){ const chars=text.length; const sents=sentencesOf(text);
   const vocabCount=Math.min(16,Math.max(8,Math.round(chars/150)));
   const vlist=pickVocab(text,vocabCount);
   const vocab=vlist.map((w,i)=>({word:w.replace(/^./,c=>c.toUpperCase()),pos:POS[i%POS.length],context:contextFor(w,sents)}));
   const recommended=recommendLevel(text,sents);
-  return { lang,level,goal,charCount:chars,sents,vocab,vocabCount,vlist,recommended,
+  const diff=Math.max(1,Math.min(5,3+(levelIdx(recommended)-levelIdx(level))));
+  return { lang,level,goal,charCount:chars,sents,vocab,vocabCount,vlist,recommended,diff,
     topics:inferTopics(text),
-    diff:Math.max(1,Math.min(5,3+(levelIdx(recommended)-levelIdx(level)))),
+    estMin:estimateMinutes(chars,sents.length,vocabCount,diff),
     grammarFocus:["Common tenses used in the passage","Word order & sentence position","Connective & opinion phrases"],
     comprehension:quizItems([...sents].sort((a,b)=>a.split(/\s+/).length-b.split(/\s+/).length),vlist,3),
     recognition:quizItems(sents,vlist,3) }; }
@@ -287,6 +312,7 @@ function InputScreen({onNext}){
 
 function Preview({lesson,onStart,onBack}){
   const heavy=lesson.vocabCount>12;
+  const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
   const diffLabel=["","Comfortable review","An easy read","Right at your level","A gentle stretch","Challenging"][lesson.diff];
   return (<div>
     <h1>Here's your text</h1><p className="sub">A quick read on your material before we begin.</p>
@@ -296,7 +322,7 @@ function Preview({lesson,onStart,onBack}){
     </div>
     <div className="grid4" style={{marginBottom:14}}>
       <Stat k="Recommended level" v={lesson.recommended.split(" — ")[0]}/>
-      <Stat k="Estimated time" v={`~${TOTAL_MIN} min`}/>
+      <Stat k="Estimated time" v={`~${total} min`}/>
       <Stat k="Vocabulary" v={lesson.vocabCount+" words"}/>
       <Stat k="Characters" v={lesson.charCount.toLocaleString()}/>
     </div>
@@ -312,7 +338,7 @@ function Preview({lesson,onStart,onBack}){
       {PLAN_BLOCKS.map(b=>(<div className="plan-row" key={b.name}>
         <span className="row" style={{gap:11}}><span style={{fontSize:18}}>{b.icon}</span>
           <span><div style={{fontWeight:600}}>{b.name}</div><div className="tiny muted">{b.items.join(" · ")}</div></span></span>
-        <span className="tiny muted">~{b.min} min</span></div>))}
+        <span className="tiny muted">~{Math.max(1,Math.round(b.min*scale))} min</span></div>))}
       <div className="ref">
         The flow follows the <b>Delft Method</b> (Delftse methode), a research-based approach to language learning developed at Delft University of Technology: understand a text first, absorb its high-frequency words and grammar in context, then move to conversation.<br/>
         Sources: Montens, F. &amp; Sciarone, A. G., <i>Nederlands voor buitenlanders: de Delftse methode</i> (Boom); TU Delft Centre for Languages, “About the Delftse methode.”
@@ -322,7 +348,7 @@ function Preview({lesson,onStart,onBack}){
       <span>This one has <b>{lesson.vocabCount} new words</b> — quite a few. For it to really stick, try each block <b>at least twice</b>, and don't be shy about repeating an earlier step if it feels heavy.</span></div>}
     <div className="row" style={{justifyContent:"space-between",marginTop:22}}>
       <button className="btn btn-ghost" onClick={onBack}>← Back</button>
-      <button className="btn btn-primary" onClick={onStart}>Start · ~{TOTAL_MIN} min →</button></div>
+      <button className="btn btn-primary" onClick={onStart}>Start · ~{total} min →</button></div>
   </div>);
 }
 
@@ -334,12 +360,13 @@ function Lesson({lesson,text,onFinish}){
   useEffect(()=>{DB.set("progress",step);stopSpeak();window.scrollTo({top:0,behavior:"smooth"});},[step]);
   function go(ns){ setGateOpen(!GATED.has(ns)); setStep(ns); }
   const S=STEPS[step]; const pct=Math.round(((step+1)/STEPS.length)*100);
+  const stepMin=Math.max(1,Math.round(S.min*((lesson.estMin||TOTAL_MIN)/TOTAL_MIN)));
   const locked=GATED.has(step)&&!gateOpen;
   return (<div>
     <div className="learnbar">
       <div className="track"><span style={{width:pct+"%"}}/></div>
       <div className="learnmeta"><span className="tiny muted">{S.phase} · Step {step+1} of {STEPS.length}</span>
-        <span className="tiny muted">~{S.min} min</span></div>
+        <span className="tiny muted">~{stepMin} min</span></div>
     </div>
     <div className="stage"><StepBody step={step} lesson={lesson} text={text} onComplete={()=>setGateOpen(true)}/></div>
     <div className="footnav">
@@ -423,11 +450,15 @@ function GrammarStep({lesson,onComplete}){
   const vset=new Set(vlist);
   const vmap=Object.fromEntries((vocab||[]).map(v=>[v.word.toLowerCase(),v]));
   const depth=levelIdx(recommended)-levelIdx(level); // >0 harder for the learner
-  function keyWordsIn(s){ const ws=[...new Set(words(s))]; return ws.filter(w=>vset.has(w)||w.length>6).slice(0,4); }
+  // Prefer words that carry a real AI meaning (from lesson.vocab); fall back to long words.
+  function keyWordsIn(s){ const ws=[...new Set(words(s))];
+    const inVocab=ws.filter(w=>vmap[w.toLowerCase()]);
+    const long=ws.filter(w=>!vmap[w.toLowerCase()]&&w.length>6);
+    return [...inVocab,...long].slice(0,4); }
   function usageNote(w){
-    if(depth>=1) return `New for your level — here it works as a ${POS[w.length%POS.length]}. Once the AI is connected you'll get the exact meaning; for now, notice how it's used in the sentence below and try saying it in your own example.`;
-    if(depth<=-1) return `A quick refresher — you likely know this one. See how it behaves in this sentence.`;
-    return `Here it means what it does in this context. Notice its part of speech and where it sits in the sentence.`;
+    if(depth>=1) return `Likely new at your level — study how it's used in the sentence below and try it in your own example.`;
+    if(depth<=-1) return `A quick refresher — you probably know this one. Notice how it behaves here.`;
+    return `Notice its part of speech and where it sits in the sentence.`;
   }
   const s=sents[gi]||""; const kw=keyWordsIn(s); const phrases=expressionsInSentence(s);
 
@@ -464,16 +495,16 @@ function GrammarStep({lesson,onComplete}){
           <span className="row" style={{gap:9}}><b style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
           <Say text={w} lang={lang} rate={0.75}/></div>
         <div className="tiny muted" style={{margin:"7px 0"}}>💡 {e&&e.meaning ? e.meaning : usageNote(w)}</div>
-        <div className="tiny" style={{fontStyle:"italic",marginTop:2}}>{e&&e.example ? ("📝 Example: “"+e.example+"”") : "📝 A fresh example sentence using this word appears once an OpenAI key is added — a practical new sentence, not copied from your text."}</div>
+        {e&&e.example && <div className="tiny" style={{fontStyle:"italic",marginTop:2}}>📝 Example: “{e.example}”</div>}
       </div>); }):<div className="tiny muted">No standout new words in this sentence — enjoy the breather. 🙂</div>}
 
       {phrases.length>0 && (<><h3 className="lbl" style={{marginTop:16}}>Phrases &amp; collocations</h3>
         {phrases.map((p,j)=>(<div className="wcard" key={j}>
           <div className="row" style={{justifyContent:"space-between"}}><b>{p}</b><Say text={p} lang={lang} rate={0.75}/></div>
-          <div className="tiny muted" style={{marginTop:6}}>A natural pairing worth keeping together. Try reusing it in a sentence of your own. (Full explanation once the AI is connected.)</div>
+          <div className="tiny muted" style={{marginTop:6}}>A natural pairing worth keeping together — try reusing it in a sentence of your own.</div>
         </div>))}</>)}
 
-      <div className="tiny muted" style={{marginTop:14}}><b>Word order:</b> notice how this sentence is built — that structure repeats across the text. (AI breakdown simulated in this test build.)</div>
+      <div className="tiny muted" style={{marginTop:14}}><b>Word order:</b> notice how this sentence is built — that structure repeats across the text.</div>
     </div>
 
     <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
@@ -498,17 +529,19 @@ function TimedPractice({sents,lang,withSubs}){
 
   useEffect(()=>{ if(!started) return; if(idx>=list.length){setPhase("done");return;}
     setReveal(withSubs); setPhase("listen"); stopSpeak(); let done=false;
-    const wc=cur.split(/\s+/).filter(Boolean).length; const dur=Math.max(1900,wc*620+1000);
+    const toSpeak=()=>{ if(!done){ done=true; setPhase("speak"); setLeft(secs); } };
     const u=speak(cur,lang,0.75);
-    const to=setTimeout(()=>{if(!done){done=true;setPhase("speak");setLeft(secs);}},dur);
-    if(u)u.onend=()=>{if(!done){done=true;clearTimeout(to);setPhase("speak");setLeft(secs);}};
-    return ()=>{done=true;clearTimeout(to);stopSpeak();};
+    if(u) u.onend=toSpeak;                  // advance to "your turn" only when the audio actually finishes
+    const safety=setTimeout(toSpeak,30000); // safety net in case audio never signals
+    return ()=>{ done=true; clearTimeout(safety); stopSpeak(); };
   },[idx,nonce,started]);
 
   useEffect(()=>{ if(!started||phase!=="speak"||paused)return;
     if(left<=0){ if(idx<list.length-1)setIdx(idx+1); else setPhase("done"); return; }
     const t=setTimeout(()=>setLeft(l=>l-1),1000); return ()=>clearTimeout(t);
   },[phase,left,paused,idx,started]);
+
+  function togglePause(){ if(!paused){ stopSpeak(); setPaused(true); } else { setPaused(false); if(phase==="listen") setNonce(n=>n+1); } }
 
   const head=(<><div className="eyebrow">Practicing</div><h2>Practice · {withSubs?"with subtitles":"no subtitles"}</h2></>);
 
@@ -546,7 +579,7 @@ function TimedPractice({sents,lang,withSubs}){
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
       <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>{stopSpeak();setIdx(i=>Math.max(0,i-1));}}>← Back</button>
       <button className="btn btn-outline btn-sm" onClick={()=>setNonce(n=>n+1)}>▶ Replay</button>
-      <button className="btn btn-outline btn-sm" onClick={()=>setPaused(p=>!p)}>{paused?"Resume":"Pause"}</button>
+      <button className="btn btn-outline btn-sm" onClick={togglePause}>{paused?"Resume":"Pause"}</button>
       <button className="btn btn-ghost btn-sm" onClick={()=>{stopSpeak(); if(idx<list.length-1)setIdx(i=>i+1); else setPhase("done");}}>Skip →</button>
     </div>
   </div>);
@@ -593,7 +626,12 @@ function AIWrite({lesson,onNext,onDone}){
     <div className="row" style={{justifyContent:"space-between",marginTop:12}}>
       <span className="tiny muted">{textv.trim().split(/\s+/).filter(Boolean).length} words · saved locally</span>
       <button className="btn btn-primary btn-sm" disabled={textv.trim().length<12||fb==="loading"} onClick={getFeedback}>{fb==="loading"?"Reading…":"Get feedback"}</button></div>
-    {fb==="loading" && <div className="card card-p" style={{marginTop:16}} ><span className="muted">✍️ Your teacher is reading your writing…</span></div>}
+    {fb==="loading" && <div className="card card-p" style={{marginTop:16}}>
+      <div className="row" style={{gap:11}}><div className="tface pulse">👩‍🏫</div>
+        <div><div style={{fontWeight:500}}>Your teacher is reading your writing…</div>
+          <div className="tiny muted">Checking grammar, vocabulary and sentence flow — just a few seconds.</div></div></div>
+      <div className="track" style={{marginTop:12,overflow:"hidden"}}><span className="indet"/></div>
+    </div>}
     {(real||fb==="mock") && (<div className="card card-p" style={{marginTop:16}}>
       <h3 className="lbl">Feedback &amp; suggested revision{real?"":" · simulated"}</h3>
       {real ? (<>
@@ -613,67 +651,82 @@ function AIWrite({lesson,onNext,onDone}){
 }
 
 function AIChat({lesson,onDone}){
-  const {lang,level,vocab}=lesson;
+  const {lang,level,vocab,topics,grammarFocus}=lesson;
   const vwords=vocab.slice(0,6).map(v=>v.word);
-  const script=[`Hi! Let's chat about what you read. In ${lang}, tell me one thing you found interesting.`,
-    `Good! Now try using the word "${vwords[0]||"it"}" in a full sentence.`,
-    `Nice. Last one — give me your opinion in a complete sentence.`];
-  const [msgs,setMsgs]=useState([]);           // {who:"ai"|"me", t}
-  const [draft,setDraft]=useState(""); const [busy,setBusy]=useState(false);
-  const [turns,setTurns]=useState(0); const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null);
-  const mockRef=useRef(false);
-  const MAX_TURNS=3;
+  const topic=(topics&&topics.join(", "))||"the text";
+  const grammar=(grammarFocus&&grammarFocus.join("; "))||"";
+  const fallback=[`Let's chat in ${lang}. Tell me one thing you found interesting.`,
+    `Use the word "${vwords[0]||"it"}" in a sentence.`,`What's your opinion?`,`Why do you think so?`,`Give me one more full sentence.`];
+  const [msgs,setMsgs]=useState([]); const [draft,setDraft]=useState("");
+  const [busy,setBusy]=useState(false); const [turns,setTurns]=useState(0);
+  const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null); const [listening,setListening]=useState(false);
+  const mockRef=useRef(false); const recRef=useRef(null);
+  const MAX_TURNS=5;
 
   async function aiReply(history){
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:"chat",lang,level,vocab:vwords,history})});
+        body:JSON.stringify({mode:"chat",lang,level,vocab:vwords,topic,grammar,history})});
       if(!r.ok) throw new Error("no api"); const d=await r.json(); return d.reply||null;
     }catch(e){ return null; }
   }
-  // opening line: try the model, else fall back to the script
   useEffect(()=>{ (async()=>{
     setBusy(true);
     const reply=await aiReply([]);
     if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); speak(reply,lang); }
-    else { mockRef.current=true; setMsgs([{who:"ai",t:script[0]}]); speak(script[0],lang); }
+    else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); speak(fallback[0],lang); }
     setBusy(false);
-  })(); return ()=>stopSpeak(); },[]);
+  })(); return ()=>{stopSpeak(); stopMic();}; },[]);
 
-  const full=draft.trim().split(/\s+/).filter(Boolean).length>=4;
+  const full=draft.trim().split(/\s+/).filter(Boolean).length>=3;
   function toHistory(list){ return list.map(m=>({role:m.who==="ai"?"assistant":"user",content:m.t})); }
 
-  async function finish(list){
-    setDone(true); onDone&&onDone();
+  // voice input (speech-to-text) in the target language — Chrome/Edge support this
+  const SR = typeof window!=="undefined" && (window.SpeechRecognition||window.webkitSpeechRecognition);
+  function startMic(){ if(!SR) return; stopSpeak();
+    const r=new SR(); r.lang=LANG_CODE[lang]||"en-US"; r.interimResults=false; r.maxAlternatives=1;
+    r.onresult=(e)=>{ const t=e.results[0][0].transcript; setDraft(d=>(d?d+" ":"")+t); };
+    r.onend=()=>setListening(false); r.onerror=()=>setListening(false);
+    recRef.current=r; try{ r.start(); setListening(true); }catch(e){ setListening(false); } }
+  function stopMic(){ if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
+
+  async function finish(list){ setDone(true); onDone&&onDone();
     if(mockRef.current) return;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list)})});
-      if(r.ok) setEvalz(await r.json());
-    }catch(e){}
-  }
+      if(r.ok) setEvalz(await r.json()); }catch(e){} }
 
-  async function send(){
-    if(!full||busy) return;
+  async function send(){ if(!full||busy) return; stopMic();
     const withMe=[...msgs,{who:"me",t:draft.trim()}]; const nx=turns+1;
     setMsgs(withMe); setDraft(""); setTurns(nx);
     if(nx>=MAX_TURNS){ finish(withMe); return; }
-    if(mockRef.current){ const line=script[nx]||script[script.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); speak(line,lang); return; }
+    if(mockRef.current){ const line=fallback[nx]||fallback[fallback.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); speak(line,lang); return; }
     setBusy(true);
     const reply=await aiReply(toHistory(withMe));
     const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) speak(reply,lang);
     setBusy(false);
   }
 
+  const lastAi=[...msgs].reverse().find(m=>m.who==="ai");
   return (<div>
-    <div className="tiny muted" style={{marginBottom:12}}>Your AI partner speaks each line aloud (tap ▶ to hear again). Reply with at least one complete sentence in {lang}.{mockRef.current?" · (simulated — add an OpenAI key for a live partner)":""}</div>
+    <div className="notice" style={{marginBottom:14}}><span>🎧</span>
+      <span>A voice conversation in <b>{lang}</b>. Your AI partner <b>speaks each question</b> — listen, then reply in {lang} by <b>voice 🎤 or typing</b>. About {MAX_TURNS} exchanges, all around today's topic and words.</span></div>
     <div className="card card-p">
+      <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
+        <span className="tiny muted">Exchange {Math.min(turns+1,MAX_TURNS)} of {MAX_TURNS}</span>
+        {lastAi && <button className="btn btn-outline btn-sm" onClick={()=>speak(lastAi.t,lang)}>🔊 Replay question</button>}
+      </div>
       <div className="chat">{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}
         {m.who==="ai" && <button className="sbtn" style={{marginLeft:8,verticalAlign:"middle"}} onClick={()=>speak(m.t,lang)}>▶</button>}</div>))}
         {busy && <div className="bubble ai muted">…</div>}</div>
       {!done ? (<div style={{marginTop:14}}>
-        <textarea style={{minHeight:64}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={"Reply in "+lang+" — at least one full sentence…"}/>
+        <textarea style={{minHeight:64}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={"Reply in "+lang+" — speak with 🎤 or type…"}/>
         <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
-          <span className="tiny muted">{full?"Looks like a full sentence ✓":"Write at least a complete sentence (4+ words)"}</span>
+          <div className="row" style={{gap:8}}>
+            {SR && <button className={"btn btn-sm "+(listening?"btn-primary":"btn-outline")} onClick={listening?stopMic:startMic}>{listening?"● Listening…":"🎤 Speak"}</button>}
+            <span className="tiny muted">{full?"Looks good ✓":"At least a short sentence"}</span>
+          </div>
           <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>Send</button></div>
+        {!SR && <div className="tiny muted" style={{marginTop:8}}>Tip: speaking (🎤) works in Chrome/Edge. In other browsers, just type your reply.</div>}
       </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
         <h3 className="lbl">Conversation feedback{evalz?"":" · simulated"}</h3>
         {evalz ? (<div>
@@ -681,7 +734,7 @@ function AIChat({lesson,onDone}){
           <div style={{marginBottom:6}}>✅ <b>Grammar.</b> <span className="muted">{evalz.grammar}</span></div>
           <div style={{marginBottom:6}}>✅ <b>Vocabulary.</b> <span className="muted">{evalz.vocabulary}</span></div>
           <div>✅ <b>Fluency.</b> <span className="muted">{evalz.fluency}</span></div>
-        </div>) : (<div className="muted">You held a short exchange and used today's words in full sentences — exactly the goal. 🎉 Add an OpenAI key for a live AI voice partner that replies in {lang} and gives specific feedback.</div>)}
+        </div>) : (<div className="muted">You held a voice exchange in {lang} using today's words — exactly the goal. 🎉</div>)}
       </div>)}
     </div>
   </div>);
