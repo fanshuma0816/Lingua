@@ -114,3 +114,6 @@
   .gbar .before{background:hsl(240 5% 72%)} .gbar .after{background:hsl(var(--success))}
   .celebrate{text-align:center;padding:14px 0 4px}
   @media(max-width:640px){.grid3,.grid4{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+
+@keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.6; transform:scale(1.09); } }
+.pulse { animation: pulse 1.4s ease-in-out infinite; }

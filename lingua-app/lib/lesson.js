@@ -128,7 +128,7 @@ Words: ${JSON.stringify(vocab)}`;
 
   const raw = await chatComplete(
     [{ role: "system", content: sys }, { role: "user", content: user }],
-    { json: true, temp: 0.4, max: 1500 }
+    { json: true, temp: 0.4, max: 3000 }
   );
   const parsed = parseJSON(raw);
 

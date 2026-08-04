@@ -160,7 +160,20 @@ const PLAN_BLOCKS=[
 ];
 
 /* ---------- shared ---------- */
-function Loading(){ return (<div className="center" style={{textAlign:"center"}}><div className="tface" style={{margin:"0 auto 14px",width:46,height:46,fontSize:22}}>📖</div><div style={{fontWeight:600}}>Building your lesson…</div><div className="tiny muted" style={{marginTop:6}}>Reading your text and preparing each step.</div></div>); }
+function Loading(){
+  const steps=["📖 Reading your text…","✂️ Splitting it into sentences…","🌍 Translating each line…","🔑 Finding the key words…","✍️ Writing fresh examples…","❓ Preparing your quiz…","✨ Almost ready…"];
+  const [i,setI]=useState(0);
+  useEffect(()=>{ const t=setInterval(()=>setI(x=>Math.min(x+1,steps.length-1)),3200); return ()=>clearInterval(t); },[]);
+  return (<div className="center" style={{textAlign:"center"}}>
+    <div className="tface pulse" style={{margin:"0 auto 18px",width:56,height:56,fontSize:28}}>📖</div>
+    <div style={{fontWeight:600,fontSize:18}}>Building your lesson…</div>
+    <div className="muted" style={{marginTop:10,minHeight:22,fontSize:15}}>{steps[i]}</div>
+    <div className="track" style={{maxWidth:280,margin:"18px auto 0"}}><span style={{width:((i+1)/steps.length*100)+"%",transition:"width .6s ease"}}/></div>
+    <div className="tiny muted" style={{marginTop:16,maxWidth:340,marginLeft:"auto",marginRight:"auto",lineHeight:1.6}}>
+      A real AI is translating your text and writing the lesson — this usually takes <b>20–40 seconds</b>. Thanks for your patience! 💛
+    </div>
+  </div>);
+}
 const Brand=()=>(<div className="brand"><div className="logo">L</div>Lingua</div>);
 const Stat=({k,v})=>(<div className="stat"><div className="k">{k}</div><div className="v">{v}</div></div>);
 function Stars({n}){ return <span>{[1,2,3,4,5].map(i=><span key={i} className={"star"+(i<=n?"":" off")}>★</span>)}</span>; }
