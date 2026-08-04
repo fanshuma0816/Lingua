@@ -32,7 +32,7 @@ export async function POST(req) {
       if (!items.length) return Response.json({ items: [] });
       const sys = "You are a warm, precise language teacher. Reply ONLY with minified JSON, no prose.";
       const user = `A ${level} learner of ${lang} is studying these words, each shown with the sentence it appears in.
-Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"meaning":<short, clear English meaning as used here>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>}]} — one object per input word, same order.
+Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-3 very simple English words, as used here>,"detail":<one short English explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>}]} — one object per input word, same order.
 Words:\n${JSON.stringify(items)}`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 1600 });
       const p = parseJSON(out);

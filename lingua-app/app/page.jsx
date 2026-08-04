@@ -1,11 +1,115 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 
 
 
 const DB={ get(k,d){try{return JSON.parse(localStorage.getItem("lingua:"+k))??d}catch(e){return d}},
   set(k,v){localStorage.setItem("lingua:"+k,JSON.stringify(v))},
   clearAll(){Object.keys(localStorage).filter(x=>x.startsWith("lingua:")).forEach(x=>localStorage.removeItem(x))} };
+
+const UI_TEXT={
+  en:{
+    interfaceLanguage:"Interface language", english:"English", chinese:"中文", clearLocalData:"Clear local data", newMaterial:"New material",
+    continue:"Continue", previous:"Previous", back:"Back", next:"Next", finish:"Finish", exitSession:"Exit session", play:"Play", stop:"Stop",
+    playAll:"Play all · read along", syncHint:"Each line lights up as it's read · tap any line to replay",
+    buildingTitle:"Building your lesson…",
+    buildingSteps:["Reading your text…","Splitting it into sentences…","Translating each line…","Finding the key words…","Writing fresh examples…","Preparing your quiz…","Almost ready…"],
+    buildingNote:"A real AI is translating your text and writing the lesson — this usually takes 20–40 seconds. Thanks for your patience!",
+    loginTitle:"Learn any language through content you love", loginSub:"Paste a text, transcript, or article excerpt, and it becomes a complete guided learning session.",
+    email:"Email", noPassword:"No password needed for this test build. Your learning stays on this device.",
+    inputTitle:"Bring your material", inputSub:"Paste text, or upload a .txt file. Best results: 1,000–3,000 characters with normal punctuation.",
+    yourText:"Your text", uploadTxt:"Upload .txt", textPlaceholder:"Paste an article, podcast transcript, newsletter excerpt, dialogue…",
+    cleanNote:"Timestamps, [Music] tags and extra breaks are cleaned automatically.", targetLanguage:"Target language *", select:"Select…",
+    currentLevel:"Your current level", sessionGoal:"Session goal", overLimit:"Over the 2,000-character free limit — trim your text a little.",
+    chooseTarget:"Choose your target language to continue.", analyzeText:"Analyze text",
+    goals:["General fluency","Conversation & speaking","Reading comprehension","Vocabulary building","Exam preparation"],
+    levels:["A1 — Beginner","A2 — Elementary","B1 — Intermediate","B2 — Upper-intermediate","C1 — Advanced"],
+    previewTitle:"Here's your text", previewSub:"A quick read on your material before we begin.", topics:"Topics:",
+    recommendedLevel:"Recommended level", estimatedTime:"Estimated time", vocabulary:"Vocabulary", characters:"Characters",
+    difficultyForYou:"Difficulty for you", basedOnLevel:(a,b)=>`Based on your level (${a}) vs the text's (${b}).`,
+    session:"The session", stepsInBlocks:(s,b)=>`${s} steps in ${b} blocks`, start:(m)=>`Start · ~${m} min`,
+    planNames:["Learning","Grammar & Vocabulary","Testing","Practicing","Using"],
+    planItems:[["Listen","Watch in your language","Listen & read"],["Sentence-by-sentence study"],["Comprehension check","Sentence recognition"],["With subtitles","No subtitles","Understand everything"],["Write & talk with AI"]],
+    heavy:(n)=>`This one has ${n} new words — quite a few. For it to really stick, try each block at least twice, and don't be shy about repeating an earlier step if it feels heavy.`,
+    stepPhases:["Learning","Learning","Learning","Testing","Grammar & Vocabulary","Testing","Practicing","Practicing","Practicing","Using"],
+    stepTitles:["Listen","Watch · your language","Listen & Read","Comprehension check","Grammar & Vocabulary","Sentence recognition","Practice · with subtitles","Practice · no subtitles","Understand everything","Practice with AI"],
+    stepOf:(n,total)=>`Step ${n} of ${total}`, min:(m)=>`~${m} min`,
+    lockedGrammar:"Work through each sentence to unlock Continue.", lockedAI:"Get feedback in Part 1 and finish the Part 2 chat to unlock Finish.",
+    translatingTitle:"Translating the lines", lookingUpTitle:"Looking up word meanings", aboutRemaining:(s)=>`about ${s}s left`, lineTranslating:(i,n)=>`Translating line ${i} of ${n}`, translationUnavailable:"translation unavailable",
+    lookingUpWord:"Finding the short meaning and a quick detail…", studyUsage:"Study how it's used here, then try it in your own example.",
+    simpleMeaning:"Simple meaning", detail:"More detail", example:"Example",
+    quizLoading:"Writing a few questions about your text…", whichHeard:"Which sentence did you hear?", whichMatches:"Which sentence matches the text?",
+    niceRight:"Nice — that's right.", notQuite:"Not quite — the highlighted one is it. Try replaying above.",
+    selfLow:"0% · nothing yet", selfHigh:"100% · all of it",
+    sr:{teacher:"Trust your ears. Play each line, then choose the sentence you heard.",purpose:"A short listening check, Delft-style, to sharpen how you catch spoken language.",check:"Nailing these? Great ear. A few tricky? Replay and try once more — no rush."},
+    understand:{teacher:(lang)=>`One last full listen. Play it through with ${lang} text — it should feel clear now.`,purpose:"Delft builds up to full comprehension before you speak. Notice how much more you catch than at the very start.",check:"Feels clearer than the first time? That's your progress showing."},
+    timed:{title:(subs)=>`Practice · ${subs?"with subtitles":"no subtitles"}`,teacherSubs:"Time to speak. I'll play each line, then it's your turn to read it aloud before the gentle timer moves you on.",teacherNoSubs:"Ears only now. I'll play each line — you repeat it from memory. Reveal the text only if you need to peek.",purpose:"Speaking sentences straight from your text is how Delft gets you conversing — you practise exactly what you'll be able to say.",how:"How this works",tips:["One sentence fills the screen — just focus on that.","Listen, then read aloud during the countdown.","It auto-advances, but Back, Replay and Pause are always there."],ready:"I'm ready — start",breath:"Take a breath first — it won't start until you press the button.",done:(n)=>`You practised all ${n} sentences. Press Continue when you're ready.`,again:"Practise again",doneCheck:"Said each one out loud? That's exactly it. Another round never hurts.",listen:"Listen",yourTurn:"Your turn — read aloud",hide:"Hide text",reveal:"Reveal text",replay:"Replay",pause:"Pause",resume:"Resume",skip:"Skip"},
+    aiUse:{title:"Practice with AI",teacher:"Let's actually use it. First write a little, then have a short chat — all with today's words.",purpose:"Delft conversations use only words and sentences from your text, so you can communicate with confidence from the very first try.",writeTab:"Part 1 · Write",chatTab:"Part 2 · Talk",unlock:"Finish unlocks once you've got feedback in Part 1 and completed the Part 2 chat.",feedback:"Get feedback",reading:"Reading…",teacherReading:"Your teacher is reading your writing…",checking:"Checking grammar, vocabulary and sentence flow — just a few seconds.",nextTalk:"Next · talk with the AI",writePlaceholder:(lang)=>`Write your answer in ${lang}…`},
+    listen:{teacher:"Let's just listen first. Play it once and let the sound wash over you — no need to catch every word.",purpose:"The Delft Method starts the way you learned your first language: ears before rules. This builds your feel for the sound and rhythm.",player:"Complete material",sub:"Full audio · no subtitles",rate:"Before we dig in — how much can you understand right now?",check:"Caught the mood or a few words? Perfect — that's all we need here. We'll check your growth at the end."},
+    watch:{teacher:"Now let's make sense of it. Play along and read the meaning in a language you already know.",purpose:"Delft gives you the translation up front, so the text makes sense before you study it — no guessing, no frustration.",check:"Does the story make sense now? If a line still feels murky, tap it again — take your time."},
+    read:{teacher:(lang)=>`Let's connect sound to spelling. Read along in ${lang} while you listen.`,purpose:"Hearing and seeing the words together helps them stick — using the same kind of recordings Delft learners rely on.",check:"Following along comfortably? Lovely. If not, replay a line or two before we move on."},
+    comp:{teacher:"Quick check — no pressure at all. Pick the sentence that matches what you read.",purpose:"Delft checks understanding after every text. It's not a test of you — it just tells us if you're ready to go deeper.",check:"Got them? Wonderful. Missed one? Pop back to Listen & Read — that's exactly how it's meant to work."},
+    gram:{title:"Under the microscope",teacher:"Let's slow right down — one sentence at a time. We'll unpack the words and phrases together, like a teacher sitting beside you.",purpose:"Delft teaches grammar through real examples from your own text — no rules or jargon — so you pick up patterns you can actually reuse.",sentence:(i,n)=>`Sentence ${i} of ${n}`,phrases:"Phrases & collocations",wordOrder:"Word order:",wordOrderText:"notice how this sentence is built — that structure repeats across the text.",slow:"Take it slow — just this one sentence for now.",noWords:"No standout new words in this sentence — enjoy the breather.",summaryTitle:"Let's pull it together",summaryTeacher:"Great work going through each sentence. Here's everything in one place to lock it in.",allVocab:"All key vocabulary",patterns:"Grammar patterns you met",review:"Review from Sentence 1",summaryCheck:"Feeling shaky on a sentence? No problem — head back to Sentence 1 and walk through again. Repetition is the whole idea.",next:"Next sentence",previous:"Previous sentence",seeSummary:"See summary"},
+  },
+  zh:{
+    interfaceLanguage:"界面语言", english:"English", chinese:"中文", clearLocalData:"清除本地数据", newMaterial:"新材料",
+    continue:"继续", previous:"上一步", back:"返回", next:"下一步", finish:"完成", exitSession:"退出学习", play:"播放", stop:"停止",
+    playAll:"全部播放 · 跟读", syncHint:"朗读时对应句子会高亮 · 点击任意句子可重播",
+    buildingTitle:"正在生成你的课程…",
+    buildingSteps:["读取文本…","切分句子…","逐句翻译…","寻找关键词…","生成新例句…","准备小测验…","快好了…"],
+    buildingNote:"AI 正在翻译文本并生成课程，通常需要 20–40 秒。谢谢耐心等待！",
+    loginTitle:"用你喜欢的内容学习任何语言", loginSub:"粘贴一段文本、字幕或文章节选，它会变成一节完整的引导式学习课。",
+    email:"邮箱", noPassword:"这个测试版本不需要密码。学习记录只保存在这台设备上。",
+    inputTitle:"导入你的材料", inputSub:"粘贴文本，或上传 .txt 文件。建议使用 1,000–3,000 字符、标点正常的内容。",
+    yourText:"你的文本", uploadTxt:"上传 .txt", textPlaceholder:"粘贴文章、播客字幕、 newsletter 节选、对话…",
+    cleanNote:"时间戳、[Music] 标签和多余换行会自动清理。", targetLanguage:"目标语言 *", select:"请选择…",
+    currentLevel:"当前水平", sessionGoal:"学习目标", overLimit:"超过 2,000 字符免费限制，请稍微删短一点。",
+    chooseTarget:"请选择目标语言后继续。", analyzeText:"分析文本",
+    goals:["综合流利度","对话与口语","阅读理解","词汇积累","考试准备"],
+    levels:["A1 — 入门","A2 — 初级","B1 — 中级","B2 — 中高级","C1 — 高级"],
+    previewTitle:"这是你的文本概览", previewSub:"开始前先快速了解这份材料。", topics:"主题：",
+    recommendedLevel:"推荐水平", estimatedTime:"预计时间", vocabulary:"词汇", characters:"字符数",
+    difficultyForYou:"对你的难度", basedOnLevel:(a,b)=>`基于你的水平（${a}）和文本水平（${b}）估算。`,
+    session:"学习流程", stepsInBlocks:(s,b)=>`${s} 个步骤，分成 ${b} 个模块`, start:(m)=>`开始 · 约 ${m} 分钟`,
+    planNames:["学习","语法与词汇","测试","练习","使用"],
+    planItems:[["听一遍","看懂意思","听读结合"],["逐句学习"],["理解检查","听句辨认"],["带字幕练习","无字幕练习","完全听懂"],["和 AI 写作/对话"]],
+    heavy:(n)=>`这篇材料有 ${n} 个新词，数量不少。为了真正记住，建议每个模块至少练两遍；觉得吃力时可以随时回到前面的步骤。`,
+    stepPhases:["学习","学习","学习","测试","语法与词汇","测试","练习","练习","练习","使用"],
+    stepTitles:["听一遍","看懂意思","听读结合","理解检查","语法与词汇","听句辨认","带字幕练习","无字幕练习","完全听懂","和 AI 练习"],
+    stepOf:(n,total)=>`第 ${n} / ${total} 步`, min:(m)=>`约 ${m} 分钟`,
+    lockedGrammar:"完成逐句学习后才能继续。", lockedAI:"完成 Part 1 反馈和 Part 2 对话后才能结束。",
+    translatingTitle:"正在翻译句子", lookingUpTitle:"正在查询单词含义", aboutRemaining:(s)=>`预计还需 ${s} 秒`, lineTranslating:(i,n)=>`正在翻译第 ${i} / ${n} 句`, translationUnavailable:"暂时没有翻译",
+    lookingUpWord:"正在生成简短释义和补充说明…", studyUsage:"先看它在句子里的用法，再试着自己造句。",
+    simpleMeaning:"简单意思", detail:"详细说明", example:"例句",
+    quizLoading:"正在根据文本生成几个问题…", whichHeard:"你听到的是哪一句？", whichMatches:"哪一句符合文本意思？",
+    niceRight:"答对了，很好。", notQuite:"还差一点，高亮的是正确答案。可以重播后再试。",
+    selfLow:"0% · 还不太懂", selfHigh:"100% · 全部理解",
+    sr:{teacher:"相信你的耳朵。播放每一句，然后选择你听到的句子。",purpose:"这是一个 Delft 风格的小听力检查，帮助你更敏锐地捕捉口语。",check:"做得顺的话很好；如果有几句难，重播再试一次，不急。"},
+    understand:{teacher:(lang)=>`最后完整听一遍。配合 ${lang} 原文播放，现在应该清楚很多。`,purpose:"Delft 会先把理解建立扎实，再进入表达。留意你比一开始多听懂了多少。",check:"比第一次清楚了吗？这就是你的进步。"},
+    timed:{title:(subs)=>`练习 · ${subs?"带字幕":"无字幕"}`,teacherSubs:"开始说出来。我会播放每一句，然后轮到你在温和倒计时里朗读。",teacherNoSubs:"现在只靠耳朵。我会播放每一句，你凭记忆复述；需要时可以再显示文本。",purpose:"直接练习文本里的句子，是 Delft 帮你开口的方式：你练的就是你马上能说的话。",how:"练习方式",tips:["屏幕一次只显示一句，专注这一句就好。","先听，然后在倒计时里读出来。","会自动进入下一句，但返回、重播、暂停一直可用。"],ready:"我准备好了，开始",breath:"先深呼吸，按下按钮前不会开始。",done:(n)=>`你已经练完 ${n} 个句子。准备好后点继续。`,again:"再练一遍",doneCheck:"每一句都说出来了吗？就是这样。多来一轮也很好。",listen:"听",yourTurn:"轮到你 · 读出来",hide:"隐藏文本",reveal:"显示文本",replay:"重播",pause:"暂停",resume:"继续",skip:"跳过"},
+    aiUse:{title:"和 AI 练习",teacher:"现在真正用起来。先写一点，再进行一段短对话，尽量用今天的词。",purpose:"Delft 的对话会围绕文本里的词句展开，让你从第一轮就能有信心表达。",writeTab:"Part 1 · 写作",chatTab:"Part 2 · 对话",unlock:"完成 Part 1 反馈和 Part 2 对话后，就可以结束课程。",feedback:"获取反馈",reading:"阅读中…",teacherReading:"老师正在阅读你的写作…",checking:"正在检查语法、词汇和句子流畅度，几秒钟就好。",nextTalk:"下一步 · 和 AI 对话",writePlaceholder:(lang)=>`用 ${lang} 写下你的回答…`},
+    listen:{teacher:"先只听一遍。播放后让声音自然进入耳朵，不需要每个词都听懂。",purpose:"Delft Method 像母语习得一样，从声音开始，而不是先背规则。这样可以先建立语感和节奏感。",player:"完整材料",sub:"完整音频 · 无字幕",rate:"正式学习前，你现在大概能理解多少？",check:"听出了大意或几个词就很好。最后我们会再对比一次你的进步。"},
+    watch:{teacher:"现在先把意思看懂。边播放边读你已经熟悉的语言里的含义。",purpose:"Delft 会先给出翻译，让文本在正式学习前变得清楚，减少猜测和挫败感。",check:"现在故事更清楚了吗？如果某一句还模糊，点它再听一次，慢慢来。"},
+    read:{teacher:(lang)=>`把声音和拼写连起来。听的时候一起阅读 ${lang} 原文。`,purpose:"同时听到和看到单词，会更容易记住。",check:"能跟上了吗？如果还不稳，先重播一两句再继续。"},
+    comp:{teacher:"快速检查一下，没有压力。选择和文本意思相符的句子。",purpose:"Delft 会在每篇文本后检查理解。这不是考你，只是看看是否准备好进入更细的学习。",check:"完成了吗？很好。错了一题也没关系，回到“听读结合”再过一遍就对了。"},
+    gram:{title:"逐句拆解",teacher:"我们放慢速度，一次只看一句。一起拆解词汇和短语，就像老师坐在旁边。",purpose:"Delft 用你自己的文本讲语法，不先堆规则术语，让你从真实例句里学到能复用的模式。",sentence:(i,n)=>`第 ${i} / ${n} 句`,phrases:"短语与固定搭配",wordOrder:"语序：",wordOrderText:"留意这句话的结构，类似结构会在文本里反复出现。",slow:"慢慢来，现在只专注这一句。",noWords:"这一句没有特别突出的新词，轻松一下。",summaryTitle:"整理一下",summaryTeacher:"逐句学完了，很棒。这里把重点放在一起，帮助你巩固。",allVocab:"全部重点词汇",patterns:"遇到的语法模式",review:"从第 1 句复习",summaryCheck:"如果某一句还不稳，回到第 1 句再走一遍。重复本来就是学习的一部分。",next:"下一句",previous:"上一句",seeSummary:"查看总结"},
+  }
+};
+const UIContext=createContext({uiLang:"en",setUiLang:()=>{},t:UI_TEXT.en});
+function useUI(){ return useContext(UIContext); }
+function useElapsed(active){
+  const [elapsed,setElapsed]=useState(0);
+  useEffect(()=>{ if(!active){ setElapsed(0); return; } const t=setInterval(()=>setElapsed(s=>s+1),1000); return ()=>clearInterval(t); },[active]);
+  return elapsed;
+}
+function progressPct(elapsed,estimate){ return Math.min(92,Math.max(12,Math.round((elapsed/Math.max(1,estimate))*100))); }
+function meaningParts(e){
+  if(!e) return {simple:null,detail:null};
+  const raw=(e.meaning||"").trim();
+  const simple=(e.simpleMeaning||e.simple||"").trim() || raw.split(/[—:.;,]/)[0].split(/\s+/).slice(0,3).join(" ");
+  const detail=(e.detail||e.explanation||"").trim() || (raw && raw!==simple ? raw : "");
+  return {simple:simple||null,detail:detail||null};
+}
 
 const LANG_CODE={Spanish:"es-ES",French:"fr-FR",German:"de-DE",Italian:"it-IT",Portuguese:"pt-PT",
   Dutch:"nl-NL",English:"en-US",Japanese:"ja-JP",Korean:"ko-KR","Mandarin Chinese":"zh-CN",Arabic:"ar-SA",Russian:"ru-RU"};
@@ -191,20 +295,31 @@ const PLAN_BLOCKS=[
 
 /* ---------- shared ---------- */
 function Loading(){
-  const steps=["📖 Reading your text…","✂️ Splitting it into sentences…","🌍 Translating each line…","🔑 Finding the key words…","✍️ Writing fresh examples…","❓ Preparing your quiz…","✨ Almost ready…"];
+  const {t}=useUI();
+  const steps=t.buildingSteps;
   const [i,setI]=useState(0);
   useEffect(()=>{ const t=setInterval(()=>setI(x=>Math.min(x+1,steps.length-1)),3200); return ()=>clearInterval(t); },[]);
   return (<div className="center" style={{textAlign:"center"}}>
     <div className="tface pulse" style={{margin:"0 auto 18px",width:56,height:56,fontSize:28}}>📖</div>
-    <div style={{fontWeight:600,fontSize:18}}>Building your lesson…</div>
+    <div style={{fontWeight:600,fontSize:18}}>{t.buildingTitle}</div>
     <div className="muted" style={{marginTop:10,minHeight:22,fontSize:15}}>{steps[i]}</div>
     <div className="track" style={{maxWidth:280,margin:"18px auto 0"}}><span style={{width:((i+1)/steps.length*100)+"%",transition:"width .6s ease"}}/></div>
     <div className="tiny muted" style={{marginTop:16,maxWidth:340,marginLeft:"auto",marginRight:"auto",lineHeight:1.6}}>
-      A real AI is translating your text and writing the lesson — this usually takes <b>20–40 seconds</b>. Thanks for your patience! 💛
+      {t.buildingNote}
     </div>
   </div>);
 }
 const Brand=()=>(<div className="brand"><div className="logo">L</div>Lingua</div>);
+function LanguageSwitch(){
+  const {uiLang,setUiLang,t}=useUI();
+  return (<label className="lang-switch">
+    <span>{t.interfaceLanguage}</span>
+    <select value={uiLang} onChange={e=>setUiLang(e.target.value)}>
+      <option value="en">{t.english}</option>
+      <option value="zh">{t.chinese}</option>
+    </select>
+  </label>);
+}
 const Stat=({k,v})=>(<div className="stat"><div className="k">{k}</div><div className="v">{v}</div></div>);
 function Stars({n}){ return <span>{[1,2,3,4,5].map(i=><span key={i} className={"star"+(i<=n?"":" off")}>★</span>)}</span>; }
 function Teacher({children}){ return <div className="teacher"><div className="tface">👩‍🏫</div><div className="tmsg">{children}</div></div>; }
@@ -224,7 +339,7 @@ function FullPlayer({text,lang,label,sub}){
       <button className="sbtn" title="restart" onClick={()=>setR(rate)}>↺</button></div>
   </div>);
 }
-function Say({text,lang,rate=1}){ return <button className="sbtn" title="play" onClick={()=>speak(text,lang,rate)}>▶</button>; }
+function Say({text,lang,rate=1}){ const {t}=useUI(); return <button className="sbtn saybtn" title={t.play} aria-label={t.play} onClick={()=>speak(text,lang,rate)}><span>▶</span><span>{t.play}</span></button>; }
 
 // Small per-section AI call. Returns parsed JSON or null (never throws).
 async function aiAnalyze(mode,payload){
@@ -233,9 +348,13 @@ async function aiAnalyze(mode,payload){
 }
 
 function SyncReader({items,lang,level,translation,rate=1,gap=0}){
+  const {t}=useUI();
   const [active,setActive]=useState(-1); const [playing,setPlaying]=useState(false); const stop=useRef(false);
   const [trs,setTrs]=useState(()=>items.map(it=>it.tr||null));
   const [loadingTr,setLoadingTr]=useState(false);
+  const estimateSec=Math.max(8,Math.ceil(items.length*1.6));
+  const elapsed=useElapsed(loadingTr);
+  const remaining=Math.max(1,estimateSec-elapsed);
   useEffect(()=>{ let cancel=false;
     if(!translation) return;
     if(!items.some((it,i)=>!(it.tr||trs[i]))) return;   // already have them all
@@ -255,34 +374,42 @@ function SyncReader({items,lang,level,translation,rate=1,gap=0}){
   function one(i){ stop.current=true; stopSpeak(); setActive(i); const u=speak(items[i].s,lang,rate); if(u)u.onend=()=>setActive(-1); }
   return (<div>
     <div className="row" style={{marginBottom:12}}>
-      <button className="btn btn-primary btn-sm" onClick={playing?halt:playAll}>{playing?"❚❚ Stop":"▶ Play all · read along"}</button>
-      <span className="tiny muted">Each line lights up as it's read · tap any line to replay</span>
+      <button className="btn btn-primary btn-sm" onClick={playing?halt:playAll}>{playing?`❚❚ ${t.stop}`:`▶ ${t.playAll}`}</button>
+      <span className="tiny muted">{t.syncHint}</span>
     </div>
+    {translation && loadingTr && <div className="status-strip" style={{marginBottom:12}}>
+      <div className="row" style={{justifyContent:"space-between",alignItems:"baseline"}}>
+        <b>{t.translatingTitle}</b><span className="tiny muted">{t.aboutRemaining(remaining)}</span>
+      </div>
+      <div className="mini-track"><span style={{width:progressPct(elapsed,estimateSec)+"%"}}/></div>
+    </div>}
     <div className="card card-p">
-      {items.map((it,i)=>(<div key={i} className={"sline"+(active===i?" on":"")} onClick={()=>one(i)} style={{marginBottom:translation?6:2}}>
-        <div style={{fontWeight:500}}>{it.s}</div>
-        {translation && <div className="tiny muted" style={{marginTop:2}}>{(it.tr||trs[i])?("→ "+(it.tr||trs[i])):(loadingTr?"→ translating…":"→ translation unavailable")}</div>}
-      </div>))}
+      {items.map((it,i)=>{ const translated=it.tr||trs[i]; return (<div key={i} className={"sline"+(active===i?" on":"")} onClick={()=>one(i)} style={{marginBottom:translation?10:2}}>
+        <div className="sentence-source">{it.s}</div>
+        {translation && <div className={"translation-line"+(!translated&&loadingTr?" loading":"")}>{translated?("→ "+translated):(loadingTr?`→ ${t.lineTranslating(i+1,items.length)}`:`→ ${t.translationUnavailable}`)}</div>}
+      </div>); })}
     </div>
   </div>);
 }
 
 function Quiz({items,lang,audio}){
+  const {t}=useUI();
   const [ans,setAns]=useState({});
   return (<div>{items.map((q,qi)=>{ const chosen=ans[qi];
     return (<div key={qi} className="card card-p" style={{marginBottom:14}}>
       <div className="row" style={{justifyContent:"space-between",marginBottom:12}}>
-        <div style={{fontWeight:600}}>{q.q?q.q:(audio?`Which sentence did you hear?`:`Which sentence matches the text?`)}</div>
-        {audio && <button className="btn btn-outline btn-sm" onClick={()=>speak(q.correct,lang)}>▶ Play</button>}</div>
+        <div style={{fontWeight:600}}>{q.q?q.q:(audio?t.whichHeard:t.whichMatches)}</div>
+        {audio && <button className="btn btn-outline btn-sm" onClick={()=>speak(q.correct,lang)}>▶ {t.play}</button>}</div>
       {q.options.map((o,oi)=>{ let cls="opt"; if(chosen!=null){if(o.ok)cls+=" correct";else if(oi===chosen)cls+=" wrong";}
         return (<div key={oi} className={cls} onClick={()=>chosen==null&&setAns({...ans,[qi]:oi})}>
           <span className="mk">{chosen!=null&&o.ok?"✓":chosen===oi?"✕":String.fromCharCode(65+oi)}</span><span>{o.t}</span></div>); })}
-      {chosen!=null && <div className="tiny muted" style={{marginTop:4}}>{q.options[chosen].ok?"Nice — that's right. 🎉":"Not quite — the highlighted one is it. Try replaying above."}</div>}
+      {chosen!=null && <div className="tiny muted" style={{marginTop:4}}>{q.options[chosen].ok?t.niceRight:t.notQuite}</div>}
     </div>); })}</div>);
 }
 // Comprehension quiz written by the AI in the target language (falls back to the
 // built-in sentence-match quiz if the call fails).
 function AIQuiz({lesson}){
+  const {t}=useUI();
   const {lang,level,sents,comprehension}=lesson;
   const [items,setItems]=useState(comprehension);
   const [loading,setLoading]=useState(true);
@@ -294,91 +421,95 @@ function AIQuiz({lesson}){
     return ()=>{cancel=true;};
   },[]);
   return (<div>
-    {loading && <div className="tiny muted" style={{marginBottom:8}}>Writing a few questions about your text…</div>}
+    {loading && <div className="tiny muted" style={{marginBottom:8}}>{t.quizLoading}</div>}
     <Quiz items={items} lang={lang} audio={false}/>
   </div>);
 }
 function SelfRate({value,onChange,prompt}){
+  const {t}=useUI();
   return (<div><div style={{fontWeight:600,marginBottom:12}}>{prompt}</div>
     <input type="range" min="0" max="100" step="5" value={value} onChange={e=>onChange(Number(e.target.value))} style={{width:"100%"}}/>
     <div className="row" style={{justifyContent:"space-between",marginTop:6}}>
-      <span className="tiny muted">0% · nothing yet</span><span className="badge">{value}%</span><span className="tiny muted">100% · all of it</span></div></div>);
+      <span className="tiny muted">{t.selfLow}</span><span className="badge">{value}%</span><span className="tiny muted">{t.selfHigh}</span></div></div>);
 }
 
 /* ---------- login / input / preview ---------- */
-function Login({onDone}){ const [email,setEmail]=useState(DB.get("email","")); const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+function Login({onDone}){ const {t}=useUI(); const [email,setEmail]=useState(DB.get("email","")); const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
   return (<div className="center">
+    <div style={{display:"flex",justifyContent:"center",marginBottom:14}}><LanguageSwitch/></div>
     <div style={{textAlign:"center",marginBottom:24}}><div style={{display:"inline-flex"}}><Brand/></div></div>
-    <div className="card card-p"><h1 style={{fontSize:21}}>Learn any language through content you love</h1>
-      <p className="sub" style={{marginBottom:18}}>Paste a text, transcript, or article excerpt, and it becomes a complete guided learning session.</p>
-      <label className="fld">Email</label>
+    <div className="card card-p"><h1 style={{fontSize:21}}>{t.loginTitle}</h1>
+      <p className="sub" style={{marginBottom:18}}>{t.loginSub}</p>
+      <label className="fld">{t.email}</label>
       <input className="input" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>
-      <button className="btn btn-primary" style={{width:"100%",marginTop:14}} disabled={!ok} onClick={()=>{DB.set("email",email);onDone(email);}}>Continue</button>
-      <p className="tiny muted" style={{textAlign:"center",marginTop:14}}>No password needed for this test build. Your learning stays on this device.</p></div>
+      <button className="btn btn-primary" style={{width:"100%",marginTop:14}} disabled={!ok} onClick={()=>{DB.set("email",email);onDone(email);}}>{t.continue}</button>
+      <p className="tiny muted" style={{textAlign:"center",marginTop:14}}>{t.noPassword}</p></div>
   </div>);
 }
 const LANGS=Object.keys(LANG_CODE).sort();
 const GOALS=["General fluency","Conversation & speaking","Reading comprehension","Vocabulary building","Exam preparation"];
 
 function InputScreen({onNext}){
+  const {t}=useUI();
   const [raw,setRaw]=useState(DB.get("draft","")); const cleaned=cleanText(raw); const count=cleaned.length; const LIMIT=2000; const over=count>LIMIT;
   const [lang,setLang]=useState(DB.get("lang","")); const [level,setLevel]=useState(DB.get("level",LEVELS[1])); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const fileRef=useRef(null);
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setRaw(String(r.result));r.readAsText(f);}
   const ready=count>40&&!over&&lang;
   return (<div>
-    <h1>Bring your material</h1><p className="sub">Paste text, or upload a .txt file. Best results: 1,000–3,000 characters with normal punctuation.</p>
+    <h1>{t.inputTitle}</h1><p className="sub">{t.inputSub}</p>
     <div className="card card-p">
       <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
-        <label className="fld" style={{margin:0}}>Your text</label>
-        <button className="btn btn-outline btn-sm" onClick={()=>fileRef.current.click()}>Upload .txt</button>
+        <label className="fld" style={{margin:0}}>{t.yourText}</label>
+        <button className="btn btn-outline btn-sm" onClick={()=>fileRef.current.click()}>{t.uploadTxt}</button>
         <input ref={fileRef} type="file" accept=".txt,.md" onChange={onFile} style={{display:"none"}}/></div>
-      <textarea style={{minHeight:220}} value={raw} onChange={e=>setRaw(e.target.value)} placeholder="Paste an article, podcast transcript, newsletter excerpt, dialogue…"/>
+      <textarea style={{minHeight:220}} value={raw} onChange={e=>setRaw(e.target.value)} placeholder={t.textPlaceholder}/>
       <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
-        <span className="tiny muted">Timestamps, [Music] tags and extra breaks are cleaned automatically.</span>
+        <span className="tiny muted">{t.cleanNote}</span>
         <span className="tiny" style={{fontWeight:600,color:over?"hsl(0 72% 45%)":"hsl(var(--muted-foreground))"}}>{count.toLocaleString()} / {LIMIT.toLocaleString()} chars</span></div>
     </div>
     <div className="grid3" style={{marginTop:16}}>
-      <div><label className="fld">Target language *</label><select value={lang} onChange={e=>setLang(e.target.value)}><option value="">Select…</option>{LANGS.map(l=><option key={l}>{l}</option>)}</select></div>
-      <div><label className="fld">Your current level</label><select value={level} onChange={e=>setLevel(e.target.value)}>{LEVELS.map(l=><option key={l}>{l}</option>)}</select></div>
-      <div><label className="fld">Session goal</label><select value={goal} onChange={e=>setGoal(e.target.value)}>{GOALS.map(l=><option key={l}>{l}</option>)}</select></div>
+      <div><label className="fld">{t.targetLanguage}</label><select value={lang} onChange={e=>setLang(e.target.value)}><option value="">{t.select}</option>{LANGS.map(l=><option key={l}>{l}</option>)}</select></div>
+      <div><label className="fld">{t.currentLevel}</label><select value={level} onChange={e=>setLevel(e.target.value)}>{LEVELS.map((l,i)=><option key={l} value={l}>{t.levels[i]||l}</option>)}</select></div>
+      <div><label className="fld">{t.sessionGoal}</label><select value={goal} onChange={e=>setGoal(e.target.value)}>{GOALS.map((l,i)=><option key={l} value={l}>{t.goals[i]||l}</option>)}</select></div>
     </div>
-    {over && <p className="tiny" style={{color:"hsl(0 72% 45%)",marginTop:12}}>Over the 2,000-character free limit — trim your text a little.</p>}
-    {!lang && <p className="tiny muted" style={{marginTop:12}}>Choose your target language to continue.</p>}
+    {over && <p className="tiny" style={{color:"hsl(0 72% 45%)",marginTop:12}}>{t.overLimit}</p>}
+    {!lang && <p className="tiny muted" style={{marginTop:12}}>{t.chooseTarget}</p>}
     <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}>
-      <button className="btn btn-primary" disabled={!ready} onClick={()=>{DB.set("draft",raw);DB.set("lang",lang);DB.set("level",level);DB.set("goal",goal);onNext({text:cleaned,lang,level,goal});}}>Analyze text →</button>
+      <button className="btn btn-primary" disabled={!ready} onClick={()=>{DB.set("draft",raw);DB.set("lang",lang);DB.set("level",level);DB.set("goal",goal);onNext({text:cleaned,lang,level,goal});}}>{t.analyzeText} →</button>
     </div>
   </div>);
 }
 
 function Preview({lesson,onStart,onBack}){
+  const {t}=useUI();
   const heavy=lesson.vocabCount>12;
   const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
   const diffLabel=["","Comfortable review","An easy read","Right at your level","A gentle stretch","Challenging"][lesson.diff];
   return (<div>
-    <h1>Here's your text</h1><p className="sub">A quick read on your material before we begin.</p>
+    <h1>{t.previewTitle}</h1><p className="sub">{t.previewSub}</p>
     <div className="row wrap" style={{gap:7,marginBottom:16}}>
-      <span className="tiny muted" style={{fontWeight:600}}>Topics:</span>
+      <span className="tiny muted" style={{fontWeight:600}}>{t.topics}</span>
       {lesson.topics.map(t=><span key={t} className="badge badge-warm">{t}</span>)}
     </div>
     <div className="grid4" style={{marginBottom:14}}>
-      <Stat k="Recommended level" v={lesson.recommended.split(" — ")[0]}/>
-      <Stat k="Estimated time" v={`~${total} min`}/>
-      <Stat k="Vocabulary" v={lesson.vocabCount+" words"}/>
-      <Stat k="Characters" v={lesson.charCount.toLocaleString()}/>
+      <Stat k={t.recommendedLevel} v={lesson.recommended.split(" — ")[0]}/>
+      <Stat k={t.estimatedTime} v={t.min(total)}/>
+      <Stat k={t.vocabulary} v={lesson.vocabCount+" words"}/>
+      <Stat k={t.characters} v={lesson.charCount.toLocaleString()}/>
     </div>
     <div className="card card-p" style={{marginBottom:16}}>
       <div className="row" style={{justifyContent:"space-between"}}>
-        <div><div className="stat-k" style={{fontSize:11,fontWeight:600,color:"hsl(var(--muted-foreground))",textTransform:"uppercase",letterSpacing:".05em"}}>Difficulty for you</div>
+        <div><div className="stat-k" style={{fontSize:11,fontWeight:600,color:"hsl(var(--muted-foreground))",textTransform:"uppercase",letterSpacing:".05em"}}>{t.difficultyForYou}</div>
           <div style={{marginTop:5}}><Stars n={lesson.diff}/> <span style={{fontWeight:600,marginLeft:6}}>{diffLabel}</span></div></div>
-        <div className="tiny muted" style={{textAlign:"right",maxWidth:230}}>Based on your level ({lesson.level.split(" — ")[0]}) vs the text's ({lesson.recommended.split(" — ")[0]}).</div>
+        <div className="tiny muted" style={{textAlign:"right",maxWidth:230}}>{t.basedOnLevel(lesson.level.split(" — ")[0],lesson.recommended.split(" — ")[0])}</div>
       </div>
     </div>
     <div className="card card-p">
-      <h3 className="lbl">The session · {STEPS.length} steps in {PLAN_BLOCKS.length} blocks</h3>
-      {PLAN_BLOCKS.map(b=>(<div className="plan-row" key={b.name}>
+      <h3 className="lbl">{t.session} · {t.stepsInBlocks(STEPS.length,PLAN_BLOCKS.length)}</h3>
+      {PLAN_BLOCKS.map((b,i)=>(<div className="plan-row" key={b.name}>
         <span className="row" style={{gap:11}}><span style={{fontSize:18}}>{b.icon}</span>
-          <span><div style={{fontWeight:600}}>{b.name}</div><div className="tiny muted">{b.items.join(" · ")}</div></span></span>
+          <span><div style={{fontWeight:600}}>{t.planNames[i]||b.name}</div><div className="tiny muted">{(t.planItems[i]||b.items).join(" · ")}</div></span></span>
         <span className="tiny muted">~{Math.max(1,Math.round(b.min*scale))} min</span></div>))}
       <div className="ref">
         The flow follows the <b>Delft Method</b> (Delftse methode), a research-based approach to language learning developed at Delft University of Technology: understand a text first, absorb its high-frequency words and grammar in context, then move to conversation.<br/>
@@ -386,16 +517,17 @@ function Preview({lesson,onStart,onBack}){
       </div>
     </div>
     {heavy && <div className="checkin" style={{marginTop:16,background:"hsl(var(--warm)/.08)",borderColor:"hsl(var(--warm)/.3)"}}><span>💡</span>
-      <span>This one has <b>{lesson.vocabCount} new words</b> — quite a few. For it to really stick, try each block <b>at least twice</b>, and don't be shy about repeating an earlier step if it feels heavy.</span></div>}
+      <span>{t.heavy(lesson.vocabCount)}</span></div>}
     <div className="row" style={{justifyContent:"space-between",marginTop:22}}>
-      <button className="btn btn-ghost" onClick={onBack}>← Back</button>
-      <button className="btn btn-primary" onClick={onStart}>Start · ~{total} min →</button></div>
+      <button className="btn btn-ghost" onClick={onBack}>← {t.back}</button>
+      <button className="btn btn-primary" onClick={onStart}>{t.start(total)} →</button></div>
   </div>);
 }
 
 /* ---------- lesson shell ---------- */
 const GATED=new Set([4,9]);
 function Lesson({lesson,text,onFinish}){
+  const {t}=useUI();
   const [step,setStep]=useState(DB.get("progress",0));
   const [gateOpen,setGateOpen]=useState(!GATED.has(DB.get("progress",0)));
   useEffect(()=>{DB.set("progress",step);stopSpeak();window.scrollTo({top:0,behavior:"smooth"});},[step]);
@@ -406,77 +538,78 @@ function Lesson({lesson,text,onFinish}){
   return (<div>
     <div className="learnbar">
       <div className="track"><span style={{width:pct+"%"}}/></div>
-      <div className="learnmeta"><span className="tiny muted">{S.phase} · Step {step+1} of {STEPS.length}</span>
-        <span className="tiny muted">~{stepMin} min</span></div>
+      <div className="learnmeta"><span className="tiny muted">{(t.stepPhases&&t.stepPhases[step])||S.phase} · {t.stepOf(step+1,STEPS.length)}</span>
+        <span className="row" style={{gap:10}}><span className="tiny muted">{t.min(stepMin)}</span><LanguageSwitch/></span></div>
     </div>
     <div className="stage"><StepBody step={step} lesson={lesson} text={text} onComplete={()=>setGateOpen(true)}/></div>
     <div className="footnav">
-      <button className="btn btn-ghost btn-sm" disabled={step===0} onClick={()=>go(Math.max(0,step-1))}>← Previous</button>
-      {step<STEPS.length-1 ? <button className="btn btn-outline btn-sm" disabled={locked} onClick={()=>go(step+1)}>Continue →</button>
-        : <button className="btn btn-primary btn-sm" disabled={locked} onClick={onFinish}>Finish ✓</button>}
+      <button className="btn btn-ghost btn-sm" disabled={step===0} onClick={()=>go(Math.max(0,step-1))}>← {t.previous}</button>
+      {step<STEPS.length-1 ? <button className="btn btn-outline btn-sm" disabled={locked} onClick={()=>go(step+1)}>{t.continue} →</button>
+        : <button className="btn btn-primary btn-sm" disabled={locked} onClick={onFinish}>{t.finish} ✓</button>}
     </div>
-    {locked && <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{step===4?"Work through each sentence to unlock Continue.":"Get feedback in Part 1 and finish the Part 2 chat to unlock Finish."}</div>}
-    <div style={{textAlign:"center",marginTop:16}}><button className="btn btn-ghost btn-sm muted" onClick={onFinish}>Exit session</button></div>
+    {locked && <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{step===4?t.lockedGrammar:t.lockedAI}</div>}
+    <div style={{textAlign:"center",marginTop:16}}><button className="btn btn-ghost btn-sm muted" onClick={onFinish}>{t.exitSession}</button></div>
   </div>);
 }
 
 function StepBody({step,lesson,text,onComplete}){
+  const {t}=useUI();
   const {lang}=lesson; const sents=lesson.sents;
   const [before,setBefore]=useState(DB.get("selfBefore",30));
 
   if(step===0) return (<div>
-    <div className="eyebrow">Learning</div><h2>Listen</h2>
-    <Teacher>Let's just listen first. 🎧 Play it once and let it wash over you — no need to catch every word.</Teacher>
-    <Purpose>The Delft Method starts the way you learned your first language: ears before rules. This builds your feel for the sound and rhythm.</Purpose>
-    <FullPlayer text={text} lang={lang} label="Complete material" sub="Full audio · no subtitles"/>
+    <div className="eyebrow">{t.stepPhases[0]}</div><h2>{t.stepTitles[0]}</h2>
+    <Teacher>{t.listen.teacher}</Teacher>
+    <Purpose>{t.listen.purpose}</Purpose>
+    <FullPlayer text={text} lang={lang} label={t.listen.player} sub={t.listen.sub}/>
     <div className="card card-p" style={{marginTop:18}}>
-      <SelfRate value={before} prompt="Before we dig in — how much can you understand right now?" onChange={v=>{setBefore(v);DB.set("selfBefore",v);}}/></div>
-    <CheckIn>Caught the mood or a few words? Perfect — that's all we need here. We'll check your growth at the end.</CheckIn>
+      <SelfRate value={before} prompt={t.listen.rate} onChange={v=>{setBefore(v);DB.set("selfBefore",v);}}/></div>
+    <CheckIn>{t.listen.check}</CheckIn>
   </div>);
 
   if(step===1) return (<div>
-    <div className="eyebrow">Learning</div><h2>Watch · in your language</h2>
-    <Teacher>Now let's make sense of it. 👀 Play along and read the meaning in a language you already know.</Teacher>
-    <Purpose>Delft gives you the translation up front, so the text makes sense before you study it — no guessing, no frustration.</Purpose>
+    <div className="eyebrow">{t.stepPhases[1]}</div><h2>{t.stepTitles[1]}</h2>
+    <Teacher>{t.watch.teacher}</Teacher>
+    <Purpose>{t.watch.purpose}</Purpose>
     <SyncReader items={(lesson.watch&&lesson.watch.length?lesson.watch:sents.slice(0,10).map(s=>({s})))} lang={lang} level={lesson.level} translation={true}/>
-    <CheckIn>Does the story make sense now? If a line still feels murky, tap it again — take your time.</CheckIn>
+    <CheckIn>{t.watch.check}</CheckIn>
   </div>);
 
   if(step===2) return (<div>
-    <div className="eyebrow">Learning</div><h2>Listen &amp; Read</h2>
-    <Teacher>Let's connect sound to spelling. 🔊 Read along in {lang} while you listen.</Teacher>
-    <Purpose>Hearing and seeing the words together helps them stick — using the same kind of recordings Delft learners rely on.</Purpose>
+    <div className="eyebrow">{t.stepPhases[2]}</div><h2>{t.stepTitles[2]}</h2>
+    <Teacher>{t.read.teacher(lang)}</Teacher>
+    <Purpose>{t.read.purpose}</Purpose>
     <SyncReader items={sents.slice(0,12).map(s=>({s}))} lang={lang} translation={false} rate={0.75} gap={1500}/>
-    <CheckIn>Following along comfortably? Lovely. If not, replay a line or two before we move on.</CheckIn>
+    <CheckIn>{t.read.check}</CheckIn>
   </div>);
 
   if(step===3) return (<div>
-    <div className="eyebrow">Testing</div><h2>Comprehension check</h2>
-    <Teacher>Quick check — no pressure at all. ✅ Pick the sentence that matches what you read.</Teacher>
-    <Purpose>Delft checks understanding after every text. It's not a test of you — it just tells us if you're ready to go deeper.</Purpose>
+    <div className="eyebrow">{t.stepPhases[3]}</div><h2>{t.stepTitles[3]}</h2>
+    <Teacher>{t.comp.teacher}</Teacher>
+    <Purpose>{t.comp.purpose}</Purpose>
     <AIQuiz lesson={lesson}/>
-    <CheckIn>Got them? Wonderful. Missed one? Pop back to “Listen &amp; Read” — that's exactly how it's meant to work.</CheckIn>
+    <CheckIn>{t.comp.check}</CheckIn>
   </div>);
 
   if(step===4) return <GrammarStep lesson={lesson} onComplete={onComplete}/>;
 
   if(step===5) return (<div>
-    <div className="eyebrow">Testing</div><h2>Sentence recognition</h2>
-    <Teacher>Trust your ears. 👂 Play each line, then choose the sentence you heard.</Teacher>
-    <Purpose>A short listening check, Delft-style, to sharpen how you catch spoken language.</Purpose>
+    <div className="eyebrow">{t.stepPhases[5]}</div><h2>{t.stepTitles[5]}</h2>
+    <Teacher>{t.sr.teacher}</Teacher>
+    <Purpose>{t.sr.purpose}</Purpose>
     <Quiz items={lesson.recognition} lang={lang} audio={true}/>
-    <CheckIn>Nailing these? Great ear. A few tricky? Replay and try once more — no rush.</CheckIn>
+    <CheckIn>{t.sr.check}</CheckIn>
   </div>);
 
   if(step===6) return <TimedPractice sents={sents} lang={lang} withSubs={true}/>;
   if(step===7) return <TimedPractice sents={sents} lang={lang} withSubs={false}/>;
 
   if(step===8) return (<div>
-    <div className="eyebrow">Practicing</div><h2>Understand everything</h2>
-    <Teacher>One last full listen. 🌟 Play it through with {lang} text — it should feel clear now.</Teacher>
-    <Purpose>Delft builds up to full comprehension before you speak. Notice how much more you catch than at the very start.</Purpose>
+    <div className="eyebrow">{t.stepPhases[8]}</div><h2>{t.stepTitles[8]}</h2>
+    <Teacher>{t.understand.teacher(lang)}</Teacher>
+    <Purpose>{t.understand.purpose}</Purpose>
     <SyncReader items={sents.slice(0,12).map(s=>({s}))} lang={lang} translation={false}/>
-    <CheckIn>Feels clearer than the first time? That's your progress showing. 🎉</CheckIn>
+    <CheckIn>{t.understand.check}</CheckIn>
   </div>);
 
   return <PracticeAI lesson={lesson} onComplete={onComplete}/>;
@@ -484,11 +617,13 @@ function StepBody({step,lesson,text,onComplete}){
 
 /* ---------- step 5 grammar: one sentence at a time, then a summary card ---------- */
 function GrammarStep({lesson,onComplete}){
+  const {t}=useUI();
   const {lang,sents,vocab,vlist,level,recommended}=lesson;
   const N=Math.min(6,sents.length);
   const [gi,setGi]=useState(0); const [view,setView]=useState("study"); // study | summary
   const [expl,setExpl]=useState({});     // word(lc) -> {meaning, example, pos} from AI
   const [loadingKw,setLoadingKw]=useState(false);
+  const lookupElapsed=useElapsed(loadingKw);
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
   const vset=new Set(vlist);
   const vmap=Object.fromEntries((vocab||[]).map(v=>[v.word.toLowerCase(),v]));
@@ -511,29 +646,31 @@ function GrammarStep({lesson,onComplete}){
     });
     return ()=>{cancel=true;};
   },[gi,view]);
-  function usageNote(w){ return loadingKw ? "Looking this word up for you…" : "Study how it's used in the sentence below, then try it in your own example."; }
+  function usageNote(w){ return loadingKw ? t.lookingUpWord : t.studyUsage; }
   const s=sents[gi]||""; const kw=keyWordsIn(s); const phrases=expressionsInSentence(s);
+  const lookupEstimate=Math.max(6,kw.length*2+2);
+  const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
 
   if(view==="summary") return (<div>
-    <div className="eyebrow">Grammar &amp; Vocabulary</div><h2>Let's pull it together</h2>
-    <Teacher>Great work going through each sentence. 🌱 Here's everything in one place to lock it in.</Teacher>
+    <div className="eyebrow">{t.stepPhases[4]}</div><h2>{t.gram.summaryTitle}</h2>
+    <Teacher>{t.gram.summaryTeacher}</Teacher>
     <div className="card card-p" style={{marginBottom:14}}>
-      <h3 className="lbl">All key vocabulary</h3>
+      <h3 className="lbl">{t.gram.allVocab}</h3>
       <div className="row wrap" style={{gap:7,marginBottom:16}}>{vocab.map(v=><span key={v.word} className="badge">{v.word}</span>)}</div>
-      <h3 className="lbl">Grammar patterns you met</h3>
+      <h3 className="lbl">{t.gram.patterns}</h3>
       <ul className="clean">{lesson.grammarFocus.map((g,i)=><li key={i}>{g}</li>)}</ul>
     </div>
-    <CheckIn>Feeling shaky on a sentence? No problem — head back to Sentence 1 and walk through again. Repetition is the whole idea.</CheckIn>
-    <div style={{marginTop:14}}><button className="btn btn-outline btn-sm" onClick={()=>{setGi(0);setView("study");}}>↩ Review from Sentence 1</button></div>
+    <CheckIn>{t.gram.summaryCheck}</CheckIn>
+    <div style={{marginTop:14}}><button className="btn btn-outline btn-sm" onClick={()=>{setGi(0);setView("study");}}>↩ {t.gram.review}</button></div>
   </div>);
 
   return (<div>
-    <div className="eyebrow">Grammar &amp; Vocabulary</div><h2>Under the microscope</h2>
-    <Teacher>Let's slow right down — one sentence at a time. 🔍 We'll unpack the words and phrases together, like a teacher sitting beside you.</Teacher>
-    <Purpose>Delft teaches grammar through real examples from your own text — no rules or jargon — so you pick up patterns you can actually reuse.</Purpose>
+    <div className="eyebrow">{t.stepPhases[4]}</div><h2>{t.gram.title}</h2>
+    <Teacher>{t.gram.teacher}</Teacher>
+    <Purpose>{t.gram.purpose}</Purpose>
 
     <div className="row" style={{justifyContent:"space-between",marginBottom:12}}>
-      <span className="badge badge-outline">Sentence {gi+1} of {N}</span>
+      <span className="badge badge-outline">{t.gram.sentence(gi+1,N)}</span>
       <div className="track" style={{width:160}}><span style={{width:((gi+1)/N*100)+"%"}}/></div>
     </div>
 
@@ -541,35 +678,49 @@ function GrammarStep({lesson,onComplete}){
       <div className="row" style={{justifyContent:"space-between",marginBottom:12}}>
         <span style={{fontWeight:600,fontSize:16}}>{s}</span><Say text={s} lang={lang} rate={0.75}/></div>
 
-      <h3 className="lbl">Vocabulary</h3>
-      {kw.length?kw.map((w,j)=>{ const e=expl[w.toLowerCase()]||vmap[w.toLowerCase()]; return (<div className="wcard" key={j}>
+      <h3 className="lbl">{t.vocabulary}</h3>
+      {loadingKw && <div className="status-strip compact" style={{marginBottom:12}}>
+        <div className="row" style={{justifyContent:"space-between",alignItems:"baseline"}}>
+          <b>{t.lookingUpTitle}</b><span className="tiny muted">{t.aboutRemaining(lookupRemaining)}</span>
+        </div>
+        <div className="mini-track"><span style={{width:progressPct(lookupElapsed,lookupEstimate)+"%"}}/></div>
+      </div>}
+      {kw.length?kw.map((w,j)=>{ const e=expl[w.toLowerCase()]||vmap[w.toLowerCase()]; const parts=meaningParts(e); return (<div className="wcard" key={j}>
         <div className="row" style={{justifyContent:"space-between"}}>
           <span className="row" style={{gap:9}}><b style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
           <Say text={w} lang={lang} rate={0.75}/></div>
-        <div className="tiny muted" style={{margin:"7px 0"}}>💡 {e&&e.meaning ? e.meaning : usageNote(w)}</div>
-        {e&&e.example && <div className="tiny" style={{fontStyle:"italic",marginTop:2}}>📝 Example: “{e.example}”</div>}
-      </div>); }):<div className="tiny muted">No standout new words in this sentence — enjoy the breather. 🙂</div>}
+        {parts.simple ? (<div className="meaning-block">
+          <div className="meaning-label">{t.simpleMeaning}</div>
+          <div className="meaning-simple">{parts.simple}</div>
+          {parts.detail && <div className="meaning-detail">{parts.detail}</div>}
+        </div>) : (<div className="meaning-loading">
+          <div className="skeleton short"/><div className="skeleton"/>
+          <div className="tiny muted" style={{marginTop:7}}>💡 {usageNote(w)}</div>
+        </div>)}
+        {e&&e.example && <div className="tiny" style={{fontStyle:"italic",marginTop:8}}>📝 {t.example}: “{e.example}”</div>}
+      </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}
 
-      {phrases.length>0 && (<><h3 className="lbl" style={{marginTop:16}}>Phrases &amp; collocations</h3>
+      {phrases.length>0 && (<><h3 className="lbl" style={{marginTop:16}}>{t.gram.phrases}</h3>
         {phrases.map((p,j)=>(<div className="wcard" key={j}>
           <div className="row" style={{justifyContent:"space-between"}}><b>{p}</b><Say text={p} lang={lang} rate={0.75}/></div>
           <div className="tiny muted" style={{marginTop:6}}>A natural pairing worth keeping together — try reusing it in a sentence of your own.</div>
         </div>))}</>)}
 
-      <div className="tiny muted" style={{marginTop:14}}><b>Word order:</b> notice how this sentence is built — that structure repeats across the text.</div>
+      <div className="tiny muted" style={{marginTop:14}}><b>{t.gram.wordOrder}</b> {t.gram.wordOrderText}</div>
     </div>
 
     <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
-      <button className="btn btn-ghost btn-sm" disabled={gi===0} onClick={()=>setGi(g=>g-1)}>← Previous sentence</button>
-      {gi<N-1 ? <button className="btn btn-outline btn-sm" onClick={()=>setGi(g=>g+1)}>Next sentence →</button>
-        : <button className="btn btn-primary btn-sm" onClick={()=>setView("summary")}>See summary →</button>}
+      <button className="btn btn-ghost btn-sm" disabled={gi===0} onClick={()=>setGi(g=>g-1)}>← {t.gram.previous}</button>
+      {gi<N-1 ? <button className="btn btn-outline btn-sm" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
+        : <button className="btn btn-primary btn-sm" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
     </div>
-    <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>Take it slow — just this one sentence for now.</div>
+    <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{t.gram.slow}</div>
   </div>);
 }
 
 /* ---------- steps 6 & 7 timed practice with a ready-buffer ---------- */
 function TimedPractice({sents,lang,withSubs}){
+  const {t}=useUI();
   const list=sents.slice(0,8);
   const [started,setStarted]=useState(false);
   const [idx,setIdx]=useState(0);
@@ -595,66 +746,64 @@ function TimedPractice({sents,lang,withSubs}){
 
   function togglePause(){ if(!paused){ stopSpeak(); setPaused(true); } else { setPaused(false); if(phase==="listen") setNonce(n=>n+1); } }
 
-  const head=(<><div className="eyebrow">Practicing</div><h2>Practice · {withSubs?"with subtitles":"no subtitles"}</h2></>);
+  const head=(<><div className="eyebrow">{t.stepPhases[6]}</div><h2>{t.timed.title(withSubs)}</h2></>);
 
   if(!started) return (<div>{head}
-    <Teacher>{withSubs
-      ? <>Time to speak. 🗣️ I'll play each line, then it's your turn to read it aloud before the gentle timer moves you on.</>
-      : <>Ears only now. 🎧 I'll play each line — you repeat it from memory. Reveal the text only if you need to peek.</>}</Teacher>
-    <Purpose>Speaking sentences straight from your text is how Delft gets you conversing — you practise exactly what you'll be able to say.</Purpose>
+    <Teacher>{withSubs?t.timed.teacherSubs:t.timed.teacherNoSubs}</Teacher>
+    <Purpose>{t.timed.purpose}</Purpose>
     <div className="card card-p" style={{marginBottom:16}}>
-      <div style={{fontWeight:500,marginBottom:6}}>How this works</div>
-      <ul className="clean tiny muted"><li>One sentence fills the screen — just focus on that.</li>
-        <li>Listen, then read aloud during the countdown.</li>
-        <li>It auto-advances, but ← Back, Replay and Pause are always there.</li></ul>
+      <div style={{fontWeight:500,marginBottom:6}}>{t.timed.how}</div>
+      <ul className="clean tiny muted">{t.timed.tips.map((tip,i)=><li key={i}>{tip}</li>)}</ul>
     </div>
-    <button className="btn btn-primary" onClick={()=>{setStarted(true);setIdx(0);setNonce(n=>n+1);}}>▶ I'm ready — start</button>
-    <div className="tiny muted" style={{marginTop:10}}>Take a breath first — it won't start until you press the button.</div>
+    <button className="btn btn-primary" onClick={()=>{setStarted(true);setIdx(0);setNonce(n=>n+1);}}>▶ {t.timed.ready}</button>
+    <div className="tiny muted" style={{marginTop:10}}>{t.timed.breath}</div>
   </div>);
 
   if(phase==="done") return (<div>{head}
     <div className="card bigcard"><div style={{fontSize:34}}>✓</div>
-      <div className="bigsent" style={{fontSize:18}}>You practised all {list.length} sentences. 🎉 Press Continue when you're ready.</div>
-      <button className="btn btn-outline btn-sm" onClick={()=>{setIdx(0);setNonce(n=>n+1);}}>↺ Practise again</button></div>
-    <CheckIn>Said each one out loud? That's exactly it. Another round never hurts.</CheckIn>
+      <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div>
+      <button className="btn btn-outline btn-sm" onClick={()=>{setIdx(0);setNonce(n=>n+1);}}>↺ {t.timed.again}</button></div>
+    <CheckIn>{t.timed.doneCheck}</CheckIn>
   </div>);
 
   return (<div>{head}
     <div className="card bigcard">
       <div className="row" style={{gap:8}}><span className="badge badge-outline">{idx+1} / {list.length}</span>
-        <span className="phaselab" style={{color:phase==="speak"?"hsl(var(--success))":"hsl(var(--muted-foreground))"}}>{phase==="listen"?"🎧 Listen":"🗣️ Your turn — read aloud"}</span></div>
+        <span className="phaselab" style={{color:phase==="speak"?"hsl(var(--success))":"hsl(var(--muted-foreground))"}}>{phase==="listen"?`🎧 ${t.timed.listen}`:`🗣️ ${t.timed.yourTurn}`}</span></div>
       {(withSubs||reveal) ? <div className="bigsent">{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
       {phase==="speak" && <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
         <div className="timerbar"><span style={{width:(left/secs*100)+"%"}}/></div><div className="count">{left}s</div></div>}
-      {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?"Hide text":"Reveal text"}</button>}
+      {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
-      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>{stopSpeak();setIdx(i=>Math.max(0,i-1));}}>← Back</button>
-      <button className="btn btn-outline btn-sm" onClick={()=>setNonce(n=>n+1)}>▶ Replay</button>
-      <button className="btn btn-outline btn-sm" onClick={togglePause}>{paused?"Resume":"Pause"}</button>
-      <button className="btn btn-ghost btn-sm" onClick={()=>{stopSpeak(); if(idx<list.length-1)setIdx(i=>i+1); else setPhase("done");}}>Skip →</button>
+      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>{stopSpeak();setIdx(i=>Math.max(0,i-1));}}>← {t.back}</button>
+      <button className="btn btn-outline btn-sm" onClick={()=>setNonce(n=>n+1)}>▶ {t.timed.replay}</button>
+      <button className="btn btn-outline btn-sm" onClick={togglePause}>{paused?t.timed.resume:t.timed.pause}</button>
+      <button className="btn btn-ghost btn-sm" onClick={()=>{stopSpeak(); if(idx<list.length-1)setIdx(i=>i+1); else setPhase("done");}}>{t.timed.skip} →</button>
     </div>
   </div>);
 }
 
 /* ---------- step 10 Practice with AI: tabbed Part 1 / Part 2 ---------- */
 function PracticeAI({lesson,onComplete}){
+  const {t}=useUI();
   const [tab,setTab]=useState("write");
   const [wrote,setWrote]=useState(false); const [talked,setTalked]=useState(false);
   useEffect(()=>{ if(wrote&&talked&&onComplete) onComplete(); },[wrote,talked]);
   return (<div>
-    <div className="eyebrow">Using</div><h2>Practice with AI</h2>
-    <Teacher>Let's actually use it. 💬 First write a little, then have a short chat — all with today's words.</Teacher>
-    <Purpose>Delft conversations use only words and sentences from your text, so you can communicate with confidence from the very first try.</Purpose>
+    <div className="eyebrow">{t.stepPhases[9]}</div><h2>{t.aiUse.title}</h2>
+    <Teacher>{t.aiUse.teacher}</Teacher>
+    <Purpose>{t.aiUse.purpose}</Purpose>
     <div className="tabs">
-      <button className={"tab"+(tab==="write"?" on":"")} onClick={()=>setTab("write")}>Part 1 · Write {wrote?"✓":""}</button>
-      <button className={"tab"+(tab==="chat"?" on":"")} onClick={()=>{stopSpeak();setTab("chat");}}>Part 2 · Talk {talked?"✓":""}</button>
+      <button className={"tab"+(tab==="write"?" on":"")} onClick={()=>setTab("write")}>{t.aiUse.writeTab} {wrote?"✓":""}</button>
+      <button className={"tab"+(tab==="chat"?" on":"")} onClick={()=>{stopSpeak();setTab("chat");}}>{t.aiUse.chatTab} {talked?"✓":""}</button>
     </div>
     {tab==="write" ? <AIWrite lesson={lesson} onNext={()=>setTab("chat")} onDone={()=>setWrote(true)}/> : <AIChat lesson={lesson} onDone={()=>setTalked(true)}/>}
-    <div className="tiny muted" style={{marginTop:12}}>Finish unlocks once you've got feedback in Part 1 and completed the Part 2 chat.</div>
+    <div className="tiny muted" style={{marginTop:12}}>{t.aiUse.unlock}</div>
   </div>);
 }
 function AIWrite({lesson,onNext,onDone}){
+  const {t}=useUI();
   const {lang,level,vocab,sents}=lesson;
   const topic=(sents[0]||"the topic").replace(/[.!?。！？]+$/,"");
   const question=`Based on the passage — "${topic.length>90?topic.slice(0,90)+"…":topic}" — what's your view? Write 3–4 sentences in ${lang} using today's words.`;
@@ -674,14 +823,14 @@ function AIWrite({lesson,onNext,onDone}){
     <div className="row wrap" style={{gap:7,marginBottom:14}}>{vocab.slice(0,8).map(v=><span key={v.word} className="badge">{v.word}</span>)}</div>
     <div className="card card-p" style={{marginBottom:14}}><div className="row" style={{gap:10}}>
       <div className="tface">👩‍🏫</div><div style={{fontWeight:500}}>{question}</div></div></div>
-    <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={"Write your answer in "+lang+"…"}/>
+    <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={t.aiUse.writePlaceholder(lang)}/>
     <div className="row" style={{justifyContent:"space-between",marginTop:12}}>
       <span className="tiny muted">{textv.trim().split(/\s+/).filter(Boolean).length} words · saved locally</span>
-      <button className="btn btn-primary btn-sm" disabled={textv.trim().length<12||fb==="loading"} onClick={getFeedback}>{fb==="loading"?"Reading…":"Get feedback"}</button></div>
+      <button className="btn btn-primary btn-sm" disabled={textv.trim().length<12||fb==="loading"} onClick={getFeedback}>{fb==="loading"?t.aiUse.reading:t.aiUse.feedback}</button></div>
     {fb==="loading" && <div className="card card-p" style={{marginTop:16}}>
       <div className="row" style={{gap:11}}><div className="tface pulse">👩‍🏫</div>
-        <div><div style={{fontWeight:500}}>Your teacher is reading your writing…</div>
-          <div className="tiny muted">Checking grammar, vocabulary and sentence flow — just a few seconds.</div></div></div>
+        <div><div style={{fontWeight:500}}>{t.aiUse.teacherReading}</div>
+          <div className="tiny muted">{t.aiUse.checking}</div></div></div>
       <div className="track" style={{marginTop:12,overflow:"hidden"}}><span className="indet"/></div>
     </div>}
     {(real||fb==="mock") && (<div className="card card-p" style={{marginTop:16}}>
@@ -697,7 +846,7 @@ function AIWrite({lesson,onNext,onDone}){
         <div style={{marginBottom:8}}>✅ <b>Sentence construction.</b> <span className="muted">Clear structure. Try varying sentence length to sound more natural.</span></div>
         <div className="tiny muted" style={{marginTop:8}}>Showing sample feedback — the live AI check didn't respond just now, so try again in a moment for specific notes and a corrected draft.</div>
       </>)}
-      <div style={{marginTop:14}}><button className="btn btn-primary btn-sm" onClick={onNext}>Next · talk with the AI →</button></div>
+      <div style={{marginTop:14}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>
     </div>)}
   </div>);
 }
@@ -868,22 +1017,26 @@ function Done({lesson,onNew,onReview}){
 
 /* ---------- root ---------- */
 function App(){
+  const [uiLang,setUiLangState]=useState(DB.get("uiLang","en"));
+  const t=UI_TEXT[uiLang]||UI_TEXT.en;
+  function setUiLang(next){ setUiLangState(next); DB.set("uiLang",next); }
+  useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
   const [screen,setScreen]=useState(DB.get("email")?"input":"login");
   const [lesson,setLesson]=useState(null); const [text,setText]=useState("");
   async function loadLesson(d){ setText(d.text); DB.set("progress",0); DB.set("selfAfter",null); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); setScreen("preview"); }
     catch(e){ setLesson(generateLesson(d.text,d.lang,d.level,d.goal)); setScreen("preview"); } }
   function clearAll(){ if(confirm("Clear all local learning data (draft, notes, ratings, progress)?")){DB.clearAll();location.reload();} }
-  return (<div className="app">
+  return (<UIContext.Provider value={{uiLang,setUiLang,t}}><div className="app">
     {screen!=="login" && screen!=="lesson" && (<div className="topbar"><Brand/>
-      <div className="row"><button className="btn btn-ghost btn-sm muted" onClick={clearAll}>Clear local data</button>
-        {screen!=="input" && <button className="btn btn-outline btn-sm" onClick={()=>setScreen("input")}>New material</button>}</div></div>)}
+      <div className="row wrap" style={{justifyContent:"flex-end"}}><LanguageSwitch/><button className="btn btn-ghost btn-sm muted" onClick={clearAll}>{t.clearLocalData}</button>
+        {screen!=="input" && <button className="btn btn-outline btn-sm" onClick={()=>setScreen("input")}>{t.newMaterial}</button>}</div></div>)}
     {screen==="login" && <Login onDone={()=>setScreen("input")}/>}
     {screen==="loading" && <Loading/>}
     {screen==="input" && <InputScreen onNext={loadLesson}/>}
     {screen==="preview" && lesson && <Preview lesson={lesson} onBack={()=>setScreen("input")} onStart={()=>setScreen("lesson")}/>}
     {screen==="lesson" && lesson && <Lesson lesson={lesson} text={text} onFinish={()=>setScreen("done")}/>}
     {screen==="done" && lesson && <Done lesson={lesson} onNew={()=>setScreen("input")} onReview={()=>{DB.set("progress",0);setScreen("lesson");}}/>}
-  </div>);
+  </div></UIContext.Provider>);
 }
 export default function Page(){ return <App/>; }
