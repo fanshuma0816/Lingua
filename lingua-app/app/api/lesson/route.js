@@ -1,8 +1,12 @@
-import { generateLesson, enrich, cleanText } from "../../../lib/lesson";
+import { generateLesson, cleanText } from "../../../lib/lesson";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;   // reasoning models can take 20–40s; avoid the default 10s timeout
+export const maxDuration = 30;
 
+// Returns the lesson structure instantly. The AI analysis (translations, word
+// meanings, quiz, conversation) is fetched lazily per-step from /api/analyze and
+// /api/chat as the learner reaches each screen — small calls that stay fast and
+// never truncate on long texts.
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -10,15 +14,7 @@ export async function POST(req) {
     const lang = body.lang || "Spanish";
     const level = body.level || "A2 — Elementary";
     const goal = body.goal || "General fluency";
-
-    const base = generateLesson(text, lang, level, goal);
-    try {
-      const full = await enrich(base, { text, lang, level, goal });
-      return Response.json(full);
-    } catch (e) {
-      // key missing or model error → serve the deterministic mock lesson
-      return Response.json(base);
-    }
+    return Response.json(generateLesson(text, lang, level, goal));
   } catch (e) {
     return Response.json({ error: "bad request" }, { status: 400 });
   }

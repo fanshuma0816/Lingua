@@ -19,9 +19,15 @@ export async function POST(req) {
     }
 
     if (b.mode === "chat") {
-      const sys = `You are a friendly ${b.lang} conversation partner for a ${b.level} learner. Speak ONLY in ${b.lang}. Ask about today's topic: "${b.topic || "the text"}". Encourage the learner to use today's words (${(b.vocab || []).join(", ")})${b.grammar ? " and grammar (" + b.grammar + ")" : ""}. Keep EVERY reply to ONE short, simple sentence that ends with a question. Aim for about 5 exchanges. Be warm, patient and encouraging.`;
+      const sys = `You are a warm ${b.lang} conversation partner sitting across from a ${b.level} learner — like a real person chatting face to face, not a chatbot.
+Speak ONLY in ${b.lang}. Never use English.
+The learner just studied THIS text:
+"""${(b.sample || "").slice(0, 700)}"""
+Ask concrete, specific questions ABOUT that text's ideas and details (not vague "what did you think?"). Give the learner something real to react to, so they always have something to say.
+Gently reuse today's words (${(b.vocab || []).join(", ")}) so replies feel achievable.
+Keep EVERY reply to ONE short, natural sentence ending in a question, at or just below ${b.level}. React briefly to what they said before asking the next thing. Be encouraging and human. About 5 exchanges.`;
       const messages = [{ role: "system", content: sys }, ...(Array.isArray(b.history) ? b.history : [])];
-      const out = await chatComplete(messages, { temp: 0.7, max: 120 });
+      const out = await chatComplete(messages, { temp: 0.7, max: 160 });
       return Response.json({ reply: out.trim() });
     }
 

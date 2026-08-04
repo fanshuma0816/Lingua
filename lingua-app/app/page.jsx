@@ -9,6 +9,11 @@ const DB={ get(k,d){try{return JSON.parse(localStorage.getItem("lingua:"+k))??d}
 
 const LANG_CODE={Spanish:"es-ES",French:"fr-FR",German:"de-DE",Italian:"it-IT",Portuguese:"pt-PT",
   Dutch:"nl-NL",English:"en-US",Japanese:"ja-JP",Korean:"ko-KR","Mandarin Chinese":"zh-CN",Arabic:"ar-SA",Russian:"ru-RU"};
+// A friendly conversation partner per language — gives the chat a human face.
+const PARTNER={Spanish:{name:"Lucía",face:"👩🏻"},French:{name:"Camille",face:"👩🏼"},German:{name:"Lena",face:"👩🏼"},
+  Italian:{name:"Giulia",face:"👩🏻"},Portuguese:{name:"Sofia",face:"👩🏽"},Dutch:{name:"Sanne",face:"👩🏼"},
+  Japanese:{name:"Yuki",face:"🧑🏻"},Korean:{name:"Minji",face:"👩🏻"},"Mandarin Chinese":{name:"Mei",face:"👩🏻"},
+  Arabic:{name:"Layla",face:"🧕🏽"},Russian:{name:"Anna",face:"👩🏼"},English:{name:"Alex",face:"🧑🏼"},_:{name:"your partner",face:"🧑"}};
 const TTS_OK=typeof window!=="undefined" && "speechSynthesis" in window;
 // High-quality AI voice via /api/tts, with the browser voice as fallback.
 // ttsMode caches the outcome so we don't re-probe the API on every click.
@@ -221,8 +226,26 @@ function FullPlayer({text,lang,label,sub}){
 }
 function Say({text,lang,rate=1}){ return <button className="sbtn" title="play" onClick={()=>speak(text,lang,rate)}>▶</button>; }
 
-function SyncReader({items,lang,translation,rate=1,gap=0}){
+// Small per-section AI call. Returns parsed JSON or null (never throws).
+async function aiAnalyze(mode,payload){
+  try{ const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,...payload})});
+    if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
+}
+
+function SyncReader({items,lang,level,translation,rate=1,gap=0}){
   const [active,setActive]=useState(-1); const [playing,setPlaying]=useState(false); const stop=useRef(false);
+  const [trs,setTrs]=useState(()=>items.map(it=>it.tr||null));
+  const [loadingTr,setLoadingTr]=useState(false);
+  useEffect(()=>{ let cancel=false;
+    if(!translation) return;
+    if(!items.some((it,i)=>!(it.tr||trs[i]))) return;   // already have them all
+    setLoadingTr(true);
+    aiAnalyze("translate",{sentences:items.map(it=>it.s),lang,level}).then(d=>{
+      if(cancel) return; setLoadingTr(false);
+      if(d&&Array.isArray(d.translations)) setTrs(items.map((it,i)=>it.tr||d.translations[i]||null));
+    });
+    return ()=>{cancel=true;};
+  },[translation]);
   useEffect(()=>()=>{stop.current=true;stopSpeak();},[]);
   function playFrom(i){ if(stop.current||i>=items.length){setPlaying(false);setActive(-1);return;}
     setActive(i); const u=speak(items[i].s,lang,rate); if(!u){setPlaying(false);return;}
@@ -238,7 +261,7 @@ function SyncReader({items,lang,translation,rate=1,gap=0}){
     <div className="card card-p">
       {items.map((it,i)=>(<div key={i} className={"sline"+(active===i?" on":"")} onClick={()=>one(i)} style={{marginBottom:translation?6:2}}>
         <div style={{fontWeight:500}}>{it.s}</div>
-        {translation && <div className="tiny muted" style={{marginTop:2}}>{it.tr?("→ "+it.tr):"→ add an OpenAI key to show the real translation here"}</div>}
+        {translation && <div className="tiny muted" style={{marginTop:2}}>{(it.tr||trs[i])?("→ "+(it.tr||trs[i])):(loadingTr?"→ translating…":"→ translation unavailable")}</div>}
       </div>))}
     </div>
   </div>);
@@ -256,6 +279,24 @@ function Quiz({items,lang,audio}){
           <span className="mk">{chosen!=null&&o.ok?"✓":chosen===oi?"✕":String.fromCharCode(65+oi)}</span><span>{o.t}</span></div>); })}
       {chosen!=null && <div className="tiny muted" style={{marginTop:4}}>{q.options[chosen].ok?"Nice — that's right. 🎉":"Not quite — the highlighted one is it. Try replaying above."}</div>}
     </div>); })}</div>);
+}
+// Comprehension quiz written by the AI in the target language (falls back to the
+// built-in sentence-match quiz if the call fails).
+function AIQuiz({lesson}){
+  const {lang,level,sents,comprehension}=lesson;
+  const [items,setItems]=useState(comprehension);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{ let cancel=false;
+    aiAnalyze("quiz",{lang,level,sentences:sents.slice(0,10),count:3}).then(d=>{
+      if(cancel) return; setLoading(false);
+      if(d&&Array.isArray(d.items)&&d.items.length) setItems(d.items);
+    });
+    return ()=>{cancel=true;};
+  },[]);
+  return (<div>
+    {loading && <div className="tiny muted" style={{marginBottom:8}}>Writing a few questions about your text…</div>}
+    <Quiz items={items} lang={lang} audio={false}/>
+  </div>);
 }
 function SelfRate({value,onChange,prompt}){
   return (<div><div style={{fontWeight:600,marginBottom:12}}>{prompt}</div>
@@ -397,7 +438,7 @@ function StepBody({step,lesson,text,onComplete}){
     <div className="eyebrow">Learning</div><h2>Watch · in your language</h2>
     <Teacher>Now let's make sense of it. 👀 Play along and read the meaning in a language you already know.</Teacher>
     <Purpose>Delft gives you the translation up front, so the text makes sense before you study it — no guessing, no frustration.</Purpose>
-    <SyncReader items={(lesson.watch&&lesson.watch.length?lesson.watch:sents.slice(0,10).map(s=>({s})))} lang={lang} translation={true}/>
+    <SyncReader items={(lesson.watch&&lesson.watch.length?lesson.watch:sents.slice(0,10).map(s=>({s})))} lang={lang} level={lesson.level} translation={true}/>
     <CheckIn>Does the story make sense now? If a line still feels murky, tap it again — take your time.</CheckIn>
   </div>);
 
@@ -413,7 +454,7 @@ function StepBody({step,lesson,text,onComplete}){
     <div className="eyebrow">Testing</div><h2>Comprehension check</h2>
     <Teacher>Quick check — no pressure at all. ✅ Pick the sentence that matches what you read.</Teacher>
     <Purpose>Delft checks understanding after every text. It's not a test of you — it just tells us if you're ready to go deeper.</Purpose>
-    <Quiz items={lesson.comprehension} lang={lang} audio={false}/>
+    <AIQuiz lesson={lesson}/>
     <CheckIn>Got them? Wonderful. Missed one? Pop back to “Listen &amp; Read” — that's exactly how it's meant to work.</CheckIn>
   </div>);
 
@@ -446,20 +487,31 @@ function GrammarStep({lesson,onComplete}){
   const {lang,sents,vocab,vlist,level,recommended}=lesson;
   const N=Math.min(6,sents.length);
   const [gi,setGi]=useState(0); const [view,setView]=useState("study"); // study | summary
+  const [expl,setExpl]=useState({});     // word(lc) -> {meaning, example, pos} from AI
+  const [loadingKw,setLoadingKw]=useState(false);
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
   const vset=new Set(vlist);
   const vmap=Object.fromEntries((vocab||[]).map(v=>[v.word.toLowerCase(),v]));
   const depth=levelIdx(recommended)-levelIdx(level); // >0 harder for the learner
-  // Prefer words that carry a real AI meaning (from lesson.vocab); fall back to long words.
+  // Salient words to unpack: vocab words first, then longer words.
   function keyWordsIn(s){ const ws=[...new Set(words(s))];
     const inVocab=ws.filter(w=>vmap[w.toLowerCase()]);
     const long=ws.filter(w=>!vmap[w.toLowerCase()]&&w.length>6);
     return [...inVocab,...long].slice(0,4); }
-  function usageNote(w){
-    if(depth>=1) return `Likely new at your level — study how it's used in the sentence below and try it in your own example.`;
-    if(depth<=-1) return `A quick refresher — you probably know this one. Notice how it behaves here.`;
-    return `Notice its part of speech and where it sits in the sentence.`;
-  }
+  // Ask the AI to explain this sentence's key words in context (meaning + example).
+  useEffect(()=>{ let cancel=false;
+    const sen=sents[gi]||""; const kws=keyWordsIn(sen).filter(w=>!expl[w.toLowerCase()]);
+    if(!kws.length){ setLoadingKw(false); return; }
+    setLoadingKw(true);
+    aiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen}))}).then(d=>{
+      if(cancel) return; setLoadingKw(false);
+      if(d&&Array.isArray(d.items)){ setExpl(prev=>{ const n={...prev};
+        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,example:it.example||null,pos:it.pos||null}; });
+        return n; }); }
+    });
+    return ()=>{cancel=true;};
+  },[gi,view]);
+  function usageNote(w){ return loadingKw ? "Looking this word up for you…" : "Study how it's used in the sentence below, then try it in your own example."; }
   const s=sents[gi]||""; const kw=keyWordsIn(s); const phrases=expressionsInSentence(s);
 
   if(view==="summary") return (<div>
@@ -490,7 +542,7 @@ function GrammarStep({lesson,onComplete}){
         <span style={{fontWeight:600,fontSize:16}}>{s}</span><Say text={s} lang={lang} rate={0.75}/></div>
 
       <h3 className="lbl">Vocabulary</h3>
-      {kw.length?kw.map((w,j)=>{ const e=vmap[w.toLowerCase()]; return (<div className="wcard" key={j}>
+      {kw.length?kw.map((w,j)=>{ const e=expl[w.toLowerCase()]||vmap[w.toLowerCase()]; return (<div className="wcard" key={j}>
         <div className="row" style={{justifyContent:"space-between"}}>
           <span className="row" style={{gap:9}}><b style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
           <Say text={w} lang={lang} rate={0.75}/></div>
@@ -643,7 +695,7 @@ function AIWrite({lesson,onNext,onDone}){
         <div style={{marginBottom:8}}>✅ <b>Grammar.</b> <span className="muted">Tenses look consistent. Check subject–verb agreement in your longer sentence.</span></div>
         <div style={{marginBottom:8}}>✅ <b>Vocabulary.</b> <span className="muted">Nice reuse of today's words — add one connective phrase to link ideas.</span></div>
         <div style={{marginBottom:8}}>✅ <b>Sentence construction.</b> <span className="muted">Clear structure. Try varying sentence length to sound more natural.</span></div>
-        <div className="tiny muted" style={{marginTop:8}}>This is the simulated version — add an OpenAI key for real, specific feedback and a corrected draft.</div>
+        <div className="tiny muted" style={{marginTop:8}}>Showing sample feedback — the live AI check didn't respond just now, so try again in a moment for specific notes and a corrected draft.</div>
       </>)}
       <div style={{marginTop:14}}><button className="btn btn-primary btn-sm" onClick={onNext}>Next · talk with the AI →</button></div>
     </div>)}
@@ -651,29 +703,35 @@ function AIWrite({lesson,onNext,onDone}){
 }
 
 function AIChat({lesson,onDone}){
-  const {lang,level,vocab,topics,grammarFocus}=lesson;
+  const {lang,level,vocab,topics,grammarFocus,sents}=lesson;
   const vwords=vocab.slice(0,6).map(v=>v.word);
   const topic=(topics&&topics.join(", "))||"the text";
   const grammar=(grammarFocus&&grammarFocus.join("; "))||"";
+  const sample=(sents||[]).slice(0,8).join(" ");
+  const partner=PARTNER[lang]||PARTNER._;
   const fallback=[`Let's chat in ${lang}. Tell me one thing you found interesting.`,
     `Use the word "${vwords[0]||"it"}" in a sentence.`,`What's your opinion?`,`Why do you think so?`,`Give me one more full sentence.`];
   const [msgs,setMsgs]=useState([]); const [draft,setDraft]=useState("");
   const [busy,setBusy]=useState(false); const [turns,setTurns]=useState(0);
+  const [speaking,setSpeaking]=useState(false);
   const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null); const [listening,setListening]=useState(false);
   const mockRef=useRef(false); const recRef=useRef(null);
   const MAX_TURNS=5;
 
+  // Speak an AI line and reflect the "talking / your turn" state so it feels live.
+  function sayAI(line){ setSpeaking(true); const u=speak(line,lang); if(u){ u.onend=()=>setSpeaking(false); } else setSpeaking(false); }
+
   async function aiReply(history){
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:"chat",lang,level,vocab:vwords,topic,grammar,history})});
+        body:JSON.stringify({mode:"chat",lang,level,vocab:vwords,topic,grammar,sample,history})});
       if(!r.ok) throw new Error("no api"); const d=await r.json(); return d.reply||null;
     }catch(e){ return null; }
   }
   useEffect(()=>{ (async()=>{
     setBusy(true);
     const reply=await aiReply([]);
-    if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); speak(reply,lang); }
-    else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); speak(fallback[0],lang); }
+    if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); sayAI(reply); }
+    else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
     setBusy(false);
   })(); return ()=>{stopSpeak(); stopMic();}; },[]);
 
@@ -699,35 +757,46 @@ function AIChat({lesson,onDone}){
     const withMe=[...msgs,{who:"me",t:draft.trim()}]; const nx=turns+1;
     setMsgs(withMe); setDraft(""); setTurns(nx);
     if(nx>=MAX_TURNS){ finish(withMe); return; }
-    if(mockRef.current){ const line=fallback[nx]||fallback[fallback.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); speak(line,lang); return; }
+    if(mockRef.current){ const line=fallback[nx]||fallback[fallback.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); sayAI(line); return; }
     setBusy(true);
     const reply=await aiReply(toHistory(withMe));
-    const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) speak(reply,lang);
+    const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) sayAI(line);
     setBusy(false);
   }
 
   const lastAi=[...msgs].reverse().find(m=>m.who==="ai");
   return (<div>
-    <div className="notice" style={{marginBottom:14}}><span>🎧</span>
-      <span>A voice conversation in <b>{lang}</b>. Your AI partner <b>speaks each question</b> — listen, then reply in {lang} by <b>voice 🎤 or typing</b>. About {MAX_TURNS} exchanges, all around today's topic and words.</span></div>
-    <div className="card card-p">
-      <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
+    <div className="notice" style={{marginBottom:14}}><span>🗣️</span>
+      <span>You're talking with <b>{partner.name}</b>, face to face, in <b>{lang}</b>. {partner.name} speaks first — listen, then <b>hold the mic and say your answer</b> out loud (or type). About {MAX_TURNS} exchanges.</span></div>
+
+    {/* the person you're talking with */}
+    <div className="card card-p" style={{textAlign:"center",background:"hsl(var(--secondary))"}}>
+      <div style={{fontSize:60,lineHeight:1,filter:speaking?"none":"grayscale(.15)"}}>{partner.face}</div>
+      <div style={{fontWeight:700,marginTop:6}}>{partner.name}</div>
+      <div className="tiny muted">{busy?"…thinking":speaking?"🔊 speaking…":"listening — your turn"}</div>
+      {lastAi && <div style={{fontWeight:500,fontSize:17,margin:"12px auto 0",maxWidth:520}}>{lastAi.t}</div>}
+      <div className="row" style={{gap:8,justifyContent:"center",marginTop:10}}>
+        {lastAi && <button className="btn btn-outline btn-sm" onClick={()=>sayAI(lastAi.t)}>🔊 Say it again</button>}
         <span className="tiny muted">Exchange {Math.min(turns+1,MAX_TURNS)} of {MAX_TURNS}</span>
-        {lastAi && <button className="btn btn-outline btn-sm" onClick={()=>speak(lastAi.t,lang)}>🔊 Replay question</button>}
       </div>
-      <div className="chat">{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}
-        {m.who==="ai" && <button className="sbtn" style={{marginLeft:8,verticalAlign:"middle"}} onClick={()=>speak(m.t,lang)}>▶</button>}</div>))}
-        {busy && <div className="bubble ai muted">…</div>}</div>
-      {!done ? (<div style={{marginTop:14}}>
-        <textarea style={{minHeight:64}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={"Reply in "+lang+" — speak with 🎤 or type…"}/>
-        <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
-          <div className="row" style={{gap:8}}>
-            {SR && <button className={"btn btn-sm "+(listening?"btn-primary":"btn-outline")} onClick={listening?stopMic:startMic}>{listening?"● Listening…":"🎤 Speak"}</button>}
-            <span className="tiny muted">{full?"Looks good ✓":"At least a short sentence"}</span>
-          </div>
-          <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>Send</button></div>
-        {!SR && <div className="tiny muted" style={{marginTop:8}}>Tip: speaking (🎤) works in Chrome/Edge. In other browsers, just type your reply.</div>}
-      </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
+    </div>
+
+    {!done ? (<div style={{marginTop:16}}>
+      {/* voice-first reply */}
+      {SR ? (<div style={{textAlign:"center"}}>
+        <button className={"btn "+(listening?"btn-primary":"btn-outline")} style={{fontSize:17,padding:"14px 26px",borderRadius:999}}
+          onClick={listening?stopMic:startMic}>{listening?"● Listening — tap when done":"🎤 Hold the floor · speak your answer"}</button>
+        <div className="tiny muted" style={{marginTop:8}}>Speak in {lang}. Your words appear below — edit if you like, then reply.</div>
+      </div>) : <div className="tiny muted" style={{marginBottom:6}}>Type your reply in {lang} below (voice input works in Chrome/Edge).</div>}
+      <textarea style={{minHeight:56,marginTop:12}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={"Your reply in "+lang+"…"}/>
+      <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
+        <span className="tiny muted">{full?"Looks good ✓":"Say at least a short sentence"}</span>
+        <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>Reply to {partner.name} →</button></div>
+
+      {/* transcript, tucked below so it feels like a conversation, not a chat log */}
+      {msgs.length>1 && <details style={{marginTop:14}}><summary className="tiny muted" style={{cursor:"pointer"}}>Show transcript</summary>
+        <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}</div>))}</div></details>}
+    </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
         <h3 className="lbl">Conversation feedback{evalz?"":" · simulated"}</h3>
         {evalz ? (<div>
           <div style={{marginBottom:8}}>🎉 {evalz.praise}</div>
@@ -736,7 +805,6 @@ function AIChat({lesson,onDone}){
           <div>✅ <b>Fluency.</b> <span className="muted">{evalz.fluency}</span></div>
         </div>) : (<div className="muted">You held a voice exchange in {lang} using today's words — exactly the goal. 🎉</div>)}
       </div>)}
-    </div>
   </div>);
 }
 
