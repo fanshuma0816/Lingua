@@ -7,8 +7,8 @@ export const maxDuration = 60;
 
 export async function POST(req) {
   try {
-    const { text, lang, rate } = await req.json();
-    const r = await miniMaxTTS({ text, lang, rate });
+    const { text, lang, rate, voiceRole } = await req.json();
+    const r = await miniMaxTTS({ text, lang, rate, voiceRole });
     if (r.buf) return new Response(r.buf, { headers: { "Content-Type": "audio/mpeg" } });
     return new Response(null, { status: 204 });
   } catch (e) {

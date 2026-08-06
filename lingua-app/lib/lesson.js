@@ -24,12 +24,27 @@ const TOPIC_KEYWORDS = {
 };
 
 export function cleanText(raw) {
-  let t = raw || "";
-  t = t.replace(/\[(music|applause|laughter|inaudible|crosstalk|silence)\]/gi, " ");
-  t = t.replace(/\d{1,2}:\d{2}(:\d{2})?(\.\d+)?/g, " ");
-  t = t.replace(/^\s*\d+\s*$/gm, " ").replace(/-->/g, " ")
-       .replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").replace(/\n[ \t]+/g, "\n");
-  return t.trim();
+  let t = String(raw || "").normalize("NFKC");
+  t = t.replace(/[\uFFFD\u200B-\u200D\uFEFF]/g, "");
+  t = t.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'");
+  t = t.replace(/[“”„]/g, '"').replace(/[‘’‚]/g, "'").replace(/[‐‑‒–—―]/g, "-");
+  t = t.replace(/^\s*WEBVTT[^\n]*$/gim, " ");
+  t = t.replace(/^\s*(kind:\s*captions|language:\s*\w+|subscribe|like and subscribe|advertentie|reclame)\s*$/gim, " ");
+  t = t.replace(/\[(music|muziek|applause|applaus|laughter|gelach|inaudible|onverstaanbaar|crosstalk|silence)\]/gi, " ");
+  t = t.replace(/\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?\s*(?:-->|-\s*>|→)\s*\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?/g, " ");
+  t = t.replace(/\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?/g, " ");
+  t = t.replace(/^\s*\d+\s*$/gm, " ").replace(/-->/g, " ");
+  t = t.replace(/([a-zà-ÿ])-\s*\n\s*([a-zà-ÿ])/giu, "$1$2");
+  t = t.replace(/[ \t]*\n[ \t]*/g, "\n").replace(/[ \t]{2,}/g, " ");
+  t = t.replace(/\s+([,.;:!?])/g, "$1").replace(/([¿¡])\s+/g, "$1");
+  t = t.replace(/([!?]){3,}/g, "$1$1").replace(/([,;:]){2,}/g, "$1").replace(/\.{4,}/g, "...");
+  const lines = t.split(/\n+/).map(x => x.trim()).filter(Boolean);
+  const out = [];
+  for (const line of lines) {
+    if (out.length && !/[.!?。！？:;]$/.test(out[out.length - 1]) && /^[\p{Ll}'"]/u.test(line)) out[out.length - 1] += " " + line;
+    else out.push(line);
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 function words(text) { return (text.toLowerCase().match(/[\p{L}][\p{L}'’-]{2,}/gu) || []); }
 function pickVocab(text, n) {
@@ -91,17 +106,25 @@ function quizItems(sents, pool, count) {
   return items;
 }
 
-// Estimate realistic study minutes from length, vocabulary, sentences and difficulty.
-function estimateMinutes(chars, sentCount, vocabCount, diff) {
-  const s = Math.min(8, sentCount || 0);
-  const base = 8 + (chars || 0) / 500 + (vocabCount || 10) * 0.4 + s * 0.8;
-  const mult = 0.85 + (diff || 3) * 0.08; // 1..5 stars -> ~0.93 .. 1.25
-  return Math.max(8, Math.round(base * mult));
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+function estimateVocabCount(text, chars) {
+  const wc = words(text || "").length;
+  return clamp(Math.round(Math.max((chars || 0) / 120, wc * 0.08)), 6, 30);
+}
+
+// Estimate the full lesson, not just reading time: meaning, vocabulary,
+// sentence work, practice, checks, and a buffer for mistakes/repetition.
+function estimateMinutes(chars, sentCount, vocabCount, diff, wordCount = 0) {
+  const wc = wordCount || Math.max(1, Math.round((chars || 0) / 6));
+  const s = sentCount || 1;
+  const base = 6 + wc / 70 + (vocabCount || 8) * 0.7 + s * 1.8 + 5 + ((vocabCount || 8) + s) * 0.25;
+  const mult = 0.92 + (diff || 3) * 0.08;
+  return clamp(Math.round((base * mult) / 5) * 5, 20, 180);
 }
 
 export function generateLesson(text, lang, level, goal) {
   const chars = text.length; const sents = sentencesOf(text);
-  const vocabCount = Math.min(16, Math.max(8, Math.round(chars / 150)));
+  const vocabCount = estimateVocabCount(text, chars);
   const vlist = pickVocab(text, vocabCount);
   const vocab = vlist.map((w, i) => ({ word: w.replace(/^./, c => c.toUpperCase()), pos: POS[i % POS.length], context: contextFor(w, sents), meaning: null, example: null }));
   const recommended = recommendLevel(text, sents);
@@ -110,8 +133,8 @@ export function generateLesson(text, lang, level, goal) {
     lang, level, goal, charCount: chars, sents, vocab, vocabCount, vlist, recommended,
     topics: inferTopics(text),
     diff: Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level)))),
-    estMin: estimateMinutes(chars, sents.length, vocabCount, Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level))))),
-    grammarFocus: ["Common tenses used in the passage", "Word order & sentence position", "Connective & opinion phrases"],
+    estMin: estimateMinutes(chars, sents.length, vocabCount, Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level)))), words(text).length),
+    grammarFocus: ["Verb position in main clauses", "Useful tense patterns", "Connectors and sentence flow"],
     comprehension: quizItems(simple, vlist, 3),
     recognition: quizItems(sents, vlist, 3),
     watch: sents.slice(0, 10).map(s => ({ s, tr: null })),

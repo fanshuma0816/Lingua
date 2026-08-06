@@ -11,7 +11,7 @@ export async function POST(req) {
   try {
     const body = await req.json();
     const text = cleanText(body.text || "");
-    const lang = body.lang || "Spanish";
+    const lang = body.lang || "Dutch";
     const level = body.level || "A2 — Elementary";
     const goal = body.goal || "General fluency";
     return Response.json(generateLesson(text, lang, level, goal));

@@ -14,7 +14,9 @@
 //     MINIMAX_GROUP_ID   your GroupId (required for voice)
 //     MINIMAX_BASE_URL   https://api.minimaxi.com/v1
 //     MINIMAX_TTS_MODEL  speech-02-hd
-//     MINIMAX_TTS_VOICE  a voice_id (e.g. female-shaonv)
+//     MINIMAX_TTS_VOICE  Dutch_kindhearted_girl
+//     MINIMAX_TTS_DUTCH_FEMALE  Dutch_kindhearted_girl
+//     MINIMAX_TTS_DUTCH_MALE    Dutch_bossy_leader
 
 const strip = (u, d) => (u || d).replace(/\/+$/, "");
 
@@ -30,8 +32,10 @@ export const AI = {
   mmKey: process.env.MINIMAX_API_KEY || process.env.OPENAI_API_KEY || "",
   mmGroup: process.env.MINIMAX_GROUP_ID || "",
   mmModel: process.env.MINIMAX_TTS_MODEL || "speech-02-hd",
-  mmVoice: process.env.MINIMAX_TTS_VOICE || "female-shaonv",          // fallback voice
-  mmVoices: (() => { try { return JSON.parse(process.env.MINIMAX_TTS_VOICES || "{}"); } catch (e) { return {}; } })(), // optional per-language: {"Dutch":"id","Japanese":"id"}
+  mmVoice: process.env.MINIMAX_TTS_VOICE || "Dutch_kindhearted_girl", // default single-speaker voice
+  mmDutchFemaleVoice: process.env.MINIMAX_TTS_DUTCH_FEMALE || process.env.MINIMAX_TTS_VOICE || "Dutch_kindhearted_girl",
+  mmDutchMaleVoice: process.env.MINIMAX_TTS_DUTCH_MALE || "Dutch_bossy_leader",
+  mmVoices: (() => { try { return JSON.parse(process.env.MINIMAX_TTS_VOICES || "{}"); } catch (e) { return {}; } })(), // legacy per-language map; not needed for Dutch-only mode
 };
 
 // Reasoning models (e.g. MiniMax M-series) wrap output in <think>…</think>.
@@ -88,10 +92,12 @@ export const MM_LANG_BOOST = {
 
 // MiniMax T2A v2 call. Returns { buf } on success or { error } (with the real
 // reason) on failure — reused by /api/tts and /api/health.
-export async function miniMaxTTS({ text, lang, rate }) {
+export async function miniMaxTTS({ text, lang, rate, voiceRole }) {
   if (!AI.mmKey) return { error: "no key" };
   if (!AI.mmGroup) return { error: "no MINIMAX_GROUP_ID" };
-  const voice = AI.mmVoices[lang] || AI.mmVoice;
+  const voice = lang === "Dutch"
+    ? (voiceRole === "male" ? AI.mmDutchMaleVoice : AI.mmDutchFemaleVoice)
+    : (AI.mmVoices[lang] || AI.mmVoice);
   let res;
   try {
     res = await fetch(`${AI.mmBase}/t2a_v2?GroupId=${encodeURIComponent(AI.mmGroup)}`, {
