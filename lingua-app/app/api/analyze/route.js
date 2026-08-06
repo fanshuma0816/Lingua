@@ -50,9 +50,10 @@ Use concrete details, not generic textbook filler. Do not include translations.`
     if (b.mode === "explain") {
       const items = (b.items || []).slice(0, 6);
       if (!items.length) return Response.json({ items: [] });
+      const explanationLanguage = b.explanationLanguage || "English";
       const sys = "You are a warm, precise language teacher. Reply ONLY with minified JSON, no prose.";
       const user = `A ${level} learner of ${lang} is studying these words, each shown with the sentence it appears in.
-Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-3 very simple English words, as used here>,"detail":<one short English explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>}]} — one object per input word, same order.
+Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>}]} — one object per input word, same order.
 Words:\n${JSON.stringify(items)}`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 1600 });
       const p = parseJSON(out);
@@ -71,9 +72,11 @@ ${sentence}
 ${translation}
 Explain 1-2 grammar points that are actually useful for this specific learner and this specific sentence.
 Use ${feedbackLanguage} for "point" and "explain". Keep each explanation under 22 words.
-The "example" must be one short new ${lang} sentence showing the same pattern.
-Return JSON {"items":[{"point":<short label>,"explain":<level-specific explanation>,"example":<new sentence in ${lang}>}]}.`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 1200 });
+Give exactly 3 short new ${lang} example sentences for each grammar point, with natural ${feedbackLanguage} translations.
+If the sentence is very simple, return one useful review point rather than inventing advanced grammar.
+Do not repeat the original sentence as an example.
+Return JSON {"items":[{"point":<short label>,"explain":<level-specific explanation>,"examples":[{"sentence":<new sentence in ${lang}>,"translation":<translation in ${feedbackLanguage}>}]}]}.`;
+      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 1800 });
       const p = parseJSON(out);
       return Response.json({ items: Array.isArray(p.items) ? p.items.slice(0, 2) : [] });
     }
