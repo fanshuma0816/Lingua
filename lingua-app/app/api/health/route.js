@@ -1,7 +1,7 @@
 // Full diagnostics. Open /api/health in your browser: it actually tests the
 // chat model, the lesson translation, and the voice — and shows the REAL error
 // for each if something fails. Keys are never shown. (Costs a few tokens per hit.)
-import { AI, chatComplete, miniMaxTTS } from "../../../lib/ai";
+import { AI, chatComplete, googleTTS } from "../../../lib/ai";
 import { generateLesson, enrich } from "../../../lib/lesson";
 
 export const runtime = "nodejs";
@@ -11,8 +11,11 @@ export async function GET() {
   const out = {
     config: {
       chatBase: AI.base, chatPath: AI.chatPath, model: AI.model, jsonMode: AI.jsonMode, hasKey: !!AI.key,
-      voiceBase: AI.mmBase, voiceModel: AI.mmModel, defaultVoice: AI.mmVoice, dutchFemaleVoice: AI.mmDutchFemaleVoice, dutchMaleVoice: AI.mmDutchMaleVoice, hasGroupId: !!AI.mmGroup,
-      perLanguageVoices: AI.mmVoices,
+      voiceProvider: "Google Cloud Text-to-Speech",
+      defaultVoice: AI.googleTTSDefault,
+      dutchFemaleVoice: AI.googleTTSDutchFemale,
+      dutchMaleVoice: AI.googleTTSDutchMale,
+      hasGoogleTTSKey: !!AI.googleTTSKey,
     },
   };
 
@@ -36,7 +39,7 @@ export async function GET() {
 
   // 3) voice
   try {
-    const r = await miniMaxTTS({ text: "Hallo, hoe gaat het met je?", lang: "Dutch", rate: 1, voiceRole: "female" });
+    const r = await googleTTS({ text: "Hallo, hoe gaat het met je?", lang: "Dutch", rate: 1, voiceRole: "female" });
     out.voice = r.buf ? { ok: true, bytes: r.buf.length, voiceUsed: r.voice } : { ok: false, error: r.error, voiceTried: r.voice };
   } catch (e) { out.voice = { ok: false, error: String(e.message || e).slice(0, 300) }; }
 

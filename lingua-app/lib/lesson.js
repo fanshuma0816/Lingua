@@ -59,13 +59,11 @@ function sentencesOf(text) {
   if (!text) return [];
   let t = text.replace(/\s*[•·▪‣◦]\s*/g, "\n");
   const primary = new RegExp("(?<!\\b(?:" + ABBR + ")\\.)(?<=[.!?…。！？])\\s+(?=[\\p{Lu}\"“'(\\[])|\\s*[;；]\\s+(?=[\\p{Lu}])|\\s*\\n+\\s*", "u");
-  const secondary = /(?<=[\p{Ll})\]])(?<!\b\p{Lu}[\p{Ll}à-ÿ]{2,})\s+(?=[\p{Lu}][\p{Ll}à-ÿ]{3,}\b(?!\s+[\p{Lu}]))/u;
   const MAX = 110, out = [];
   for (let p of t.split(primary)) {
     if (p == null) continue;
     p = p.replace(/\s+/g, " ").trim(); if (!p) continue;
-    if (p.length > MAX) p.split(secondary).forEach(x => { x = x.trim(); if (x) out.push(x); });
-    else out.push(p);
+    out.push(p);
   }
   const merged = [];
   for (const s of out) { if (s.length < 10 && merged.length) merged[merged.length - 1] += " " + s; else merged.push(s); }

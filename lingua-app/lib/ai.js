@@ -9,14 +9,11 @@
 //     OPENAI_CHAT_PATH   /chat/completions   (OpenAI-compatible; chatcompletion_v2 is deprecated)
 //     OPENAI_MODEL       e.g. MiniMax-M2.7 / MiniMax-Text-01 (confirm the exact id in your console)
 //     OPENAI_JSON_MODE   0
-// VOICE (TTS): MiniMax T2A v2 (needs a GroupId).
-//     MINIMAX_API_KEY    (optional) defaults to OPENAI_API_KEY
-//     MINIMAX_GROUP_ID   your GroupId (required for voice)
-//     MINIMAX_BASE_URL   https://api.minimaxi.com/v1
-//     MINIMAX_TTS_MODEL  speech-02-hd
-//     MINIMAX_TTS_VOICE  Dutch_kindhearted_girl
-//     MINIMAX_TTS_DUTCH_FEMALE  Dutch_kindhearted_girl
-//     MINIMAX_TTS_DUTCH_MALE    Dutch_bossy_leader
+// VOICE (TTS): Google Cloud Text-to-Speech REST API.
+//     GOOGLE_TTS_API_KEY       your Google Cloud TTS API key
+//     GOOGLE_TTS_DUTCH_FEMALE  e.g. a nl-NL female voice name
+//     GOOGLE_TTS_DUTCH_MALE    e.g. a nl-NL male voice name
+//     GOOGLE_TTS_DEFAULT       fallback nl-NL voice name
 
 const strip = (u, d) => (u || d).replace(/\/+$/, "");
 
@@ -27,15 +24,11 @@ export const AI = {
   model: process.env.OPENAI_MODEL || "gpt-4o-mini",
   jsonMode: (process.env.OPENAI_JSON_MODE ?? "1") !== "0",
 
-  // MiniMax TTS
-  mmBase: strip(process.env.MINIMAX_BASE_URL, "https://api.minimaxi.com/v1"),
-  mmKey: process.env.MINIMAX_API_KEY || process.env.OPENAI_API_KEY || "",
-  mmGroup: process.env.MINIMAX_GROUP_ID || "",
-  mmModel: process.env.MINIMAX_TTS_MODEL || "speech-02-hd",
-  mmVoice: process.env.MINIMAX_TTS_VOICE || "Dutch_kindhearted_girl", // default single-speaker voice
-  mmDutchFemaleVoice: process.env.MINIMAX_TTS_DUTCH_FEMALE || process.env.MINIMAX_TTS_VOICE || "Dutch_kindhearted_girl",
-  mmDutchMaleVoice: process.env.MINIMAX_TTS_DUTCH_MALE || "Dutch_bossy_leader",
-  mmVoices: (() => { try { return JSON.parse(process.env.MINIMAX_TTS_VOICES || "{}"); } catch (e) { return {}; } })(), // legacy per-language map; not needed for Dutch-only mode
+  // Google Cloud TTS
+  googleTTSKey: process.env.GOOGLE_TTS_API_KEY || "",
+  googleTTSDefault: process.env.GOOGLE_TTS_DEFAULT || "",
+  googleTTSDutchFemale: process.env.GOOGLE_TTS_DUTCH_FEMALE || process.env.GOOGLE_TTS_DEFAULT || "",
+  googleTTSDutchMale: process.env.GOOGLE_TTS_DUTCH_MALE || process.env.GOOGLE_TTS_DEFAULT || "",
 };
 
 // Reasoning models (e.g. MiniMax M-series) wrap output in <think>…</think>.
@@ -83,43 +76,33 @@ export function parseJSON(s) {
   return JSON.parse(t);
 }
 
-// Map our language names to MiniMax language_boost values (improves pronunciation).
-export const MM_LANG_BOOST = {
-  "Mandarin Chinese": "Chinese", English: "English", Spanish: "Spanish", French: "French",
-  German: "German", Italian: "Italian", Portuguese: "Portuguese", Dutch: "Dutch",
-  Japanese: "Japanese", Korean: "Korean", Arabic: "Arabic", Russian: "Russian",
-};
+function googleVoiceForRole(voiceRole) {
+  if (voiceRole === "female") return AI.googleTTSDutchFemale || AI.googleTTSDefault;
+  if (voiceRole === "male") return AI.googleTTSDutchMale || AI.googleTTSDefault;
+  return AI.googleTTSDefault;
+}
 
-// MiniMax T2A v2 call. Returns { buf } on success or { error } (with the real
-// reason) on failure — reused by /api/tts and /api/health.
-export async function miniMaxTTS({ text, lang, rate, voiceRole }) {
-  if (!AI.mmKey) return { error: "no key" };
-  if (!AI.mmGroup) return { error: "no MINIMAX_GROUP_ID" };
-  const voice = lang === "Dutch"
-    ? (voiceRole === "male" ? AI.mmDutchMaleVoice : AI.mmDutchFemaleVoice)
-    : (AI.mmVoices[lang] || AI.mmVoice);
+// Google Cloud Text-to-Speech. Returns { buf } on success or { error }; callers
+// convert failures to 204 so the browser voice fallback still works.
+export async function googleTTS({ text, rate, voiceRole }) {
+  if (!AI.googleTTSKey) return { error: "no GOOGLE_TTS_API_KEY" };
+  const voice = googleVoiceForRole(voiceRole);
+  if (!voice) return { error: "no Google TTS voice configured" };
   let res;
   try {
-    res = await fetch(`${AI.mmBase}/t2a_v2?GroupId=${encodeURIComponent(AI.mmGroup)}`, {
+    res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(AI.googleTTSKey)}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${AI.mmKey}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: AI.mmModel,
-        text: (text || "").slice(0, 4000),
-        stream: false,
-        output_format: "hex",
-        language_boost: MM_LANG_BOOST[lang] || "auto",
-        voice_setting: { voice_id: voice, speed: rate || 1, vol: 1, pitch: 0 },
-        audio_setting: { sample_rate: 32000, bitrate: 128000, format: "mp3", channel: 1 },
+        input: { text: (text || "").slice(0, 4000) },
+        voice: { languageCode: "nl-NL", name: voice },
+        audioConfig: { audioEncoding: "MP3", speakingRate: rate || 1 },
       }),
     });
   } catch (e) { return { error: "network " + String(e.message || e).slice(0, 150), voice }; }
   if (!res.ok) { const t = await res.text().catch(() => ""); return { error: "http " + res.status + " " + t.slice(0, 200), voice }; }
   const d = await res.json();
-  const hex = d?.data?.audio;
-  if (!hex) {
-    const br = d.base_resp;
-    return { error: br ? ("provider " + br.status_code + " " + (br.status_msg || "")) : "no audio in response", voice };
-  }
-  return { buf: Buffer.from(hex, "hex"), voice };
+  const audio = d?.audioContent;
+  if (!audio) return { error: "no audioContent in response", voice };
+  return { buf: Buffer.from(audio, "base64"), voice };
 }
