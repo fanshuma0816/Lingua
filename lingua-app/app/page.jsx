@@ -26,9 +26,9 @@ const UI_TEXT={
     findTitle:"Find something to learn", findSub:"Tell us what you are learning, and AI will recommend a few materials that fit your level and goal.",
     duration:"Full lesson time", interests:"Topics you like", generateMaterials:"Generate materials", generatingMaterials:"Finding good options…", chooseMaterial:"Choose one to study", useThisText:"Use this text", switchAnytime:"Pick any option below. You can switch before starting the lesson.",
     durationPlans:[
-      {label:"10-20 min",icon:"🌱",length:"45-95 words",vocab:"~4-8 new words"},
+      {label:"20-30 min",icon:"🌱",length:"70-120 words",vocab:"~6-10 new words"},
+      {label:"35-45 min",icon:"📗",length:"110-180 words",vocab:"~8-14 new words"},
       {label:"45-60 min",icon:"📘",length:"140-240 words",vocab:"~10-18 new words"},
-      {label:"75-90 min",icon:"🧭",length:"240-380 words",vocab:"~16-24 new words"},
     ],
     interestOptions:["Daily life","News","Culture","Travel","Work & study","Food","Technology","Society"],
     materialTipsTitle:"Need ideas?", materialTips:[
@@ -60,11 +60,11 @@ const UI_TEXT={
     yourText:"Your text", uploadTxt:"Upload .txt", textPlaceholder:"Paste an article, podcast transcript, newsletter excerpt, dialogue…",
     cleanNote:"Timestamps, noisy symbols, broken line breaks and spacing are lightly cleaned.", targetLanguage:"Target language *", select:"Select…",
     currentLevel:"Your current level", sessionGoal:"Session goal", overLimit:"Over the 1,200-character limit — split this into smaller chunks. Short sections usually learn better.",
-    splitTitle:"This may be too much for one session", splitText:(mins)=>`This looks like about ${mins} minutes. For a focused lesson under 2 hours, split it into a smaller excerpt.`,
+    splitTitle:"This may be too much for one session", splitText:(mins)=>`This looks like a long text. For a focused lesson under 60 minutes, split it into a smaller excerpt.`,
     chooseTarget:"Choose your target language to continue.", analyzeText:"Analyze text",
     goals:["General fluency","Conversation & speaking","Reading comprehension","Vocabulary building","Exam preparation"],
     levels:["A1 — Beginner","A2 — Elementary","B1 — Intermediate","B2 — Upper-intermediate","C1 — Advanced"],
-    previewTitle:"Here's your text", previewSub:"A quick read on your material before we begin.", topics:"Topics:",
+    previewTitle:"Here's your text", previewSub:"A quick read on your material before we begin.", topics:"Topics:", previewTextTitle:"Full text", previewTextHint:"Read it once before you start. Go back if you'd like a different text.",
     recommendedLevel:"Recommended level", estimatedTime:"Estimated time", vocabulary:"Vocabulary", characters:"Characters", chars:"chars",
     wordCount:(n)=>`${n} words`, diffLabels:["","Comfortable review","An easy read","Right at your level","A gentle stretch","Challenging"],
     difficultyForYou:"Difficulty for you", basedOnLevel:(a,b)=>`Based on your level (${a}) vs the text's (${b}).`,
@@ -84,7 +84,7 @@ const UI_TEXT={
     selfLow:"0% · nothing yet", selfHigh:"100% · all of it",
     sr:{teacher:"Trust your ears. Play each line, then choose the sentence you heard.",purpose:"This sharpens the bridge between sound and meaning, one small decision at a time.",check:"Nailing these? Great ear. A few tricky? Replay and try once more — no rush."},
     understand:{teacher:(lang)=>`One last full listen. Play it through with ${lang} text — it should feel clear now.`,purpose:"You have met the meaning, the sound, and the useful patterns. This pass helps everything settle together.",check:"Feels clearer than the first time? That's your progress showing."},
-    timed:{title:(subs)=>`Practice · ${subs?"with subtitles":"no subtitles"}`,teacherSubs:"Time to speak. I'll play each line, then it's your turn to read it aloud before the gentle timer moves you on.",teacherNoSubs:"Ears only now. I'll play each line — you repeat it from memory. Reveal the text only if you need to peek.",purpose:"Speaking full sentences gives your mouth a path to follow, so the language starts to feel usable.",how:"How this works",tips:["One sentence fills the screen — just focus on that.","Listen, then read aloud during the countdown.","It auto-advances, but Back, Replay and Pause are always there."],ready:"I'm ready — start",breath:"Take a breath first — it won't start until you press the button.",done:(n)=>`You practised all ${n} sentences. Press Continue when you're ready.`,again:"Practise again",doneCheck:"Said each one out loud? That's exactly it. Another round never hurts.",listen:"Listen",yourTurn:"Your turn — read aloud",hide:"Hide text",reveal:"Reveal text",replay:"Replay",pause:"Pause",resume:"Resume",skip:"Skip"},
+    timed:{title:(subs)=>`Practice · ${subs?"with subtitles":"no subtitles"}`,teacherSubs:"Time to speak. First replay the sentence as many times as you like, then start the gentle countdown when you're ready.",teacherNoSubs:"Ears first. Replay the sentence, use slow audio if you need it, then repeat from memory. Reveal the text only if you need to peek.",purpose:"Speaking full sentences gives your mouth a path to follow, so the language starts to feel usable.",how:"How this works",tips:["One sentence fills the screen — just focus on that.","Play it more than once, or use slow audio before speaking.","Start the countdown only when you are ready; Back and Skip are always there."],ready:"I'm ready — start",breath:"Nothing plays automatically here. You choose when to listen and when to speak.",done:(n)=>`You practised all ${n} sentences. Press Continue when you're ready.`,again:"Practise again",doneCheck:"Said each one out loud? That's exactly it. Another round never hurts.",listen:"Listen first",yourTurn:"Your turn — read aloud",hide:"Hide text",reveal:"Reveal text",replay:"Play again",slow:"Slow",startSpeaking:"Start speaking",pause:"Pause",resume:"Resume",skip:"Skip"},
     aiUse:{title:"Practice with AI",teacher:"Let's actually use it. First write a little, then have a short chat — all with today's words.",purpose:"This turns the lesson into something you can say back, gently and in context.",writeTab:"Part 1 · Write",chatTab:"Part 2 · Talk",unlock:"Finish unlocks once you've got feedback in Part 1 and completed the Part 2 chat.",feedback:"Get feedback",reading:"Reading…",teacherReading:"Your teacher is reading your writing…",checking:"Checking grammar, vocabulary and sentence flow — just a few seconds.",nextTalk:"Next · talk with the AI",writePlaceholder:(lang)=>`Write your answer in ${lang}…`,question:(topic,lang)=>`Based on the passage — "${topic}" — what's your view? Write 3–4 sentences in ${lang} using today's words.`,saved:(n)=>`${n} words · saved locally`,feedbackTitle:(sim)=>`Feedback & suggested revision${sim?" · simulated":""}`,grammar:"Grammar",vocab:"Vocabulary",sentence:"Sentence construction",revision:"Suggested revision",mockGrammar:"Tenses look consistent. Check subject–verb agreement in your longer sentence.",mockVocab:"Nice reuse of today's words — add one connective phrase to link ideas.",mockSentence:"Clear structure. Try varying sentence length to sound more natural.",mockNote:"Showing sample feedback — the live AI check didn't respond just now, so try again in a moment for specific notes and a corrected draft."},
     focus:{title:"Today's focus",teacher:"A few things are especially worth carrying through the lesson today.",vocab:"Top vocabulary",grammar:"Top grammar",level:"Level",loading:"Choosing today's focus…"},
     recall:{title:"Recall from English",teacher:"Now make your brain reach back for the Dutch. Read the English cue, then say or type the original idea before checking.",purpose:"This forces active output, so the text becomes something you can produce, not only recognize.",englishCue:"English cue",yourDutch:"Your Dutch",placeholder:"Type the Dutch you remember…",speak:"Speak",check:"Check original",original:"Original",tryFirst:"Say or type your answer first.",done:"You tried every recall prompt.",progress:(a,b)=>`Prompt ${a} of ${b}`},
@@ -116,9 +116,9 @@ const UI_TEXT={
     findTitle:"寻找学习材料", findSub:"告诉我们你在学什么，AI 会推荐适合你水平和目标的材料。",
     duration:"完整课程时长", interests:"感兴趣的话题", generateMaterials:"生成学习材料", generatingMaterials:"正在寻找合适内容…", chooseMaterial:"选择一段来学习", useThisText:"使用这段文本", switchAnytime:"在开始课程前，你可以在下面几段材料之间切换。",
     durationPlans:[
-      {label:"10-20 分钟",icon:"🌱",length:"45-95 个词",vocab:"约 4-8 个生词"},
+      {label:"20-30 分钟",icon:"🌱",length:"70-120 个词",vocab:"约 6-10 个生词"},
+      {label:"35-45 分钟",icon:"📗",length:"110-180 个词",vocab:"约 8-14 个生词"},
       {label:"45-60 分钟",icon:"📘",length:"140-240 个词",vocab:"约 10-18 个生词"},
-      {label:"75-90 分钟",icon:"🧭",length:"240-380 个词",vocab:"约 16-24 个生词"},
     ],
     interestOptions:["日常生活","新闻","文化","旅行","工作与学习","食物","科技","社会"],
     materialTipsTitle:"找材料灵感", materialTips:[
@@ -150,11 +150,11 @@ const UI_TEXT={
     yourText:"你的文本", uploadTxt:"上传 .txt", textPlaceholder:"粘贴文章、播客字幕、 newsletter 节选、对话…",
     cleanNote:"时间戳、乱码符号、断行和多余空格会被轻量清理。", targetLanguage:"目标语言 *", select:"请选择…",
     currentLevel:"当前水平", sessionGoal:"学习目标", overLimit:"超过 1,200 字符限制。建议拆成小段学习，效果会更好。",
-    splitTitle:"这段可能不适合一次学完", splitText:(mins)=>`预计完整学习约 ${mins} 分钟。为了把单次学习控制在 2 小时内，建议先截取更小的一段。`,
+    splitTitle:"这段可能不适合一次学完", splitText:(mins)=>`这段文本偏长。为了把单次学习控制在 60 分钟以内，建议先截取更小的一段。`,
     chooseTarget:"请选择目标语言后继续。", analyzeText:"分析文本",
     goals:["综合流利度","对话与口语","阅读理解","词汇积累","考试准备"],
     levels:["A1 — 入门","A2 — 初级","B1 — 中级","B2 — 中高级","C1 — 高级"],
-    previewTitle:"这是你的文本概览", previewSub:"开始前先快速了解这份材料。", topics:"主题：",
+    previewTitle:"这是你的文本概览", previewSub:"开始前先快速了解这份材料。", topics:"主题：", previewTextTitle:"完整文本", previewTextHint:"开始前先通读一遍。如果想换一段，可以返回。",
     recommendedLevel:"推荐水平", estimatedTime:"预计时间", vocabulary:"词汇", characters:"字符数", chars:"字符",
     wordCount:(n)=>`${n} 个词`, diffLabels:["","舒适复习","比较轻松","正适合你","温和挑战","有挑战"],
     difficultyForYou:"对你的难度", basedOnLevel:(a,b)=>`基于你的水平（${a}）和文本水平（${b}）估算。`,
@@ -174,7 +174,7 @@ const UI_TEXT={
     selfLow:"0% · 还不太懂", selfHigh:"100% · 全部理解",
     sr:{teacher:"相信你的耳朵。播放每一句，然后选择你听到的句子。",purpose:"这个小判断会把声音和意思连起来，一次只练一个清晰选择。",check:"做得顺的话很好；如果有几句难，重播再试一次，不急。"},
     understand:{teacher:(lang)=>`最后完整听一遍。配合 ${lang} 原文播放，现在应该清楚很多。`,purpose:"你已经见过意思、声音和常用结构了。最后这一遍会帮它们自然合在一起。",check:"比第一次清楚了吗？这就是你的进步。"},
-    timed:{title:(subs)=>`练习 · ${subs?"带字幕":"无字幕"}`,teacherSubs:"开始说出来。我会播放每一句，然后轮到你在温和倒计时里朗读。",teacherNoSubs:"现在只靠耳朵。我会播放每一句，你凭记忆复述；需要时可以再显示文本。",purpose:"练完整句会让嘴巴有路可走，语言会慢慢变成你能说出口的东西。",how:"练习方式",tips:["屏幕一次只显示一句，专注这一句就好。","先听，然后在倒计时里读出来。","会自动进入下一句，但返回、重播、暂停一直可用。"],ready:"我准备好了，开始",breath:"先深呼吸，按下按钮前不会开始。",done:(n)=>`你已经练完 ${n} 个句子。准备好后点继续。`,again:"再练一遍",doneCheck:"每一句都说出来了吗？就是这样。多来一轮也很好。",listen:"听",yourTurn:"轮到你 · 读出来",hide:"隐藏文本",reveal:"显示文本",replay:"重播",pause:"暂停",resume:"继续",skip:"跳过"},
+    timed:{title:(subs)=>`练习 · ${subs?"带字幕":"无字幕"}`,teacherSubs:"开始说出来。你可以先反复播放这一句，也可以慢速播放；准备好了再开始温和倒计时。",teacherNoSubs:"现在先靠耳朵。你可以反复播放、慢速播放，然后凭记忆复述；需要时再显示文本。",purpose:"练完整句会让嘴巴有路可走，语言会慢慢变成你能说出口的东西。",how:"练习方式",tips:["屏幕一次只显示一句，专注这一句就好。","可以先多听几遍，或用慢速播放。","你准备好后才开始倒计时；返回和跳过一直可用。"],ready:"我准备好了，开始",breath:"这里不会自动播放。你自己决定什么时候听、什么时候开口。",done:(n)=>`你已经练完 ${n} 个句子。准备好后点继续。`,again:"再练一遍",doneCheck:"每一句都说出来了吗？就是这样。多来一轮也很好。",listen:"先听",yourTurn:"轮到你 · 读出来",hide:"隐藏文本",reveal:"显示文本",replay:"再播放",slow:"慢速",startSpeaking:"开始朗读",pause:"暂停",resume:"继续",skip:"跳过"},
     aiUse:{title:"和 AI 练习",teacher:"现在真正用起来。先写一点，再进行一段短对话，尽量用今天的词。",purpose:"这一步把课程变成你能回应、能表达的内容，轻一点，但要真的开口。",writeTab:"Part 1 · 写作",chatTab:"Part 2 · 对话",unlock:"完成 Part 1 反馈和 Part 2 对话后，就可以结束课程。",feedback:"获取反馈",reading:"阅读中…",teacherReading:"老师正在阅读你的写作…",checking:"正在检查语法、词汇和句子流畅度，几秒钟就好。",nextTalk:"下一步 · 和 AI 对话",writePlaceholder:(lang)=>`用 ${lang} 写下你的回答…`,question:(topic,lang)=>`根据这段材料 “${topic}”，你怎么看？请用 ${lang} 写 3–4 句，并尽量用今天的词。`,saved:(n)=>`${n} 个词 · 已本地保存`,feedbackTitle:(sim)=>`反馈和建议修改${sim?" · 模拟":""}`,grammar:"语法",vocab:"词汇",sentence:"句子结构",revision:"建议修改",mockGrammar:"时态整体一致。较长句子里可以再检查主语和动词是否对应。",mockVocab:"今天的词用得不错，可以再加一个连接短语让意思更连贯。",mockSentence:"结构清楚。试着变化一下句子长度，会更自然。",mockNote:"正在显示示例反馈；实时 AI 刚才没有响应，稍后可再试一次获得更具体的修改。"},
     focus:{title:"今日重点",teacher:"今天有几处特别值得一路带着学。",vocab:"重点词汇",grammar:"重点语法",level:"等级",loading:"正在提炼今日重点…"},
     recall:{title:"英文提示回忆",teacher:"现在让大脑主动把荷兰语找回来。先看英文提示，然后说出或写出原文意思，再查看答案。",purpose:"这一步会强迫主动输出，让文本不只是能看懂，也能说出来。",englishCue:"英文提示",yourDutch:"你的荷兰语",placeholder:"写下你记得的荷兰语…",speak:"语音输入",check:"查看原文",original:"原文",tryFirst:"请先说出或写下你的答案。",done:"每个回忆提示都尝试过了。",progress:(a,b)=>`第 ${a} / ${b} 题`},
@@ -201,6 +201,23 @@ function progressPct(elapsed,estimate){ return Math.min(92,Math.max(12,Math.roun
 function fmtTime(sec){
   const s=Math.max(0,Math.round(sec||0)); const m=Math.floor(s/60); const r=String(s%60).padStart(2,"0");
   return `${m}:${r}`;
+}
+function scrollToTop(){
+  if(typeof window==="undefined") return;
+  requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:"auto"}));
+}
+function durationSpec(label){
+  const nums=String(label||"").match(/\d+/g)?.map(Number)||[];
+  // Full-lesson time is capped at 60 min, so no tier can exceed it.
+  const min=Math.min(60,nums[0]||45), max=Math.min(60,nums[1]||min);
+  let words=[140,240], vocab=[10,18];
+  if(max<=30){ words=[70,120]; vocab=[6,10]; }
+  else if(max<=45){ words=[110,180]; vocab=[8,14]; }
+  return {min,max,target:Math.round((min+max)/2),words,vocab,label:`${min}-${max}`};
+}
+function clampToDuration(mins,label){
+  const spec=durationSpec(label);
+  return Math.max(spec.min,Math.min(spec.max,mins||spec.target));
 }
 function estimateAudioSeconds(text,rate=1){
   const wc=words(text||"").length;
@@ -368,13 +385,24 @@ function stopSpeak(){
   if(typeof window!=="undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
+const REPORTING_LABEL_WORDS=new Set("de het een bij op in aan naar van voor met zonder door hij zij ze ik we wij jij je zegt zei vragen vraagt vroeg antwoordt antwoordde koopt geeft gaat komt staat loopt wil wilt kan kunt moet mag heeft heb betaal betaalt".split(" "));
+const ROLE_LABELS=new Set("man vrouw meneer mevrouw jongen meisje klant verkoper verkoopster kassier kassière caissière receptionist receptioniste ober serveerster docent leraar lerares teacher cashier customer".split(" "));
 function speakerKey(line){
-  const m=String(line||"").match(/^\s*([\p{L}][\p{L} .'-]{0,24}):\s+/u);
-  return m ? m[1].trim().toLowerCase() : null;
+  const m=String(line||"").match(/^\s*([\p{Lu}][\p{L}'-]{1,24}(?:\s+[\p{Lu}][\p{L}'-]{1,24}){0,2}|[\p{Lu}][\p{L}'-]{1,24}):\s+/u);
+  if(!m) return null;
+  const label=m[1].trim();
+  const lower=label.toLowerCase();
+  const parts=lower.split(/\s+/);
+  const rawParts=label.split(/\s+/);
+  if(parts.some(w=>REPORTING_LABEL_WORDS.has(w)) && !ROLE_LABELS.has(lower)) return null;
+  if(parts.length>1 && !rawParts.every(w=>/^\p{Lu}/u.test(w)) && !ROLE_LABELS.has(lower)) return null;
+  return lower;
 }
 function isDashTurn(line){ return /^\s*[-–—]\s+\S/.test(String(line||"")); }
 function spokenTextForLine(line){
-  return String(line||"").replace(/^\s*[\p{L}][\p{L} .'-]{0,24}:\s+/u,"").replace(/^\s*[-–—]\s+/,"").trim() || String(line||"");
+  const s=String(line||"");
+  const key=speakerKey(s);
+  return (key?s.replace(/^\s*[\p{L}][\p{L} .'-]{0,40}:\s+/u,""):s).replace(/^\s*[-–—]\s+/,"").trim() || s;
 }
 function itemText(item){ return typeof item==="string" ? item : (item&&item.s)||""; }
 function dialogueLike(items){
@@ -408,7 +436,7 @@ function voiceRoleForLine(line,index,items=[]){
   return index%2===0 ? "female" : "male";
 }
 function dialogueSegments(text){
-  const normalized=String(text||"").replace(/\r/g,"\n").replace(/\s+(?=[\p{L}][\p{L} .'-]{0,24}:\s+)/gu,"\n");
+  const normalized=String(text||"").replace(/\r/g,"\n").replace(/\s+(?=[\p{Lu}][\p{L}'-]{1,24}(?:\s+[\p{Lu}][\p{L}'-]{1,24}){0,2}:\s+)/gu,"\n");
   const lines=normalized.split(/\n+/).map(s=>s.trim()).filter(Boolean);
   if(!dialogueLike(lines)) return [];
   return lines.map((line,i)=>({text:spokenTextForLine(line),voiceRole:voiceRoleForLine(line,i,lines)})).filter(s=>s.text);
@@ -447,14 +475,36 @@ function pickVocab(text,n){ const ws=words(text); const freq={};
 const ABBR="Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|vs|etc|e\\.g|i\\.e|bijv|enz|nr|resp|approx|no|No|Inc|Ltd|Co";
 function sentencesOf(text){
   if(!text) return [];
-  let t=text.replace(/\s*[•·▪‣◦]\s*/g,"\n");
-  const primary=new RegExp("(?<!\\b(?:"+ABBR+")\\.)(?<=[.!?…。！？])\\s+(?=[\\p{Lu}\"“'(\\[])|\\s*[;；]\\s+(?=[\\p{Lu}])|\\s*\\n+\\s*","u");
+  let t=text.replace(/\s*[•·▪‣◦]\s*/g,"\n").replace(/\r/g,"\n");
   const out=[];
-  for(let p of t.split(primary)){
-    if(p==null) continue;
-    p=p.replace(/\s+/g," ").trim(); if(!p) continue;
-    out.push(p);
+  const abbrRe=new RegExp("\\b(?:"+ABBR+")\\.$","i");
+  let buf="",quote=null;
+  const push=()=>{ const p=buf.replace(/\s+/g," ").trim(); if(p) out.push(p); buf=""; };
+  for(let i=0;i<t.length;i++){
+    const ch=t[i];
+    buf+=ch;
+    if(ch==="\""||ch==="“"||ch==="”"){
+      const closing=!!quote;
+      quote=closing ? null : ch;
+      if(closing && /[.!?…。！？]/u.test(t[i-1]||"") && /^\s+[A-ZÀ-ÖØ-Þ]/.test(t.slice(i+1))) push();
+      continue;
+    }
+    if(ch==="\n"){ push(); quote=null; continue; }
+    if(quote) continue;
+    if(/[.!?…。！？]/u.test(ch)){
+      const prev=buf.trim();
+      if(ch==="."&&abbrRe.test(prev)) continue;
+      const rest=t.slice(i+1);
+      const m=rest.match(/^\s+([\s\S]?)/u);
+      if(!m) continue;
+      const next=m[1]||"";
+      if(/[A-ZÀ-ÖØ-Þ"“'(\[]/.test(next)) push();
+    }else if(/[;；]/u.test(ch)){
+      const rest=t.slice(i+1);
+      if(/^\s+[A-ZÀ-ÖØ-Þ]/.test(rest)) push();
+    }
   }
+  push();
   const merged=[];
   for(const s of out){ if(s.length<10&&merged.length) merged[merged.length-1]+=" "+s; else merged.push(s); }
   return merged.filter(s=>s.length>3);
@@ -463,6 +513,40 @@ function contextFor(word,sents){ const s=sents.find(x=>x.toLowerCase().includes(
 function expressionsInSentence(s){ const ws=words(s); const out=[]; for(let i=0;i<ws.length-1;i++){ const a=ws[i],b=ws[i+1];
   if(a.length>3&&b.length>3&&!STOP.has(a)&&!STOP.has(b)){ out.push(a+" "+b); } } return out.slice(0,2); }
 const POS=["noun","verb","adjective","adverb","phrase"];
+const DUTCH_HINTS={
+  koopt:{pos:"verb",en:"buys",zh:"买",detailEn:"third-person singular of kopen",detailZh:"kopen 的第三人称单数"},
+  koop:{pos:"verb",en:"buy",zh:"买"}, kopen:{pos:"verb",en:"to buy",zh:"买"},
+  brood:{pos:"noun",en:"bread",zh:"面包"}, kaas:{pos:"noun",en:"cheese",zh:"奶酪"}, fruit:{pos:"noun",en:"fruit",zh:"水果"},
+  kassa:{pos:"noun",en:"cash register",zh:"收银台"}, caissière:{pos:"noun",en:"cashier",zh:"女收银员"}, kassier:{pos:"noun",en:"cashier",zh:"收银员"},
+  zegt:{pos:"verb",en:"says",zh:"说"}, zeggen:{pos:"verb",en:"to say",zh:"说"},
+  betaal:{pos:"verb",en:"pay",zh:"付款"}, betaalt:{pos:"verb",en:"pays",zh:"付款"}, contant:{pos:"adverb",en:"in cash",zh:"用现金"},
+  geld:{pos:"noun",en:"money",zh:"钱"}, geeft:{pos:"verb",en:"gives",zh:"给"}, geven:{pos:"verb",en:"to give",zh:"给"},
+  dank:{pos:"phrase",en:"thanks",zh:"谢谢"}, dankjewel:{pos:"phrase",en:"thank you",zh:"谢谢你"}, bedankt:{pos:"phrase",en:"thanks",zh:"谢谢"},
+  goedenavond:{pos:"phrase",en:"good evening",zh:"晚上好"}, goedemorgen:{pos:"phrase",en:"good morning",zh:"早上好"}, alstublieft:{pos:"phrase",en:"please",zh:"请/给您"},
+  ziens:{pos:"phrase",en:"goodbye",zh:"再见"}, avond:{pos:"noun",en:"evening",zh:"晚上"}, prettige:{pos:"adjective",en:"pleasant",zh:"愉快的"},
+  huis:{pos:"noun",en:"home",zh:"家"}, gaat:{pos:"verb",en:"goes",zh:"去"}, gaan:{pos:"verb",en:"to go",zh:"去"},
+  kookt:{pos:"verb",en:"cooks",zh:"做饭"}, koken:{pos:"verb",en:"to cook",zh:"做饭"}, lekker:{pos:"adjective",en:"tasty",zh:"好吃的"}, avondeten:{pos:"noun",en:"dinner",zh:"晚饭"},
+  supermarkt:{pos:"noun",en:"supermarket",zh:"超市"}, meneer:{pos:"noun",en:"mister",zh:"先生"}, mevrouw:{pos:"noun",en:"madam",zh:"女士"},
+};
+function inferDutchPos(word){
+  const w=String(word||"").toLowerCase();
+  if(DUTCH_HINTS[w]?.pos) return DUTCH_HINTS[w].pos;
+  if(/(en)$/.test(w)) return "verb";
+  if(/(t|dt)$/.test(w)) return "verb";
+  if(/(ig|lijk|isch|e)$/.test(w)) return "adjective";
+  return "noun";
+}
+function fallbackWordInfo(word,lang,uiLang="en"){
+  const w=String(word||"").toLowerCase();
+  const h=lang==="Dutch" ? DUTCH_HINTS[w] : null;
+  if(!h) return {word,pos:lang==="Dutch"?inferDutchPos(w):"phrase",simpleMeaning:word,detail:null};
+  const zh=uiLang==="zh";
+  return {word,pos:h.pos||inferDutchPos(w),simpleMeaning:zh?(h.zh||h.en):(h.en||h.zh),detail:zh?(h.detailZh||h.detailEn||null):(h.detailEn||h.detailZh||null)};
+}
+function displayWordInfo(word,lang,uiLang,base,ai){
+  const fallback=fallbackWordInfo(word,lang,uiLang);
+  return {...(base||{}),...fallback,...(ai||{}),word:(base&&base.word)||word};
+}
 const LEVELS=["A1 — Beginner","A2 — Elementary","B1 — Intermediate","B2 — Upper-intermediate","C1 — Advanced"];
 function levelIdx(l){ const p=(l||"").slice(0,2); return Math.max(0,LEVELS.findIndex(x=>x.startsWith(p))); }
 function recommendLevel(text,sents){ const ws=words(text); if(!ws.length) return LEVELS[1];
@@ -512,13 +596,14 @@ function estimateMinutes(chars,sentCount,vocabCount,diff,wordCount=0){
   const s=sentCount||1;
   const base=6 + wc/70 + (vocabCount||8)*0.7 + s*1.8 + 5 + ((vocabCount||8)+s)*0.25;
   const mult=0.92 + (diff||3)*0.08;
-  return clamp(Math.round((base*mult)/5)*5,20,180);
+  return clamp(Math.round((base*mult)/5)*5,15,60);
 }
-function materialStats(text,level){
+function materialStats(text,level,targetDuration){
   const clean=cleanText(text||""); const ws=words(clean); const sents=sentencesOf(clean);
   const recommended=recommendLevel(clean,sents); const diff=clamp(3+(levelIdx(recommended)-levelIdx(level)),1,5);
   const vocab=estimateVocabCount(clean,clean.length);
-  return {words:ws.length,chars:clean.length,vocab,mins:estimateMinutes(clean.length,sents.length,vocab,diff,ws.length)};
+  const estimated=estimateMinutes(clean.length,sents.length,vocab,diff,ws.length);
+  return {words:ws.length,chars:clean.length,vocab,mins:targetDuration?clampToDuration(estimated,targetDuration):estimated};
 }
 function sourceIcon(source){
   const s=(source||"").toLowerCase();
@@ -578,15 +663,16 @@ function fallbackGrammarItems(sentence,level,uiLang){
     ],
   }];
 }
-function generateLesson(text,lang,level,goal){ const chars=text.length; const sents=sentencesOf(text);
+function generateLesson(text,lang,level,goal,targetMin=null){ const chars=text.length; const sents=sentencesOf(text);
   const vocabCount=estimateVocabCount(text,chars);
   const vlist=pickVocab(text,vocabCount);
-  const vocab=vlist.map((w,i)=>({word:w.replace(/^./,c=>c.toUpperCase()),pos:POS[i%POS.length],context:contextFor(w,sents)}));
+  const vocab=vlist.map(w=>{ const f=fallbackWordInfo(w,lang,"en"); return {...f,word:w.replace(/^./,c=>c.toUpperCase()),context:contextFor(w,sents)}; });
   const recommended=recommendLevel(text,sents);
   const diff=Math.max(1,Math.min(5,3+(levelIdx(recommended)-levelIdx(level))));
+  const estimated=estimateMinutes(chars,sents.length,vocabCount,diff,words(text).length);
   return { lang,level,goal,charCount:chars,sents,vocab,vocabCount,vlist,recommended,diff,
     topics:inferTopics(text),
-    estMin:estimateMinutes(chars,sents.length,vocabCount,diff,words(text).length),
+    estMin:targetMin||estimated,
     grammarFocus:["Verb position in main clauses","Useful tense patterns","Connectors and sentence flow"],
     comprehension:quizItems([...sents].sort((a,b)=>a.split(/\s+/).length-b.split(/\s+/).length),vlist,3),
     recognition:quizItems(sents,vlist,3) }; }
@@ -886,23 +972,26 @@ function InputScreen({onNext}){
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setRaw(String(r.result));r.readAsText(f);}
   const ready=count>40&&!over&&lang;
   const liveStats=count>40?materialStats(cleaned,level):null;
-  const shouldSplit=liveStats&&(liveStats.mins>90||count>1050||liveStats.words>220);
+  const shouldSplit=liveStats&&(liveStats.mins>=60||count>1050||liveStats.words>240);
   const durationPlans=t.durationPlans||[];
   const selectedDuration=durationPlans[durationIdx]?.label||"45-60 min";
   const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
+  useEffect(()=>{ scrollToTop(); },[mode]);
   function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
   async function generateMaterials(){
     if(!lang) return;
     setGenerating(true);
     const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics});
     const generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
-    const items=(generated.length?generated:sampleMaterials(lang,level,goal,selectedDuration,topics)).slice(0,3);
+    const spec=durationSpec(selectedDuration);
+    const items=(generated.length?generated:sampleMaterials(lang,level,goal,selectedDuration,topics)).slice(0,3)
+      .map(m=>({...m,duration:selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
     setMaterials(items); setSelectedMaterial(0); setGenerating(false);
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m) return;
     const text=m.text||""; DB.set("draft",text); DB.set("lang",lang); DB.set("level",level); DB.set("goal",goal);
-    onNext({text:cleanText(text),lang,level,goal});
+    onNext({text:cleanText(text),lang,level,goal,targetMin:m.targetMinutes||durationSpec(selectedDuration).target});
   }
   if(!mode) return (<div className="start-screen">
     <div className="start-head">
@@ -958,7 +1047,7 @@ function InputScreen({onNext}){
         <button className="btn btn-primary btn-sm" onClick={startGenerated}>{t.useThisText} →</button>
       </div>
       <div className="generated-grid">
-        {materials.map((m,i)=>{ const stats=materialStats(m.text,level); return <button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
+        {materials.map((m,i)=>{ const stats=materialStats(m.text,level,m.duration||selectedDuration); return <button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
           <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
@@ -999,16 +1088,25 @@ function InputScreen({onNext}){
   </div>);
 }
 
-function Preview({lesson,onStart,onBack}){
+function Preview({lesson,text,onStart,onBack}){
   const {t}=useUI();
   const heavy=lesson.vocabCount>12;
   const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
   const diffLabel=t.diffLabels[lesson.diff];
+  const fullText=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
   return (<div>
     <h1>{t.previewTitle}</h1><p className="sub">{t.previewSub}</p>
     <div className="row wrap" style={{gap:7,marginBottom:16}}>
       <span className="tiny muted" style={{fontWeight:600}}>{t.topics}</span>
       {lesson.topics.map(t=><span key={t} className="badge badge-warm">{t}</span>)}
+    </div>
+    <div className="card card-p" style={{marginBottom:16}}>
+      <div className="row" style={{justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+        <h3 className="lbl" style={{margin:0}}>{t.previewTextTitle}</h3>
+        <span className="tiny muted">{lesson.charCount.toLocaleString()} {t.chars}</span>
+      </div>
+      <div className="tiny muted" style={{marginBottom:10}}>{t.previewTextHint}</div>
+      <div style={{maxHeight:280,overflowY:"auto",whiteSpace:"pre-wrap",lineHeight:1.7,fontSize:15,padding:"2px 2px"}}>{fullText}</div>
     </div>
     <div className="grid4" style={{marginBottom:14}}>
       <Stat k={t.recommendedLevel} v={lesson.recommended.split(" — ")[0]}/>
@@ -1016,7 +1114,7 @@ function Preview({lesson,onStart,onBack}){
       <Stat k={t.vocabulary} v={t.wordCount(lesson.vocabCount)}/>
       <Stat k={t.characters} v={lesson.charCount.toLocaleString()}/>
     </div>
-    {total>120 && <div className="split-warning" style={{marginBottom:14}}>
+    {(lesson.charCount>1050||lesson.vocabCount>18) && <div className="split-warning" style={{marginBottom:14}}>
       <b>{t.splitTitle}</b>
       <span>{t.splitText(total)}</span>
     </div>}
@@ -1071,14 +1169,14 @@ function DailyFocus({lesson}){
 }
 
 /* ---------- lesson shell ---------- */
-const GATED=new Set([3,7,8]);
+const GATED=new Set();
 function Lesson({lesson,text,onFinish}){
   const {t}=useUI();
   const savedProgress=Math.max(0,Math.min(STEPS.length-1,DB.get("progress",0)));
   const [step,setStep]=useState(savedProgress);
   const [gateOpen,setGateOpen]=useState(!GATED.has(savedProgress));
-  useEffect(()=>{DB.set("progress",step);stopSpeak();window.scrollTo({top:0,behavior:"smooth"});},[step]);
-  function go(ns){ setGateOpen(!GATED.has(ns)); setStep(ns); }
+  useEffect(()=>{DB.set("progress",step);stopSpeak();scrollToTop();},[step]);
+  function go(ns){ setGateOpen(!GATED.has(ns)); setStep(ns); scrollToTop(); }
   const S=STEPS[step]; const pct=Math.round(((step+1)/STEPS.length)*100);
   const stepMin=Math.max(1,Math.round(S.min*((lesson.estMin||TOTAL_MIN)/TOTAL_MIN)));
   const locked=GATED.has(step)&&!gateOpen;
@@ -1240,7 +1338,7 @@ function GrammarStep({lesson,onComplete}){
     <Teacher>{t.gram.summaryTeacher}</Teacher>
     <div className="summary-stack">
       <h3 className="lbl">{t.gram.allVocab}</h3>
-      {studyWords.map((w,j)=>{ const e=expl[w.toLowerCase()]||vmap[w.toLowerCase()]||vocab.find(v=>v.word.toLowerCase()===w.toLowerCase()); const parts=meaningParts(e); return (
+      {studyWords.map((w,j)=>{ const base=vmap[w.toLowerCase()]||vocab.find(v=>v.word.toLowerCase()===w.toLowerCase()); const e=displayWordInfo(w,lang,uiLang,base,expl[w.toLowerCase()]); const parts=meaningParts(e); return (
         <details className="summary-card" key={w}>
           <summary>
             <span className="row" style={{gap:9}}><b>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
@@ -1292,7 +1390,7 @@ function GrammarStep({lesson,onComplete}){
         </div>
         <div className="mini-track"><span style={{width:progressPct(lookupElapsed,lookupEstimate)+"%"}}/></div>
       </div>}
-      {kw.length?kw.map((w,j)=>{ const e=expl[w.toLowerCase()]||vmap[w.toLowerCase()]; const parts=meaningParts(e); return (<div className="wcard" key={j}>
+      {kw.length?kw.map((w,j)=>{ const e=displayWordInfo(w,lang,uiLang,vmap[w.toLowerCase()],expl[w.toLowerCase()]); const parts=meaningParts(e); return (<div className="wcard" key={j}>
         <div className="row" style={{justifyContent:"space-between"}}>
           <span className="row" style={{gap:9}}><b style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
           <Say text={w} lang={lang} rate={1}/></div>
@@ -1337,33 +1435,28 @@ function TimedPractice({sents,lang,withSubs}){
   const list=sents;
   const [started,setStarted]=useState(false);
   const [idx,setIdx]=useState(0);
-  const [phase,setPhase]=useState("listen"); // listen | speak | done
+  const [phase,setPhase]=useState("prepare"); // prepare | speak | done
   const [left,setLeft]=useState(0); const [paused,setPaused]=useState(false);
-  const [reveal,setReveal]=useState(withSubs); const [nonce,setNonce]=useState(0);
+  const [reveal,setReveal]=useState(withSubs);
   const cur=list[idx]||"";
   const secs=Math.min(12,Math.max(4,Math.round(cur.split(/\s+/).filter(Boolean).length*0.9)));
   const phaseIndex=withSubs?4:5;
 
-  useEffect(()=>{ setStarted(false); setIdx(0); setPhase("listen"); setLeft(0); setPaused(false); setReveal(withSubs); setNonce(0); stopSpeak(); },[withSubs,list.length]);
-
-  useEffect(()=>{ if(!started) return; if(idx>=list.length){setPhase("done");return;}
-    setReveal(withSubs); setPhase("listen"); stopSpeak(); let done=false;
-    const toSpeak=()=>{ if(!done){ done=true; setPhase("speak"); setLeft(secs); } };
-    const role=voiceRoleForLine(cur,idx,list);
-    const u=speak(role?spokenTextForLine(cur):cur,lang,1,role);
-    if(u) u.onend=toSpeak;                  // advance to "your turn" only when the audio actually finishes
-    const safety=setTimeout(toSpeak,Math.max(30000,estimateAudioSeconds(cur,1)*1300+4000)); // safety net in case audio never signals
-    return ()=>{ done=true; clearTimeout(safety); stopSpeak(); };
-  },[idx,nonce,started]);
+  useEffect(()=>{ setStarted(false); setIdx(0); setPhase("prepare"); setLeft(0); setPaused(false); setReveal(withSubs); stopSpeak(); },[withSubs,list.length]);
+  useEffect(()=>{ if(!started) return; setPhase("prepare"); setLeft(0); setPaused(false); setReveal(withSubs); stopSpeak(); },[idx,started,withSubs]);
 
   useEffect(()=>{ if(!started||phase!=="speak"||paused)return;
-    if(left<=0){ if(idx<list.length-1){ setPhase("listen"); setLeft(0); setIdx(idx+1); } else setPhase("done"); return; }
+    if(left<=0){ if(idx<list.length-1){ setIdx(idx+1); } else setPhase("done"); return; }
     const t=setTimeout(()=>setLeft(l=>l-1),1000); return ()=>clearTimeout(t);
   },[phase,left,paused,idx,started]);
 
-  function togglePause(){ if(!paused){ stopSpeak(); setPaused(true); } else { setPaused(false); if(phase==="listen") setNonce(n=>n+1); } }
-
-  function restartPractice(){ stopSpeak(); setStarted(true); setIdx(0); setPhase("listen"); setLeft(0); setPaused(false); setReveal(withSubs); setNonce(n=>n+1); }
+  function playLine(rate=1){
+    const role=voiceRoleForLine(cur,idx,list);
+    speak(role?spokenTextForLine(cur):cur,lang,rate,role);
+  }
+  function startSpeaking(){ stopSpeak(); setPhase("speak"); setLeft(secs); setPaused(false); }
+  function togglePause(){ if(!paused){ stopSpeak(); setPaused(true); } else setPaused(false); }
+  function restartPractice(){ stopSpeak(); setStarted(true); setIdx(0); setPhase("prepare"); setLeft(0); setPaused(false); setReveal(withSubs); scrollToTop(); }
 
   const head=(<><div className="eyebrow">{t.stepPhases[phaseIndex]}</div><h2>{t.timed.title(withSubs)}</h2></>);
 
@@ -1388,17 +1481,20 @@ function TimedPractice({sents,lang,withSubs}){
   return (<div>{head}
     <div className="card bigcard">
       <div className="row" style={{gap:8}}><span className="badge badge-outline">{idx+1} / {list.length}</span>
-        <span className="phaselab" style={{color:phase==="speak"?"hsl(var(--success))":"hsl(var(--muted-foreground))"}}>{phase==="listen"?`🎧 ${t.timed.listen}`:`🗣️ ${t.timed.yourTurn}`}</span></div>
+        <span className="phaselab" style={{color:phase==="speak"?"hsl(var(--success))":"hsl(var(--muted-foreground))"}}>{phase==="speak"?`🗣️ ${t.timed.yourTurn}`:`🎧 ${t.timed.listen}`}</span></div>
       {(withSubs||reveal) ? <div className="bigsent">{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
       {phase==="speak" && <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
         <div className="timerbar"><span style={{width:(left/secs*100)+"%"}}/></div><div className="count">{left}s</div></div>}
       {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
-      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>{stopSpeak();setIdx(i=>Math.max(0,i-1));}}>← {t.back}</button>
-      <button className="btn btn-outline btn-sm" onClick={()=>setNonce(n=>n+1)}>▶ {t.timed.replay}</button>
-      <button className="btn btn-outline btn-sm" onClick={togglePause}>{paused?t.timed.resume:t.timed.pause}</button>
-      <button className="btn btn-ghost btn-sm" onClick={()=>{stopSpeak(); if(idx<list.length-1)setIdx(i=>i+1); else setPhase("done");}}>{t.timed.skip} →</button>
+      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>{stopSpeak();setIdx(i=>Math.max(0,i-1));scrollToTop();}}>← {t.back}</button>
+      <button className="btn btn-outline btn-sm" onClick={()=>playLine(1)}>▶ {t.timed.replay}</button>
+      <button className="btn btn-outline btn-sm" onClick={()=>playLine(.75)}>▶ {t.timed.slow} 0.75×</button>
+      {phase==="speak"
+        ? <button className="btn btn-outline btn-sm" onClick={togglePause}>{paused?t.timed.resume:t.timed.pause}</button>
+        : <button className="btn btn-primary btn-sm" onClick={startSpeaking}>{t.timed.startSpeaking}</button>}
+      <button className="btn btn-ghost btn-sm" onClick={()=>{stopSpeak(); if(idx<list.length-1){setIdx(i=>i+1);scrollToTop();} else setPhase("done");}}>{t.timed.skip} →</button>
     </div>
   </div>);
 }
@@ -1701,11 +1797,12 @@ function App(){
   useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
   const [screen,setScreen]=useState(DB.get("email")?"input":"login");
   const [lesson,setLesson]=useState(null); const [text,setText]=useState("");
+  useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen]);
   async function loadLesson(d){ setText(d.text); DB.set("progress",0); DB.set("selfAfter",null); DB.set("recallAnswers",{}); DB.set("recallShown",{}); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); setScreen("preview");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }
-    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal); setLesson(L); setScreen("preview");
+    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null); setLesson(L); setScreen("preview");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     } }
   function clearAll(){ if(confirm(t.clearConfirm)){DB.clearAll();location.reload();} }
@@ -1716,7 +1813,7 @@ function App(){
     {screen==="login" && <Login onDone={()=>setScreen("input")}/>}
     {screen==="loading" && <Loading/>}
     {screen==="input" && <InputScreen onNext={loadLesson}/>}
-    {screen==="preview" && lesson && <Preview lesson={lesson} onBack={()=>setScreen("input")} onStart={()=>setScreen("lesson")}/>}
+    {screen==="preview" && lesson && <Preview lesson={lesson} text={text} onBack={()=>setScreen("input")} onStart={()=>setScreen("lesson")}/>}
     {screen==="lesson" && lesson && <Lesson lesson={lesson} text={text} onFinish={()=>setScreen("done")}/>}
     {screen==="done" && lesson && <Done lesson={lesson} onNew={()=>setScreen("input")} onReview={()=>{DB.set("progress",0);setScreen("lesson");}}/>}
   </div></UIContext.Provider>);

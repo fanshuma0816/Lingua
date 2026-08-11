@@ -2,13 +2,29 @@
 // of analysis (a few sentences or words), so it stays fast and never truncates —
 // unlike the old one-shot enrichment that failed on long texts.
 // Modes: translate | explain | grammar | quiz | question
-import { AI, chatComplete, parseJSON } from "../../../lib/ai";
+import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+function durationSpec(label) {
+  const nums = String(label || "").match(/\d+/g)?.map(Number) || [];
+  // Full-lesson time is capped at 60 min, so tiers never exceed it.
+  const min = Math.min(60, nums[0] || 45);
+  const max = Math.min(60, nums[1] || min);
+  let words = [140, 240], vocab = [10, 18];
+  if (max <= 30) { words = [70, 120]; vocab = [6, 10]; }
+  else if (max <= 45) { words = [110, 180]; vocab = [8, 14]; }
+  return { min, max, words, vocab, target: Math.round((min + max) / 2), label: `${min}-${max}` };
+}
+function wordCount(text) {
+  return (String(text || "").toLowerCase().match(/[\p{L}][\p{L}'’-]{1,}/gu) || []).length;
+}
+
 export async function POST(req) {
-  if (!AI.key) return new Response(null, { status: 204 });
+  // Text modes need the Gemini key; the translate mode needs the Cloud key.
+  // Bail out early only if neither is configured.
+  if (!AI.key && !AI.gcpKey) return new Response(null, { status: 204 });
   try {
     const b = await req.json();
     const lang = b.lang || "the target language";
@@ -17,43 +33,65 @@ export async function POST(req) {
     // --- recommend/generate a few learner-ready materials ---
     if (b.mode === "materials") {
       const duration = b.duration || "45-60 min";
+      const spec = durationSpec(duration);
       const goal = b.goal || "General fluency";
       const topics = (Array.isArray(b.topics) && b.topics.length ? b.topics : ["daily life"]).slice(0, 3);
       const levels = ["A1", "A2", "B1", "B2", "C1"];
       const cur = Math.max(0, levels.indexOf(String(level).slice(0, 2)));
-      const allowed = levels.slice(cur, Math.min(levels.length, cur + 3));
-      const lengthGuide = String(duration).includes("10") || String(duration).includes("20") ? "45-95 words" : String(duration).includes("45") ? "120-210 words" : "240-380 words";
+      // Pin every material to ONE CEFR level so the three options are equally
+      // hard \u2014 the learner picks by topic/format, not by an accidental
+      // difficulty spread.
+      const targetLevel = levels[cur];
+      const [wMin, wMax] = spec.words;
+      const wMid = Math.round((wMin + wMax) / 2);
+      const lengthGuide = `between ${wMin} and ${wMax} words (aim for about ${wMid})`;
       const sys = "You are a careful language teacher selecting short study texts. Reply ONLY with minified JSON, no prose.";
-      const user = `Create 3 different short learning materials in ${lang} for a ${level} learner.
+      const user = `Create 3 different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
 Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
-The full lesson includes translation, vocabulary, sentence work, practice, mistakes, and repetition; therefore the source text itself should be about ${lengthGuide}, not as long as the full study time.
+HARD CONSTRAINTS \u2014 every one of the 3 materials must obey these, with no exceptions:
+1) Length: each "text" must be ${lengthGuide}. Count the words. Do NOT return a text shorter than ${wMin} or longer than ${wMax} words. All three texts must be close in length to each other (within ~20%).
+2) Difficulty: EVERY material must sit at exactly CEFR ${targetLevel}. Use the same vocabulary range and sentence complexity across all three. Do not make one easier or harder than the others. Do not exceed ${targetLevel}.
+The three materials should differ by TOPIC and FORMAT, never by length or difficulty.
 Each material should be suitable for turning into a listening/reading/vocabulary lesson.
-The material level MUST be one of: ${allowed.join(", ")}. Do not create text below the learner's current level, and do not exceed two CEFR levels above it.
 For Dutch, the title and original text MUST be Dutch only. Never put Chinese, English explanations, or translations inside title or text.
-Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"level":<one of ${allowed.join("|")}>,"text":<original text in ${lang}, natural and level-appropriate>}]}.
-If source is "Dialogue", format each turn with a short speaker label, for example "Sanne: ..." and "Amir: ...".
+Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"level":"${targetLevel}","text":<original text in ${lang}, natural and level-appropriate>}]}.
+If source is "Dialogue", format each speaker turn on its own line with a short speaker label, for example "Sanne: ..." and "Amir: ...".
+If source is not "Dialogue", do not write fake speaker labels. Keep quoted speech intact, for example "Dank u wel. Tot ziens." must remain one quoted utterance.
 Use concrete details, not generic textbook filler. Do not include translations.`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.7, max: 2600 });
       const p = parseJSON(out);
       const hasCjk = s => /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(String(s || ""));
-      const materials = (Array.isArray(p.materials) ? p.materials : [])
+      // Map an actual word count to a full-lesson estimate inside the tier, so the
+      // displayed time matches the specific text the learner will study.
+      const minutesForWords = (wc) => {
+        const t = wMax > wMin ? (wc - wMin) / (wMax - wMin) : 0.5;
+        const mins = spec.min + (spec.max - spec.min) * Math.max(0, Math.min(1, t));
+        return Math.max(spec.min, Math.min(spec.max, Math.round(mins / 5) * 5));
+      };
+      // Keep the word range soft on the edges (\u00b115%) so we rarely discard a good
+      // text, but still filter out anything wildly off-spec.
+      const lo = Math.round(wMin * 0.85), hi = Math.round(wMax * 1.15);
+      let cleaned = (Array.isArray(p.materials) ? p.materials : [])
         .filter(m => m && m.text && !hasCjk(m.title) && !hasCjk(m.text))
-        .map(m => ({ ...m, level: allowed.includes(String(m.level || "").slice(0, 2)) ? String(m.level).slice(0, 2) : allowed[0] }))
-        .slice(0, 3);
-      return Response.json({ materials });
+        .map(m => { const wc = wordCount(m.text); return { ...m, duration: spec.label, wordCount: wc, targetMinutes: minutesForWords(wc), level: targetLevel }; });
+      const inRange = cleaned.filter(m => m.wordCount >= lo && m.wordCount <= hi);
+      // Prefer in-range texts; if too few survived, fall back to whatever we have
+      // (sorted by how close they are to the target length) rather than returning nothing.
+      const ordered = inRange.length >= Math.min(3, cleaned.length)
+        ? inRange
+        : cleaned.sort((a, b) => Math.abs(a.wordCount - wMid) - Math.abs(b.wordCount - wMid));
+      return Response.json({ materials: ordered.slice(0, 3) });
     }
 
-    // --- translate a handful of sentences (index-aligned, robust) ---
+    // --- translate a handful of sentences (Google Cloud Translation v2) ---
     if (b.mode === "translate") {
       const src = (b.sentences || []).slice(0, 12);
       if (!src.length) return Response.json({ translations: [] });
+      if (!AI.gcpKey) return new Response(null, { status: 204 });
       const translationLanguage = b.translationLanguage || "English";
-      const sys = "You are a precise translator. Reply ONLY with minified JSON, no prose.";
-      const user = `Translate each ${lang} sentence into natural ${translationLanguage}. Return JSON {"t":[ ... ]} where t is an array of ${translationLanguage} translations in the SAME ORDER as the input. Input (${lang}):\n${JSON.stringify(src)}`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.2, max: 2000 });
-      const p = parseJSON(out);
-      const t = Array.isArray(p.t) ? p.t : Array.isArray(p.translations) ? p.translations : [];
-      return Response.json({ translations: src.map((_, i) => t[i] || null) });
+      const r = await googleTranslate(src, { target: translationLanguage, source: lang });
+      if (r.error) return new Response(null, { status: 204 });
+      return Response.json({ translations: src.map((_, i) => r.translations[i] || null) });
     }
 
     // --- explain a few words in context (meaning + a NEW example) ---

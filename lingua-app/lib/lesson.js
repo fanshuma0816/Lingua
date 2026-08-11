@@ -1,5 +1,5 @@
 // Server-side lesson builder.
-// Always returns a valid lesson from a deterministic mock; when OPENAI_API_KEY
+// Always returns a valid lesson from a deterministic mock; when GEMINI_API_KEY
 // is set, enrich() upgrades the simulated parts (translations, word meanings +
 // fresh examples, target-language quiz) with real model output.
 
@@ -57,14 +57,36 @@ function pickVocab(text, n) {
 const ABBR = "Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|vs|etc|e\\.g|i\\.e|bijv|enz|nr|resp|approx|no|No|Inc|Ltd|Co";
 function sentencesOf(text) {
   if (!text) return [];
-  let t = text.replace(/\s*[•·▪‣◦]\s*/g, "\n");
-  const primary = new RegExp("(?<!\\b(?:" + ABBR + ")\\.)(?<=[.!?…。！？])\\s+(?=[\\p{Lu}\"“'(\\[])|\\s*[;；]\\s+(?=[\\p{Lu}])|\\s*\\n+\\s*", "u");
-  const MAX = 110, out = [];
-  for (let p of t.split(primary)) {
-    if (p == null) continue;
-    p = p.replace(/\s+/g, " ").trim(); if (!p) continue;
-    out.push(p);
+  let t = text.replace(/\s*[•·▪‣◦]\s*/g, "\n").replace(/\r/g, "\n");
+  const out = [];
+  const abbrRe = new RegExp("\\b(?:" + ABBR + ")\\.$", "i");
+  let buf = "", quote = null;
+  const push = () => { const p = buf.replace(/\s+/g, " ").trim(); if (p) out.push(p); buf = ""; };
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    buf += ch;
+    if (ch === "\"" || ch === "“" || ch === "”") {
+      const closing = !!quote;
+      quote = closing ? null : ch;
+      if (closing && /[.!?…。！？]/u.test(t[i - 1] || "") && /^\s+[A-ZÀ-ÖØ-Þ]/.test(t.slice(i + 1))) push();
+      continue;
+    }
+    if (ch === "\n") { push(); quote = null; continue; }
+    if (quote) continue;
+    if (/[.!?…。！？]/u.test(ch)) {
+      const prev = buf.trim();
+      if (ch === "." && abbrRe.test(prev)) continue;
+      const rest = t.slice(i + 1);
+      const m = rest.match(/^\s+([\s\S]?)/u);
+      if (!m) continue;
+      const next = m[1] || "";
+      if (/[A-ZÀ-ÖØ-Þ"“'(\[]/.test(next)) push();
+    } else if (/[;；]/u.test(ch)) {
+      const rest = t.slice(i + 1);
+      if (/^\s+[A-ZÀ-ÖØ-Þ]/.test(rest)) push();
+    }
   }
+  push();
   const merged = [];
   for (const s of out) { if (s.length < 10 && merged.length) merged[merged.length - 1] += " " + s; else merged.push(s); }
   return merged.filter(s => s.length > 3);
@@ -105,6 +127,24 @@ function quizItems(sents, pool, count) {
 }
 
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+const DUTCH_HINTS = {
+  koopt: { pos: "verb", meaning: "buys" }, koop: { pos: "verb", meaning: "buy" }, kopen: { pos: "verb", meaning: "to buy" },
+  brood: { pos: "noun", meaning: "bread" }, kaas: { pos: "noun", meaning: "cheese" }, fruit: { pos: "noun", meaning: "fruit" },
+  kassa: { pos: "noun", meaning: "cash register" }, caissière: { pos: "noun", meaning: "cashier" }, kassier: { pos: "noun", meaning: "cashier" },
+  zegt: { pos: "verb", meaning: "says" }, zeggen: { pos: "verb", meaning: "to say" },
+  betaal: { pos: "verb", meaning: "pay" }, betaalt: { pos: "verb", meaning: "pays" }, contant: { pos: "adverb", meaning: "in cash" },
+  geld: { pos: "noun", meaning: "money" }, geeft: { pos: "verb", meaning: "gives" }, geven: { pos: "verb", meaning: "to give" },
+  goedenavond: { pos: "phrase", meaning: "good evening" }, goedemorgen: { pos: "phrase", meaning: "good morning" }, alstublieft: { pos: "phrase", meaning: "please" },
+  supermarkt: { pos: "noun", meaning: "supermarket" }, huis: { pos: "noun", meaning: "home" }, gaat: { pos: "verb", meaning: "goes" },
+  kookt: { pos: "verb", meaning: "cooks" }, avondeten: { pos: "noun", meaning: "dinner" }, lekker: { pos: "adjective", meaning: "tasty" },
+};
+function inferPos(word, lang) {
+  const w = String(word || "").toLowerCase();
+  if (lang === "Dutch" && DUTCH_HINTS[w]?.pos) return DUTCH_HINTS[w].pos;
+  if (lang === "Dutch" && /(en|t|dt)$/.test(w)) return "verb";
+  if (lang === "Dutch" && /(ig|lijk|isch|e)$/.test(w)) return "adjective";
+  return "noun";
+}
 function estimateVocabCount(text, chars) {
   const wc = words(text || "").length;
   return clamp(Math.round(Math.max((chars || 0) / 120, wc * 0.08)), 6, 30);
@@ -117,21 +157,27 @@ function estimateMinutes(chars, sentCount, vocabCount, diff, wordCount = 0) {
   const s = sentCount || 1;
   const base = 6 + wc / 70 + (vocabCount || 8) * 0.7 + s * 1.8 + 5 + ((vocabCount || 8) + s) * 0.25;
   const mult = 0.92 + (diff || 3) * 0.08;
-  return clamp(Math.round((base * mult) / 5) * 5, 20, 180);
+  // Full-lesson time is capped at 60 minutes.
+  return clamp(Math.round((base * mult) / 5) * 5, 15, 60);
 }
 
-export function generateLesson(text, lang, level, goal) {
+export function generateLesson(text, lang, level, goal, targetMin = null) {
   const chars = text.length; const sents = sentencesOf(text);
   const vocabCount = estimateVocabCount(text, chars);
   const vlist = pickVocab(text, vocabCount);
-  const vocab = vlist.map((w, i) => ({ word: w.replace(/^./, c => c.toUpperCase()), pos: POS[i % POS.length], context: contextFor(w, sents), meaning: null, example: null }));
+  const vocab = vlist.map(w => {
+    const hint = lang === "Dutch" ? DUTCH_HINTS[w.toLowerCase()] : null;
+    return { word: w.replace(/^./, c => c.toUpperCase()), pos: hint?.pos || inferPos(w, lang), context: contextFor(w, sents), meaning: hint?.meaning || null, simpleMeaning: hint?.meaning || null, example: null };
+  });
   const recommended = recommendLevel(text, sents);
   const simple = [...sents].sort((a, b) => a.split(/\s+/).length - b.split(/\s+/).length);
+  const diff = Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level))));
+  const estimated = estimateMinutes(chars, sents.length, vocabCount, diff, words(text).length);
   return {
     lang, level, goal, charCount: chars, sents, vocab, vocabCount, vlist, recommended,
     topics: inferTopics(text),
-    diff: Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level)))),
-    estMin: estimateMinutes(chars, sents.length, vocabCount, Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level)))), words(text).length),
+    diff,
+    estMin: targetMin || estimated,
     grammarFocus: ["Verb position in main clauses", "Useful tense patterns", "Connectors and sentence flow"],
     comprehension: quizItems(simple, vlist, 3),
     recognition: quizItems(sents, vlist, 3),

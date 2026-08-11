@@ -14,7 +14,8 @@ export async function POST(req) {
     const lang = body.lang || "Dutch";
     const level = body.level || "A2 — Elementary";
     const goal = body.goal || "General fluency";
-    return Response.json(generateLesson(text, lang, level, goal));
+    const targetMin = Number(body.targetMin) || null;
+    return Response.json(generateLesson(text, lang, level, goal, targetMin));
   } catch (e) {
     return Response.json({ error: "bad request" }, { status: 400 });
   }

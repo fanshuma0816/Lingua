@@ -1,60 +1,80 @@
 # Lingua — 上线指南（给非技术用户）
 
-这是产品的「真实版」项目。它和你之前的原型体验完全一样,但课程内容、翻译、词义例句、选择题可以由真实的 AI 生成,而不是模拟的。
+这是产品的「真实版」项目。它和你之前的原型体验完全一样，但课程内容、翻译、词义例句、选择题、AI 对话、语音朗读都可以由真实的 Google AI 生成，而不是模拟的。
 
-**核心原理:** 只要你填入一个 OpenAI 密钥,内容就变真的;不填,它照常运行,只是用内置的模拟内容。密钥永远只存在服务器端,不会暴露在浏览器里(这也是我们从单文件原型升级到 Next.js 的原因)。
+**核心原理：** 只要你填入下面两个密钥，内容就变真的；不填，它照常运行，只是用内置的模拟内容。密钥永远只存在服务器端，不会暴露在浏览器里（这也是我们从单文件原型升级到 Next.js 的原因）。
 
----
+**这个项目用到两个密钥：**
 
-## 路线 A(推荐):部署到 Vercel,拿到一个网址,无需在自己电脑装任何东西
-
-1. **拿一个 OpenAI 密钥**
-   - 打开 https://platform.openai.com/ ,注册并登录。
-   - 进入 API keys 页面,点 "Create new secret key",复制这串以 `sk-` 开头的密钥,先存好。
-   - 需要在 Billing 里绑定一张卡并充一点额度(自测很便宜,每堂课几美分)。
-
-2. **把项目放到 GitHub**
-   - 注册 https://github.com/ ,新建一个仓库,把 `lingua-app` 这个文件夹上传上去(GitHub 网页上可以直接拖拽上传)。
-
-3. **部署到 Vercel**
-   - 打开 https://vercel.com/ ,用 GitHub 账号登录,点 "Add New → Project",选中你刚上传的仓库,点 Import。
-   - 在 "Environment Variables" 里加一条:名字填 `OPENAI_API_KEY`,值粘贴你的密钥。
-   - 点 Deploy,等一两分钟,就会得到一个 `https://...vercel.app` 的网址——这就是你可以分享给测试者的真实产品。
-
-> 想改内容或改密钥,以后在 Vercel 后台点几下即可,不用碰代码。
+- `GEMINI_API_KEY` —— 来自 Google AI Studio，负责语法分析、课程内容、写作反馈、AI 对话（Gemini `gemini-2.5-flash` 模型）。
+- `GCP_API_KEY` —— 来自 Google Cloud，负责翻译（Cloud Translation API）和语音朗读（Cloud Text-to-Speech API）。这一个密钥要在同一个项目里同时开通这两个 API。
 
 ---
 
-## 路线 B:在自己的 Mac 上本地运行(需要装 Node)
+## 第一步：拿到两个密钥
 
-1. 安装 Node.js(一次性):打开 https://nodejs.org/ ,下载 LTS 版本,一路下一步安装。
-2. 打开「终端」App,把下面命令逐行粘贴回车(把路径换成 lingua-app 的实际位置):
+### 1）Gemini 密钥（`GEMINI_API_KEY`）
+- 打开 https://aistudio.google.com/apikey ，用 Google 账号登录。
+- 点 "Create API key"，复制生成的密钥，先存好。
+
+### 2）Google Cloud 密钥（`GCP_API_KEY`）
+- 打开 https://console.cloud.google.com/ ，登录并选一个项目（没有就新建一个）。
+- 在 "APIs & Services → Library" 里搜索并**启用**这两个 API：
+  - **Cloud Translation API**
+  - **Cloud Text-to-Speech API**
+- 到 "APIs & Services → Credentials"，点 "Create Credentials → API key"，复制这串密钥，先存好。
+- 该项目需要绑定结算账号（用量很低，自测通常几分钱到几毛钱）。
+
+---
+
+## 路线 A（推荐）：部署到 Vercel，拿到一个网址，无需在自己电脑装任何东西
+
+1. **把项目放到 GitHub**
+   - 注册 https://github.com/ ，新建一个仓库，把 `lingua-app` 这个文件夹上传上去（GitHub 网页上可以直接拖拽上传）。
+   - 上传前请确认文件夹里**没有** `node_modules` 和 `.next`（这两个是自动生成的，很大，不需要上传）。
+
+2. **部署到 Vercel**
+   - 打开 https://vercel.com/ ，用 GitHub 账号登录，点 "Add New → Project"，选中你刚上传的仓库，点 Import。
+   - 在 "Environment Variables" 里加两条：
+     - 名字 `GEMINI_API_KEY`，值粘贴你的 Gemini 密钥。
+     - 名字 `GCP_API_KEY`，值粘贴你的 Google Cloud 密钥。
+   - 点 Deploy，等一两分钟，就会得到一个 `https://...vercel.app` 的网址——这就是你可以分享给测试者的真实产品。
+
+> 想改密钥，以后在 Vercel 后台点几下即可，不用碰代码。
+> 部署完成后，打开 `你的网址/api/health` 可以逐项检查 Gemini、翻译、语音是否都连通（不会显示密钥，只显示是否正常）。
+
+---
+
+## 路线 B：在自己的 Mac 上本地运行（需要装 Node）
+
+1. 安装 Node.js（一次性）：打开 https://nodejs.org/ ，下载 LTS 版本，一路下一步安装。
+2. 打开「终端」App，把下面命令逐行粘贴回车（把路径换成 lingua-app 的实际位置）：
    ```
    cd ~/Desktop/LanguageLearning/lingua-app
    npm install
    cp .env.example .env.local
    ```
-3. 用文本编辑器打开 `.env.local`,在 `OPENAI_API_KEY=` 后面粘上你的密钥,保存。
-4. 回到终端运行:
+3. 用文本编辑器打开 `.env.local`，把两个密钥分别粘到 `GEMINI_API_KEY=` 和 `GCP_API_KEY=` 后面，保存。
+4. 回到终端运行：
    ```
    npm run dev
    ```
    然后浏览器打开 http://localhost:3000 就能看到真实内容版本。
-   (不填密钥也能跑,只是内容是模拟的。)
+   （不填密钥也能跑，只是内容是模拟的。）
 
 ---
 
-## 填了密钥后,这些都是真实的
-- 课程内容:每句翻译、每个词的释义 + 全新实用例句、按你水平出的目标语选择题(`/api/lesson`)。
-- 高质量语音朗读:所有朗读都用 OpenAI 语音(`/api/tts`);没有密钥时自动退回浏览器自带声音。
-- Part 1 写作反馈:AI 针对你的作文给出语法/词汇/句子建议和修改稿(`/api/chat`)。
-- Part 2 AI 对话:AI 用目标语言实时和你对话、朗读每句,结束给出评价(`/api/chat`)。
+## 填了密钥后，这些都是真实的
+- 翻译：每句的翻译由 **Google Cloud Translation** 生成（`/api/analyze` 的 translate）。
+- 课程内容与语法：词义 + 全新实用例句、逐句语法讲解、按你水平出的目标语选择题、AI 推荐学习材料，都由 **Gemini** 生成（`/api/analyze`、`/api/lesson`）。
+- 高质量语音朗读：所有朗读都用 **Google Cloud Text-to-Speech**（`/api/tts`）；没有密钥时自动退回浏览器自带声音。
+- Part 1 写作反馈 + Part 2 AI 对话：由 **Gemini** 实时生成（`/api/chat`）。
 
-> 没有密钥时,以上全部自动退回"模拟版本",应用照常运行。
+> 没有对应密钥时，以上功能会自动退回"模拟版本"，应用照常运行。
 
 ## 关于语音的一个小提示
-浏览器(尤其 Safari)有时会拦截"自动连续播放"。逐句连读若被拦,点一下播放即可;Chrome 一般没问题。
+浏览器（尤其 Safari）有时会拦截"自动连续播放"。逐句连读若被拦，点一下播放即可；Chrome 一般没问题。
 
 ## 花费与安全
-- 按用量付费,自测阶段很低。可在 OpenAI 后台设置每月上限。
-- 密钥只存在服务器端环境变量里,不会出现在网页源码中。
+- 全部按用量付费，自测阶段很低。可在 Google AI Studio 和 Google Cloud 后台查看用量、设置额度上限。
+- 两个密钥都只存在服务器端环境变量里，不会出现在网页源码中。
