@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, createContext, useContext } from "react";
+import { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
 
 
 
@@ -26,8 +26,8 @@ const UI_TEXT={
     findTitle:"Find something to learn", findSub:"Tell us what you are learning, and AI will recommend a few materials that fit your level and goal.",
     duration:"Full lesson time", interests:"Topics you like", generateMaterials:"Generate materials", generatingMaterials:"Finding good options…", chooseMaterial:"Choose one to study", useThisText:"Use this text", switchAnytime:"Pick any option below. You can switch before starting the lesson.",
     durationPlans:[
-      {label:"20-30 min",icon:"🌱",length:"70-120 words",vocab:"~6-10 new words"},
-      {label:"35-45 min",icon:"📗",length:"110-180 words",vocab:"~8-14 new words"},
+      {label:"10-15 min",icon:"🌱",length:"40-70 words",vocab:"~4-6 new words"},
+      {label:"25-35 min",icon:"📗",length:"90-150 words",vocab:"~7-12 new words"},
       {label:"45-60 min",icon:"📘",length:"140-240 words",vocab:"~10-18 new words"},
     ],
     interestOptions:["Daily life","News","Culture","Travel","Work & study","Food","Technology","Society"],
@@ -97,6 +97,31 @@ const UI_TEXT={
     read:{teacher:(lang)=>`Let's connect sound to spelling. Read along in ${lang} while you listen.`,purpose:"Seeing the words while hearing them helps your eyes and ears agree on what is happening.",check:"Following along comfortably? Lovely. If not, replay a line or two before we move on."},
     comp:{teacher:"Quick check — no pressure at all. Pick the sentence that matches what you read.",purpose:"A small check gives you a clear signal: either you are ready to go deeper, or one more listen will help.",check:"Got them? Wonderful. Missed one? Pop back to Listen & Read — that's exactly how it's meant to work."},
     gram:{title:"Under the microscope",teacher:"Let's slow right down — one sentence at a time. We'll unpack what matters here, like a teacher sitting beside you.",purpose:"You are learning patterns from your own text, so grammar stays connected to meaning instead of floating around as rules.",sentence:(i,n)=>`Sentence ${i} of ${n}`,grammarCoach:"Grammar to notice",grammarLoading:"Reading the sentence like a teacher…",wordOrder:"Word order",slow:"Take it slow — just this one sentence for now.",noWords:"No standout new words in this sentence — enjoy the breather.",summaryTitle:"Let's pull it together",summaryTeacher:"Great work going through each sentence. Here's everything in one place to lock it in.",allVocab:"All key vocabulary",patterns:"Grammar patterns you met",examples:"Examples",translation:"Translation",showExplanation:"Show explanation",hideExplanation:"Hide explanation",review:"Review from Sentence 1",summaryCheck:"Feeling shaky on a sentence? No problem — head back to Sentence 1 and walk through again. Repetition is the whole idea.",next:"Next sentence",previous:"Previous sentence",seeSummary:"See summary"},
+    nav:{
+      mods:{diag:"Diagnosis",learn:"Learning",shadow:"Shadowing",recall:"Recall",use:"Using"},
+      steps:{d1:"Reading check",d2:"Blind listening",d3:"Diagnosis",l1:"Watch · your language",l2:"Under the microscope",s1:"Shadow · with subtitles",s2:"Shadow · no subtitles",r1:"Recall from English",u1:"Practice with AI"},
+      ctx:"Your learning path", ctxSession:(lang,level)=>`${lang} · ${level}`, backHome:"Back to home", previewHint:"Preview of your path",
+    },
+    diagnosis:{
+      readEyebrow:"Diagnosis · Step 1", readTitle:"How much can you read?",
+      readTeacher:"Tap every word you already understand — honest is best.",
+      readTextLbl:(lvl)=>`The text · ${lvl}`, readWordsLbl:"Words at your level +1", gradingWords:"Grading words by level…",
+      readNote:"Reading coverage updates live — unchecked words are treated as unknown and highlighted later.", coverage:"Reading coverage",
+      listenEyebrow:"Diagnosis · Step 2", listenTitle:"Listen",
+      listenTeacher:"Let's just listen first. Play it once and let the sound wash over you — no need to catch every word.",
+      listenPurpose:"Your brain starts by noticing rhythm and the shape of the language before it has to explain anything.",
+      catch:"How much did you catch?", catchHint:"One tap. The bars show roughly how much you understood.",
+      tiers:[{pct:"<60%",label:"Barely",desc:"A few familiar sounds"},{pct:"~75%",label:"The gist",desc:"Main idea, missed details"},{pct:"~90%",label:"Most of it",desc:"Clear, missed a few"},{pct:"100%",label:"All of it",desc:"Effortless"}],
+      diagEyebrow:"Diagnosis · Step 3", diagTitle:"Your diagnosis",
+      reading:"Reading", listening:"Listening", ofWords:"of words understood", byEar:(p)=>`caught ${p} by ear`, tapFirst:"Tap a listening result on the previous step first.",
+      cases:{
+        golden:{emoji:"✅",kicker:"Optimal flow",name:"Perfect match — golden flow zone",body:"Your vocabulary fits the text and your ear kept up — the i+1 sweet spot.",tip:"👉 Keep this level. Go straight to shadowing & speaking."},
+        acoustic:{emoji:"🎧",kicker:"Acoustic gap",name:"You read it, but your ear lagged",body:"You understand the words on the page, but the sound moved faster than your ear.",tip:"👉 Keep the text — replay the audio and drill listening before speaking."},
+        overload:{emoji:"🌊",kicker:"Overload",name:"A bit much for one pass",body:"Several words were new, so meaning had to fight through the unknowns.",tip:"👉 A shorter or simpler text would land better — aim for ~70% understood."},
+        comfort:{emoji:"🚀",kicker:"Comfort zone",name:"Almost too easy",body:"You breezed through reading and listening — there's little new to stretch you here.",tip:"👉 Level up next time: pick something one step harder."},
+      },
+    },
+    celebrate:{explored:(n)=>`Today you explored ${n} new words`},
   },
   zh:{
     interfaceLanguage:"界面语言", english:"English", chinese:"中文", languageNames:{Dutch:"荷兰语"}, clearLocalData:"清除本地数据", clearConfirm:"清除所有本地学习数据（草稿、笔记、评分和进度）？", newMaterial:"新材料",
@@ -116,8 +141,8 @@ const UI_TEXT={
     findTitle:"寻找学习材料", findSub:"告诉我们你在学什么，AI 会推荐适合你水平和目标的材料。",
     duration:"完整课程时长", interests:"感兴趣的话题", generateMaterials:"生成学习材料", generatingMaterials:"正在寻找合适内容…", chooseMaterial:"选择一段来学习", useThisText:"使用这段文本", switchAnytime:"在开始课程前，你可以在下面几段材料之间切换。",
     durationPlans:[
-      {label:"20-30 分钟",icon:"🌱",length:"70-120 个词",vocab:"约 6-10 个生词"},
-      {label:"35-45 分钟",icon:"📗",length:"110-180 个词",vocab:"约 8-14 个生词"},
+      {label:"10-15 分钟",icon:"🌱",length:"40-70 个词",vocab:"约 4-6 个生词"},
+      {label:"25-35 分钟",icon:"📗",length:"90-150 个词",vocab:"约 7-12 个生词"},
       {label:"45-60 分钟",icon:"📘",length:"140-240 个词",vocab:"约 10-18 个生词"},
     ],
     interestOptions:["日常生活","新闻","文化","旅行","工作与学习","食物","科技","社会"],
@@ -187,6 +212,31 @@ const UI_TEXT={
     read:{teacher:(lang)=>`把声音和拼写连起来。听的时候一起阅读 ${lang} 原文。`,purpose:"同时听到和看到单词，会更容易记住。",check:"能跟上了吗？如果还不稳，先重播一两句再继续。"},
     comp:{teacher:"快速检查一下，没有压力。选择和文本意思相符的句子。",purpose:"一个小检查会给你清楚的信号：可以继续深入，或者先多听一遍。",check:"完成了吗？很好。错了一题也没关系，回到“听读结合”再过一遍就对了。"},
     gram:{title:"逐句拆解",teacher:"我们放慢速度，一次只看一句。只拆这句里真正值得注意的地方，像老师坐在旁边。",purpose:"你会从自己的文本里学结构，所以语法不会漂在空中，而是一直连着意思。",sentence:(i,n)=>`第 ${i} / ${n} 句`,grammarCoach:"这句的语法重点",grammarLoading:"正在像老师一样读这句话…",wordOrder:"语序",slow:"慢慢来，现在只专注这一句。",noWords:"这一句没有特别突出的新词，轻松一下。",summaryTitle:"整理一下",summaryTeacher:"逐句学完了，很棒。这里把重点放在一起，帮助你巩固。",allVocab:"全部重点词汇",patterns:"遇到的语法模式",examples:"例句",translation:"翻译",showExplanation:"展开解释",hideExplanation:"收起解释",review:"从第 1 句复习",summaryCheck:"如果某一句还不稳，回到第 1 句再走一遍。重复本来就是学习的一部分。",next:"下一句",previous:"上一句",seeSummary:"查看总结"},
+    nav:{
+      mods:{diag:"诊断",learn:"学习",shadow:"跟读",recall:"回忆",use:"使用"},
+      steps:{d1:"阅读检测",d2:"盲听",d3:"诊断",l1:"看懂意思",l2:"逐句拆解",s1:"带字幕跟读",s2:"无字幕跟读",r1:"英文提示回忆",u1:"和 AI 练习"},
+      ctx:"你的学习路径", ctxSession:(lang,level)=>`${lang} · ${level}`, backHome:"返回首页", previewHint:"路径预览",
+    },
+    diagnosis:{
+      readEyebrow:"诊断 · 第 1 步", readTitle:"你能读懂多少？",
+      readTeacher:"把你已经认识的词都点一下——诚实最好。",
+      readTextLbl:(lvl)=>`文本 · ${lvl}`, readWordsLbl:"你水平 +1 的词", gradingWords:"正在按等级给词打分…",
+      readNote:"阅读理解度会实时更新——没点的词会被当作生词，之后重点高亮。", coverage:"阅读理解度",
+      listenEyebrow:"诊断 · 第 2 步", listenTitle:"听一遍",
+      listenTeacher:"先只听一遍。播放一次，让声音自然进入耳朵，不用每个词都听懂。",
+      listenPurpose:"大脑会先捕捉节奏和语言的轮廓，然后才需要解释含义。",
+      catch:"你听懂了多少？", catchHint:"点一下就好。信号条大致表示你听懂的比例。",
+      tiers:[{pct:"<60%",label:"几乎听不懂",desc:"只有几个熟悉的音"},{pct:"~75%",label:"抓住大意",desc:"懂主旨，漏了细节"},{pct:"~90%",label:"大部分",desc:"清楚，漏了几个"},{pct:"100%",label:"全部",desc:"毫不费力"}],
+      diagEyebrow:"诊断 · 第 3 步", diagTitle:"你的诊断",
+      reading:"阅读", listening:"听力", ofWords:"的词能读懂", byEar:(p)=>`听力约 ${p}`, tapFirst:"请先在上一步点选一个听力结果。",
+      cases:{
+        golden:{emoji:"✅",kicker:"最佳区间",name:"完美匹配——黄金流畅区",body:"你的词汇量与文本相符，耳朵也跟得上——正是 i+1 的甜蜜点。",tip:"👉 保持这个难度，直接进入跟读与口语。"},
+        acoustic:{emoji:"🎧",kicker:"听力缺口",name:"能读懂，但耳朵慢半拍",body:"纸面上的词你都懂，但声音比你的耳朵快。",tip:"👉 保留文本——先重播音频、加练听力再开口。"},
+        overload:{emoji:"🌊",kicker:"信息过载",name:"一次有点太多了",body:"生词偏多，意思得从未知里挤出来。",tip:"👉 换更短或更简单的文本会更合适——目标约 70% 理解。"},
+        comfort:{emoji:"🚀",kicker:"舒适区",name:"有点太简单了",body:"阅读和听力都很轻松——这里没什么能拉伸你的新东西。",tip:"👉 下次升级：选难一档的内容。"},
+      },
+    },
+    celebrate:{explored:(n)=>`今天你学了 ${n} 个新词`},
   }
 };
 const UIContext=createContext({uiLang:"en",setUiLang:()=>{},t:UI_TEXT.en});
@@ -211,8 +261,8 @@ function durationSpec(label){
   // Full-lesson time is capped at 60 min, so no tier can exceed it.
   const min=Math.min(60,nums[0]||45), max=Math.min(60,nums[1]||min);
   let words=[140,240], vocab=[10,18];
-  if(max<=30){ words=[70,120]; vocab=[6,10]; }
-  else if(max<=45){ words=[110,180]; vocab=[8,14]; }
+  if(max<=15){ words=[40,70]; vocab=[4,6]; }
+  else if(max<=35){ words=[90,150]; vocab=[7,12]; }
   return {min,max,target:Math.round((min+max)/2),words,vocab,label:`${min}-${max}`};
 }
 function clampToDuration(mins,label){
@@ -692,23 +742,51 @@ function generateLesson(text,lang,level,goal,targetMin=null){ const chars=text.l
     recognition:quizItems(sents,vlist,3) }; }
 
 /* ---------- flow + Delft teaching notes ---------- */
+// Five modules (hub-and-spoke). All original step content is preserved — just
+// regrouped, with a new 3-step Diagnosis flow at the front.
+const MODULES=[
+  {id:"diag",icon:"target"},
+  {id:"learn",icon:"book"},
+  {id:"shadow",icon:"mic"},
+  {id:"recall",icon:"recall"},
+  {id:"use",icon:"chat"},
+];
 const STEPS=[
-  {phase:"Learning",title:"Listen",min:3},
-  {phase:"Learning",title:"Watch · your language",min:3},
-  {phase:"Grammar & Vocabulary",title:"Grammar & Vocabulary",min:7},
-  {phase:"Practicing",title:"Practice · with subtitles",min:5},
-  {phase:"Practicing",title:"Practice · no subtitles",min:5},
-  {phase:"Practicing",title:"Recall from English",min:4},
-  {phase:"Using",title:"Practice with AI",min:6},
+  {id:"d1",mod:"diag",kind:"reading",min:3},
+  {id:"d2",mod:"diag",kind:"listen",min:2},
+  {id:"d3",mod:"diag",kind:"diag",min:1},
+  {id:"l1",mod:"learn",kind:"watch",min:3},
+  {id:"l2",mod:"learn",kind:"grammar",min:7},
+  {id:"s1",mod:"shadow",kind:"subs",min:5},
+  {id:"s2",mod:"shadow",kind:"nosubs",min:5},
+  {id:"r1",mod:"recall",kind:"recall",min:4},
+  {id:"u1",mod:"use",kind:"ai",min:6},
 ];
 const TOTAL_MIN=STEPS.reduce((a,s)=>a+s.min,0);
-/* collapsed plan blocks (grammar kept as its own block) */
+function stepIndex(id){ return STEPS.findIndex(s=>s.id===id); }
+/* collapsed plan blocks used only on the pre-session preview screen */
 const PLAN_BLOCKS=[
   {name:"Learning",icon:"🎧",items:["Listen","Watch in your language"],min:6},
   {name:"Grammar & Vocabulary",icon:"🔍",items:["Sentence-by-sentence study"],min:7},
   {name:"Practicing",icon:"🗣️",items:["With subtitles","No subtitles","Recall from English"],min:14},
   {name:"Using",icon:"💬",items:["Write & talk with AI"],min:6},
 ];
+
+// ---- inline icons (shell + sidebar) ----
+const ICONS={
+  target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  mic:'<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  recall:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  panel:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+  panelClose:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+};
+function Svg({n}){ return <svg className="i" viewBox="0 0 24 24" dangerouslySetInnerHTML={{__html:ICONS[n]||""}}/>; }
 
 /* ---------- shared ---------- */
 function Loading(){
@@ -1181,66 +1259,161 @@ function DailyFocus({lesson}){
 }
 
 /* ---------- lesson shell ---------- */
-const GATED=new Set();
-function Lesson({lesson,text,onFinish}){
+// The learnbar + centered content + footnav for an active session. Step nav is
+// owned by App (so the sidebar path panel and the footnav stay in sync).
+function SessionView({lesson,text,step,onPrev,onContinue,diag,setDiag}){
   const {t}=useUI();
-  const savedProgress=Math.max(0,Math.min(STEPS.length-1,DB.get("progress",0)));
-  const [step,setStep]=useState(savedProgress);
-  const [gateOpen,setGateOpen]=useState(!GATED.has(savedProgress));
-  useEffect(()=>{DB.set("progress",step);stopSpeak();scrollToTop();},[step]);
-  function go(ns){ setGateOpen(!GATED.has(ns)); setStep(ns); scrollToTop(); }
-  const S=STEPS[step]; const pct=Math.round(((step+1)/STEPS.length)*100);
+  const S=STEPS[step]; const M=MODULES.find(m=>m.id===S.mod);
+  const pct=Math.round(((step+1)/STEPS.length)*100);
   const stepMin=Math.max(1,Math.round(S.min*((lesson.estMin||TOTAL_MIN)/TOTAL_MIN)));
-  const locked=GATED.has(step)&&!gateOpen;
+  const last=step===STEPS.length-1;
   return (<div>
     <div className="learnbar">
       <div className="track"><span style={{width:pct+"%"}}/></div>
-      <div className="learnmeta"><span className="tiny muted">{(t.stepPhases&&t.stepPhases[step])||S.phase} · {t.stepOf(step+1,STEPS.length)}</span>
-        <span className="row" style={{gap:10}}><span className="tiny muted">{t.min(stepMin)}</span><LanguageSwitch/></span></div>
+      <div className="learnmeta">
+        <span className="tiny muted">{t.nav.mods[M.id]} · {t.nav.steps[S.id]}</span>
+        <span className="tiny muted">{t.min(stepMin)}</span></div>
     </div>
-    <div className="stage"><StepBody step={step} lesson={lesson} text={text} onComplete={()=>setGateOpen(true)}/></div>
+    <div className="stage"><StepBody step={S} lesson={lesson} text={text} diag={diag} setDiag={setDiag}/></div>
     <div className="footnav">
-      <button className="btn btn-ghost btn-sm" disabled={step===0} onClick={()=>go(Math.max(0,step-1))}>← {t.previous}</button>
-      {step<STEPS.length-1 ? <button className="btn btn-outline btn-sm" disabled={locked} onClick={()=>go(step+1)}>{t.continue} →</button>
-        : <button className="btn btn-primary btn-sm" disabled={locked} onClick={onFinish}>{t.finish} ✓</button>}
+      <button className="btn btn-outline btn-sm focusable" disabled={step===0} onClick={onPrev}>← {t.previous}</button>
+      <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{last?`${t.finish} ✓`:`${t.continue} →`}</button>
     </div>
-    {locked && <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{step===2?t.lockedGrammar:step===5?t.lockedRecall:t.lockedAI}</div>}
-    <div style={{textAlign:"center",marginTop:16}}><button className="btn btn-ghost btn-sm muted" onClick={onFinish}>{t.exitSession}</button></div>
   </div>);
 }
 
-function StepBody({step,lesson,text,onComplete}){
+function StepBody({step,lesson,text,diag,setDiag}){
   const {t}=useUI();
   const {lang}=lesson; const sents=lesson.sents;
-  const shownLang=langName(t,lang);
-  const [before,setBefore]=useState(DB.get("selfBefore",30));
+  switch(step.kind){
+    case "reading": return <ReadingCheck lesson={lesson} text={text} diag={diag} setDiag={setDiag}/>;
+    case "listen":  return <BlindListen lesson={lesson} text={text} diag={diag} setDiag={setDiag}/>;
+    case "diag":    return <DiagnosisMatrix lesson={lesson} diag={diag}/>;
+    case "watch": return (<div>
+      <div className="eyebrow">{t.nav.mods.learn}</div><h2>{t.nav.steps.l1}</h2>
+      <Teacher>{t.watch.teacher}</Teacher>
+      <Purpose>{t.watch.purpose}</Purpose>
+      <SyncReader key="watch-reader" items={sents.map((s)=>({s,tr:(lesson.watch||[]).find(x=>x.s===s)?.tr||null}))} lang={lang} level={lesson.level} translation={true}/>
+      <CheckIn>{t.watch.check}</CheckIn>
+    </div>);
+    case "grammar": return <GrammarStep lesson={lesson} onComplete={()=>{}}/>;
+    case "subs":    return <TimedPractice key="subs" sents={sents} lang={lang} withSubs={true}/>;
+    case "nosubs":  return <TimedPractice key="nosubs" sents={sents} lang={lang} withSubs={false}/>;
+    case "recall":  return <RecallStep lesson={lesson} onComplete={()=>{}}/>;
+    default:        return <PracticeAI lesson={lesson} onComplete={()=>{}}/>;
+  }
+}
 
-  if(step===0) return (<div>
-    <div className="eyebrow">{t.stepPhases[0]}</div><h2>{t.stepTitles[0]}</h2>
-    <Teacher>{t.listen.teacher}</Teacher>
-    <Purpose>{t.listen.purpose}</Purpose>
+/* ---------- Diagnosis module ---------- */
+// Step 1 — Reading check. Words are graded by strict CEFR (real AI, heuristic
+// fallback); the learner taps the ones they know. Coverage = 1 − unknown/total.
+function ReadingCheck({lesson,text,diag,setDiag}){
+  const {t}=useUI();
+  const {lang,level}=lesson;
+  const src=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
+  const totalTokens=Math.max(1,words(src).length);
+  const learnerIdx=levelIdx(level);
+  const capIdx=Math.min(LEVELS.length-1,learnerIdx+1);
+  const candidates=useMemo(()=>{
+    const seen=new Set(); const out=[];
+    for(const w of words(src)){ if(STOP.has(w)||w.length<=3||seen.has(w)) continue; seen.add(w); out.push(w); }
+    return out.slice(0,24);
+  },[src]);
+  const [graded,setGraded]=useState([]);   // [{word, level, idx}]
+  const [known,setKnown]=useState(()=>new Set());
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{ let cancel=false; setLoading(true);
+    if(!candidates.length){ setGraded([]); setLoading(false); return; }
+    cachedAiAnalyze("grade",{lang,level,words:candidates}).then(d=>{
+      if(cancel) return; setLoading(false);
+      const rows=(d&&Array.isArray(d.words)?d.words:candidates.map(w=>({word:w,level:w.length<=4?"A1":w.length<=6?"A2":"B1"})))
+        .map(g=>({word:g.word,level:g.level,idx:levelIdx(g.level)}))
+        // keep words at the learner's level or one above (the "+1" study words)
+        .filter(g=>g.idx>=learnerIdx).sort((a,b)=>a.idx-b.idx);
+      setGraded((rows.length?rows:candidates.map(w=>({word:w,level:LEVELS[capIdx].slice(0,2),idx:capIdx}))).slice(0,14));
+    });
+    return ()=>{cancel=true;};
+  },[candidates.join("|"),lang,level]);
+  const unknownWords=graded.filter(g=>!known.has(g.word.toLowerCase())).map(g=>g.word);
+  const coverage=Math.max(40,Math.min(99,Math.round((1-unknownWords.length/totalTokens)*100)));
+  useEffect(()=>{ setDiag(d=>({...d,coverage,total:totalTokens,unknown:unknownWords}));
+    DB.set("unknownWords",unknownWords);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[coverage,graded.length,known.size]);
+  function toggle(w){ const lc=w.toLowerCase(); setKnown(prev=>{ const n=new Set(prev); n.has(lc)?n.delete(lc):n.add(lc); return n; }); }
+  const shownLevel=LEVELS[Math.min(LEVELS.length-1,learnerIdx)].slice(0,2);
+  return (<div>
+    <div className="eyebrow">{t.diagnosis.readEyebrow}</div><h2>{t.diagnosis.readTitle}</h2>
+    <Teacher>{t.diagnosis.readTeacher}</Teacher>
+    <div className="card card-p" style={{marginBottom:14}}>
+      <h3 className="lbl">{t.diagnosis.readTextLbl(shownLevel)}</h3>
+      <div style={{lineHeight:1.85,fontSize:15,whiteSpace:"pre-wrap",maxHeight:220,overflowY:"auto"}}>{src}</div>
+    </div>
+    <div className="card card-p">
+      <div className="row" style={{justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
+        <h3 className="lbl" style={{margin:0}}>{t.diagnosis.readWordsLbl}</h3>
+        <span className="tiny muted">{t.diagnosis.coverage}: <b>{coverage}%</b></span></div>
+      {loading ? <div className="tiny muted">{t.diagnosis.gradingWords}</div>
+        : <div className="row wrap" style={{gap:8}}>{graded.map(g=>{ const on=known.has(g.word.toLowerCase());
+            return <button key={g.word} className={"vchip focusable"+(on?" known":"")} onClick={()=>toggle(g.word)}>
+              <span className="box">✓</span>{g.word}<span className="badge badge-outline" style={{padding:"0 5px"}}>{g.level}</span></button>; })}</div>}
+      <div className="tiny muted" style={{marginTop:14}}>{t.diagnosis.readNote}</div>
+    </div>
+  </div>);
+}
+
+// Step 2 — Blind listening: full audio, no text, a single 4-tier tap.
+function BlindListen({lesson,text,diag,setDiag}){
+  const {t}=useUI();
+  const {lang}=lesson;
+  const tiers=t.diagnosis.tiers;
+  return (<div>
+    <div className="eyebrow">{t.diagnosis.listenEyebrow}</div><h2>{t.diagnosis.listenTitle}</h2>
+    <Teacher>{t.diagnosis.listenTeacher}</Teacher>
+    <Purpose>{t.diagnosis.listenPurpose}</Purpose>
     <FullPlayer text={text} lang={lang} label={t.listen.player} sub={t.listen.sub}/>
     <div className="card card-p" style={{marginTop:18}}>
-      <SelfRate value={before} prompt={t.listen.rate} onChange={v=>{setBefore(v);DB.set("selfBefore",v);}}/></div>
-    <CheckIn>{t.listen.check}</CheckIn>
+      <div style={{fontWeight:700,marginBottom:3}}>{t.diagnosis.catch}</div>
+      <div className="tiny muted" style={{marginBottom:13}}>{t.diagnosis.catchHint}</div>
+      <div className="tier-grid">
+        {tiers.map((tr,i)=>(<button key={i} className={"tier focusable"+(diag.tier===i?" on":"")} data-fill={i+1} onClick={()=>setDiag(d=>({...d,tier:i}))}>
+          <span className="tpct">{tr.pct}</span>
+          <div className="bars"><i/><i/><i/><i/></div>
+          <div className="tlabel">{tr.label}</div><div className="tdesc">{tr.desc}</div></button>))}
+      </div>
+    </div>
   </div>);
+}
 
-  if(step===1) return (<div>
-    <div className="eyebrow">{t.stepPhases[1]}</div><h2>{t.stepTitles[1]}</h2>
-    <Teacher>{t.watch.teacher}</Teacher>
-    <Purpose>{t.watch.purpose}</Purpose>
-    <SyncReader key="watch-reader" items={sents.map((s,i)=>({s,tr:(lesson.watch||[]).find(x=>x.s===s)?.tr||null}))} lang={lang} level={lesson.level} translation={true}/>
-    <CheckIn>{t.watch.check}</CheckIn>
+// Step 3 — Diagnosis matrix: reading × listening → one of 4 plain-language cases.
+function diagnosisCase(coverage,tier){
+  if(coverage!=null&&coverage<75) return "overload";
+  if(tier!=null&&tier<=0) return "acoustic";
+  if(coverage!=null&&coverage>=95&&tier!=null&&tier>=3) return "comfort";
+  return "golden";
+}
+function DiagnosisMatrix({lesson,diag}){
+  const {t}=useUI();
+  const tiers=t.diagnosis.tiers;
+  const cov=diag.coverage; const tier=diag.tier;
+  const key=diagnosisCase(cov,tier);
+  const c=t.diagnosis.cases[key];
+  const cls=key==="overload"?"warn":(key==="acoustic"||key==="comfort")?"info":"";
+  const listenLabel=tier!=null?tiers[tier].label:"—";
+  return (<div>
+    <div className="eyebrow">{t.diagnosis.diagEyebrow}</div><h2>{t.diagnosis.diagTitle}</h2>
+    <div className="row wrap" style={{gap:12,margin:"6px 0 16px"}}>
+      <div className="mini-metric"><div className="k">{t.diagnosis.reading}</div><div className="v">{cov!=null?cov+"%":"—"}</div><div className="tiny muted" style={{marginTop:2}}>{t.diagnosis.ofWords}</div></div>
+      <div className="mini-metric"><div className="k">{t.diagnosis.listening}</div><div className="v">{listenLabel}</div><div className="tiny muted" style={{marginTop:2}}>{tier!=null?t.diagnosis.byEar(tiers[tier].pct):t.diagnosis.tapFirst}</div></div>
+    </div>
+    <div className={"diag-card "+cls}>
+      <div className="row" style={{gap:11}}><span style={{fontSize:26}}>{c.emoji}</span>
+        <span><div className="tiny muted" style={{fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>{c.kicker}</div>
+        <div className="diag-name">{c.name}</div></span></div>
+      <div style={{fontSize:14,lineHeight:1.55}}>{c.body}</div>
+      <div style={{background:"hsl(var(--background)/.6)",borderRadius:8,padding:"11px 13px",fontSize:14}}>{c.tip}</div>
+    </div>
   </div>);
-
-  if(step===2) return <GrammarStep lesson={lesson} onComplete={onComplete}/>;
-
-  if(step===3) return <TimedPractice key="subs" sents={sents} lang={lang} withSubs={true}/>;
-  if(step===4) return <TimedPractice key="nosubs" sents={sents} lang={lang} withSubs={false}/>;
-
-  if(step===5) return <RecallStep lesson={lesson} onComplete={onComplete}/>;
-
-  return <PracticeAI lesson={lesson} onComplete={onComplete}/>;
 }
 
 /* ---------- step 5 grammar: one sentence at a time, then a summary card ---------- */
@@ -1737,50 +1910,73 @@ function AIChat({lesson,onDone}){
 }
 
 /* ---------- celebration ---------- */
-function Done({lesson,onNew,onReview}){
+// Clean celebration — no before/after slider (kept intentionally minimal).
+function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
   const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
-  const before=DB.get("selfBefore",30);
-  const [after,setAfter]=useState(DB.get("selfAfter",null)); const [tmp,setTmp]=useState(70);
-  const delta=after!=null?after-before:0;
-  return (<div>
-    <div className="celebrate">
-      <div style={{fontSize:52,lineHeight:1}}>🎉</div>
-      <h1 style={{marginTop:10}}>{t.done.title(name)}</h1>
-      <p className="sub" style={{maxWidth:470,margin:"8px auto 0"}}>{t.done.sub(STEPS.length)}</p>
+  const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
+  const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
+  const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
+  return (<div className="done-wrap">
+    <div className="done-emoji">🎉</div>
+    <h1 className="done-h1">{t.done.title(name)}</h1>
+    <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+    <div className="done-card">
+      <div className="done-card-emoji">📚✨</div>
+      <div className="done-card-title">{t.celebrate.explored(wordList.length)}</div>
+      <div className="done-chips">{wordList.map(w=><span className="done-chip" key={w}>{w}</span>)}</div>
+      <p className="done-card-note">{t.done.more}</p>
     </div>
-
-    <div className="card card-p" style={{margin:"18px 0",background:"hsl(var(--warm)/.07)",borderColor:"hsl(var(--warm)/.25)",textAlign:"center"}}>
-      <div style={{fontSize:26}}>📚✨</div>
-      <div style={{fontWeight:600,marginTop:6}}>{t.done.explored(lesson.topics.slice(0,2).join(" & "))}</div>
-      <div className="row wrap" style={{gap:7,justifyContent:"center",marginTop:10}}>{lesson.topics.map(t=><span key={t} className="badge badge-warm">{t}</span>)}</div>
-      <div className="tiny muted" style={{marginTop:10}}>{t.done.more}</div>
-    </div>
-
-    <div className="card card-p" style={{marginBottom:18}}>
-      <h3 className="lbl">📈 {t.done.comp}</h3>
-      {after==null ? (<div>
-        <SelfRate value={tmp} prompt={t.done.rate} onChange={setTmp}/>
-        <div style={{marginTop:14}}><button className="btn btn-outline btn-sm" onClick={()=>{setAfter(tmp);DB.set("selfAfter",tmp);}}>{t.done.reveal} ✨</button></div>
-      </div>) : (<div>
-        <div style={{marginBottom:12}}>
-          <div className="row" style={{justifyContent:"space-between",marginBottom:5}}><span className="tiny muted">{t.done.before}</span><span className="tiny" style={{fontWeight:600}}>{before}%</span></div>
-          <div className="gbar"><span className="before" style={{width:before+"%"}}/></div></div>
-        <div>
-          <div className="row" style={{justifyContent:"space-between",marginBottom:5}}><span className="tiny muted">{t.done.after}</span><span className="tiny" style={{fontWeight:600}}>{after}%</span></div>
-          <div className="gbar"><span className="after" style={{width:after+"%"}}/></div></div>
-        <div style={{textAlign:"center",marginTop:14}}>
-          {delta>0 ? <span className="badge badge-success" style={{fontSize:14,padding:"6px 14px"}}>▲ {t.done.gain(delta)}</span>
-            : <span className="badge" style={{fontSize:14,padding:"6px 14px"}}>{t.done.again}</span>}
-        </div>
-      </div>)}
-    </div>
-
-    <div className="row" style={{justifyContent:"center",gap:10}}>
-      <button className="btn btn-outline" onClick={onReview}>↺ {t.done.review}</button>
-      <button className="btn btn-primary" onClick={onNew}>{t.done.new} →</button>
+    <div className="done-actions">
+      <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
+      <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
     </div>
   </div>);
+}
+
+/* ---------- left path panel (sidebar) ---------- */
+function Sidebar({mode,lesson,step,doneSet,openMod,setOpenMod,go,onBackHome}){
+  const {t}=useUI();
+  const progress=mode==="done"?100:Math.round(doneSet.size/STEPS.length*100);
+  const ctx=mode==="home"||!lesson ? t.nav.ctx : t.nav.ctxSession(langName(t,lesson.lang),(lesson.level||"").split(" — ")[0]);
+  return (<aside className="sidebar">
+    <div className="side-head">
+      <div className="side-head-row"><Brand/></div>
+      <div className="ctx">{ctx}</div>
+      <div className="side-progress" style={{visibility:(mode==="session"||mode==="done")?"visible":"hidden"}}>
+        <div className="prog"><span style={{width:progress+"%"}}/></div></div>
+    </div>
+    <nav className="side-nav" aria-label="Learning modules">
+      {MODULES.map(m=>{
+        const steps=STEPS.filter(s=>s.mod===m.id);
+        const isOpen=openMod===m.id;
+        const hasActive=mode==="session"&&STEPS[step]&&STEPS[step].mod===m.id;
+        return (<div className="nav-group" key={m.id}>
+          <button className="group-trigger focusable" data-hasactive={hasActive} aria-expanded={isOpen}
+            onClick={()=>setOpenMod(isOpen?null:m.id)}>
+            <span className="gicon"><Svg n={m.icon}/></span>
+            <span className="gname">{t.nav.mods[m.id]}</span></button>
+          <div className={"group-content"+(isOpen?" open":"")}><div className="inner"><div className="inner-lines">
+            {steps.map(s=>{
+              const idx=stepIndex(s.id);
+              const done=doneSet.has(s.id);
+              const cur=mode!=="home"&&idx===step;
+              const dis=mode==="home";
+              return (<button key={s.id} className="navlink focusable" aria-current={cur} aria-disabled={dis}
+                onClick={()=>{ if(!dis) go(s.id); }}>
+                <span className={"nmk"+(done?" done":"")}>{done?<Svg n="check"/>:cur?"●":"·"}</span>
+                <span>{t.nav.steps[s.id]}</span></button>);
+            })}
+          </div></div></div>
+        </div>);
+      })}
+    </nav>
+    <div className="side-foot">
+      {mode!=="home"
+        ? <button className="btn btn-outline btn-sm focusable" onClick={onBackHome} title={t.nav.backHome}><Svg n="home"/> {t.nav.backHome}</button>
+        : <span className="tiny muted">{t.nav.previewHint}</span>}
+    </div>
+  </aside>);
 }
 
 /* ---------- root ---------- */
@@ -1791,25 +1987,73 @@ function App(){
   useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
   const [screen,setScreen]=useState(DB.get("email")?"input":"login");
   const [lesson,setLesson]=useState(null); const [text,setText]=useState("");
+  const [theme,setTheme]=useState(DB.get("theme","light"));
+  const [pinned,setPinned]=useState(false);
+  const [openMod,setOpenMod]=useState("diag");
+  const [step,setStep]=useState(0);
+  const [doneSet,setDoneSet]=useState(()=>new Set());
+  const [diag,setDiag]=useState({coverage:null,tier:null,total:0,unknown:[]});
+  const [narrow,setNarrow]=useState(false);
+  const autoReveal=useRef(false); const revealTimer=useRef(null);
+  const mode=screen==="lesson"?"session":screen==="done"?"done":"home";
+
+  useEffect(()=>{ document.documentElement.classList.toggle("dark",theme==="dark"); },[theme]);
   useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen]);
-  async function loadLesson(d){ setText(d.text); DB.set("progress",0); DB.set("selfAfter",null); DB.set("recallAnswers",{}); DB.set("recallShown",{}); setScreen("loading");
+  useEffect(()=>{ const on=()=>setNarrow(window.innerWidth<1200); on(); window.addEventListener("resize",on); return ()=>window.removeEventListener("resize",on); },[]);
+
+  function toggleTheme(){ setTheme(v=>{ const n=v==="dark"?"light":"dark"; DB.set("theme",n); return n; }); }
+  function toggleSide(){ autoReveal.current=false; setPinned(p=>!p); }
+  function clearAll(){ if(confirm(t.clearConfirm)){DB.clearAll();location.reload();} }
+
+  // Briefly reveal the path panel on entering a session, then auto-collapse
+  // unless the learner reached for it or pinned it.
+  function revealThenCollapse(){
+    clearTimeout(revealTimer.current);
+    if(typeof window!=="undefined"&&window.innerWidth<1200){ setPinned(false); return; }
+    autoReveal.current=true; setPinned(true);
+    revealTimer.current=setTimeout(()=>{ if(autoReveal.current){ setPinned(false); autoReveal.current=false; } },2400);
+  }
+  function resetSession(){ setStep(0); setDoneSet(new Set()); setOpenMod("diag"); setDiag({coverage:null,tier:null,total:0,unknown:[]}); }
+  function startSession(){ resetSession(); setScreen("lesson"); revealThenCollapse(); }
+  function reviewSession(){ resetSession(); setScreen("lesson"); revealThenCollapse(); }
+  function go(id){ const idx=stepIndex(id); if(idx<0) return; if(screen==="done") setScreen("lesson"); setStep(idx); setOpenMod(STEPS[idx].mod); if(window.innerWidth<1200) setPinned(false); scrollToTop(); }
+  function onContinue(){ const cur=STEPS[step]; setDoneSet(prev=>new Set(prev).add(cur.id));
+    if(step===STEPS.length-1){ setScreen("done"); } else { const n=step+1; setStep(n); setOpenMod(STEPS[n].mod); scrollToTop(); } }
+  function onPrev(){ const n=Math.max(0,step-1); setStep(n); setOpenMod(STEPS[n].mod); scrollToTop(); }
+
+  async function loadLesson(d){ setText(d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); setScreen("preview");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }
     catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null); setLesson(L); setScreen("preview");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     } }
-  function clearAll(){ if(confirm(t.clearConfirm)){DB.clearAll();location.reload();} }
-  return (<UIContext.Provider value={{uiLang,setUiLang,t}}><div className="app">
-    {screen!=="login" && screen!=="lesson" && (<div className="topbar"><Brand/>
-      <div className="row wrap" style={{justifyContent:"flex-end"}}><LanguageSwitch/><button className="btn btn-ghost btn-sm muted" onClick={clearAll}>{t.clearLocalData}</button>
-        {screen!=="input" && <button className="btn btn-outline btn-sm" onClick={()=>setScreen("input")}>{t.newMaterial}</button>}</div></div>)}
-    {screen==="login" && <Login onDone={()=>setScreen("input")}/>}
-    {screen==="loading" && <Loading/>}
-    {screen==="input" && <InputScreen onNext={loadLesson}/>}
-    {screen==="preview" && lesson && <Preview lesson={lesson} text={text} onBack={()=>setScreen("input")} onStart={()=>setScreen("lesson")}/>}
-    {screen==="lesson" && lesson && <Lesson lesson={lesson} text={text} onFinish={()=>setScreen("done")}/>}
-    {screen==="done" && lesson && <Done lesson={lesson} onNew={()=>setScreen("input")} onReview={()=>{DB.set("progress",0);setScreen("lesson");}}/>}
-  </div></UIContext.Provider>);
+
+  if(screen==="login") return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
+    <main className="main"><Login onDone={()=>setScreen("input")}/></main></UIContext.Provider>);
+
+  return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
+    <div className={"shell"+(pinned?" pinned":"")}>
+      <div className="path-anchor">
+        <div className="chrome-row">
+          <button className="bar-toggle focusable" onClick={toggleSide} aria-pressed={pinned} aria-label="Show or hide the learning path"><Svg n={pinned?"panelClose":"panel"}/></button>
+          <label className="chrome-select" title={t.interfaceLanguage}><Svg n="globe"/>
+            <select value={uiLang} onChange={e=>setUiLang(e.target.value)} aria-label={t.interfaceLanguage}>
+              <option value="en">EN</option><option value="zh">中文</option></select></label>
+          <button className="chrome-btn focusable" onClick={toggleTheme} title="Toggle light / dark" aria-label="Toggle light / dark">{theme==="dark"?"☀️":"🌙"}</button>
+          <button className="chrome-btn focusable" onClick={clearAll} title={t.clearLocalData} aria-label={t.clearLocalData}><Svg n="trash"/></button>
+        </div>
+        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} openMod={openMod} setOpenMod={setOpenMod} go={go} onBackHome={()=>setScreen("input")}/>
+      </div>
+      <main className="main">
+        {screen==="loading" && <Loading/>}
+        {screen==="input" && <InputScreen onNext={loadLesson}/>}
+        {screen==="preview" && lesson && <Preview lesson={lesson} text={text} onBack={()=>setScreen("input")} onStart={startSession}/>}
+        {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} diag={diag} setDiag={setDiag}/>}
+        {screen==="done" && lesson && <Done lesson={lesson} diag={diag} onNew={()=>setScreen("input")} onReview={reviewSession}/>}
+      </main>
+    </div>
+    <div className={"scrim"+((pinned&&narrow)?" on":"")} onClick={()=>setPinned(false)}/>
+  </UIContext.Provider>);
 }
 export default function Page(){ return <App/>; }

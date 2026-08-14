@@ -157,8 +157,8 @@ function estimateMinutes(chars, sentCount, vocabCount, diff, wordCount = 0) {
   const s = sentCount || 1;
   const base = 6 + wc / 70 + (vocabCount || 8) * 0.7 + s * 1.8 + 5 + ((vocabCount || 8) + s) * 0.25;
   const mult = 0.92 + (diff || 3) * 0.08;
-  // Full-lesson time is capped at 60 minutes.
-  return clamp(Math.round((base * mult) / 5) * 5, 15, 60);
+  // Full-lesson time is capped at 60 minutes, floored at 10.
+  return clamp(Math.round((base * mult) / 5) * 5, 10, 60);
 }
 
 export function generateLesson(text, lang, level, goal, targetMin = null) {

@@ -13,8 +13,8 @@ function durationSpec(label) {
   const min = Math.min(60, nums[0] || 45);
   const max = Math.min(60, nums[1] || min);
   let words = [140, 240], vocab = [10, 18];
-  if (max <= 30) { words = [70, 120]; vocab = [6, 10]; }
-  else if (max <= 45) { words = [110, 180]; vocab = [8, 14]; }
+  if (max <= 15) { words = [40, 70]; vocab = [4, 6]; }
+  else if (max <= 35) { words = [90, 150]; vocab = [7, 12]; }
   return { min, max, words, vocab, target: Math.round((min + max) / 2), label: `${min}-${max}` };
 }
 function wordCount(text) {
@@ -81,6 +81,35 @@ Use concrete details, not generic textbook filler. Do not include translations.`
         ? inRange
         : cleaned.sort((a, b) => Math.abs(a.wordCount - wMid) - Math.abs(b.wordCount - wMid));
       return Response.json({ materials: ordered.slice(0, 3) });
+    }
+
+    // --- grade candidate words by strict CEFR level (for the reading check) ---
+    if (b.mode === "grade") {
+      const words = (Array.isArray(b.words) ? b.words : []).map(w => String(w || "").trim()).filter(Boolean).slice(0, 40);
+      if (!words.length) return Response.json({ words: [] });
+      const heuristic = () => words.map(w => {
+        const L = w.length;
+        const lvl = L <= 4 ? "A1" : L <= 6 ? "A2" : L <= 8 ? "B1" : "B2";
+        return { word: w, level: lvl };
+      });
+      if (!AI.textEnabled) return Response.json({ words: heuristic() });
+      try {
+        const sys = "You are a strict CEFR vocabulary grader. Reply ONLY with minified JSON, no prose.";
+        const user = `Grade each ${lang} word by strict CEFR level (one of A1, A2, B1, B2, C1) as it would be classified for a learner of ${lang}.
+Judge the base word in ${lang}, not a translation. Be strict: only truly beginner words are A1.
+Return JSON {"words":[{"word":<word>,"level":<A1|A2|B1|B2|C1>}]} — one object per input word, SAME order.
+Words: ${JSON.stringify(words)}`;
+        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.2, max: 1200 });
+        const p = parseJSON(out);
+        const graded = Array.isArray(p.words) ? p.words : [];
+        const byWord = {};
+        graded.forEach(g => { if (g && g.word) byWord[String(g.word).toLowerCase()] = String(g.level || "").toUpperCase().slice(0, 2); });
+        const valid = new Set(["A1", "A2", "B1", "B2", "C1"]);
+        const h = heuristic();
+        return Response.json({ words: words.map((w, i) => ({ word: w, level: valid.has(byWord[w.toLowerCase()]) ? byWord[w.toLowerCase()] : h[i].level })) });
+      } catch (e) {
+        return Response.json({ words: heuristic() });
+      }
     }
 
     // --- translate a handful of sentences (Google Cloud Translation v2) ---
