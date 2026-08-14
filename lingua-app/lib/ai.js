@@ -7,12 +7,13 @@
 // Server-only credentials (never expose these to the client):
 //   Vertex AI (text) authenticates with a Google Cloud SERVICE ACCOUNT, so it
 //   consumes your GCP project's quota / free trial credits (not AI Studio billing):
-//     GOOGLE_APPLICATION_CREDENTIALS_JSON  full service-account JSON (recommended on Vercel)
-//        (also accepts GOOGLE_CREDENTIALS / GCP_SERVICE_ACCOUNT_JSON, raw or base64)
+//     GCP_SERVICE_ACCOUNT_KEY              full service-account JSON string (used on Vercel)
+//        (also accepts GOOGLE_APPLICATION_CREDENTIALS_JSON / GOOGLE_CREDENTIALS /
+//         GCP_SERVICE_ACCOUNT_JSON — raw JSON or base64)
 //     GOOGLE_APPLICATION_CREDENTIALS       path to a JSON key file (local/dev)
 //     GOOGLE_PROJECT_ID                    GCP project id (defaults to lingua-tts-504817)
 //     VERTEX_LOCATION                      region (defaults to us-central1)
-//     VERTEX_MODEL / GEMINI_MODEL          model id (defaults to gemini-2.0-flash-001)
+//     VERTEX_MODEL / GEMINI_MODEL          model id (defaults to gemini-1.5-flash)
 //   GCP_API_KEY   Google Cloud API key with Cloud Translation + Cloud TTS enabled.
 // Optional:
 //   GOOGLE_TTS_DUTCH_FEMALE   override the nl-NL female voice
@@ -25,7 +26,8 @@ import { VertexAI } from "@google-cloud/vertexai";
 // fall back to Application Default Credentials (e.g. GOOGLE_APPLICATION_CREDENTIALS
 // file path or the GCE metadata server).
 function resolveServiceAccount() {
-  const raw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  const raw = process.env.GCP_SERVICE_ACCOUNT_KEY
+    || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
     || process.env.GOOGLE_CREDENTIALS
     || process.env.GCP_SERVICE_ACCOUNT_JSON
     || process.env.GOOGLE_SERVICE_ACCOUNT_KEY
@@ -46,7 +48,7 @@ export const AI = {
   gcpKey: process.env.GCP_API_KEY || "",                                  // Cloud Translation + Cloud TTS
   project: process.env.GOOGLE_PROJECT_ID || (SERVICE_ACCOUNT && SERVICE_ACCOUNT.project_id) || "lingua-tts-504817",
   location: process.env.VERTEX_LOCATION || "us-central1",
-  model: process.env.VERTEX_MODEL || process.env.GEMINI_MODEL || "gemini-2.0-flash-001",
+  model: process.env.VERTEX_MODEL || process.env.GEMINI_MODEL || "gemini-1.5-flash",
   // Text is available when we can authenticate to Vertex: either an explicit
   // service account, or a credentials file path for ADC.
   textEnabled: !!(SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS),
