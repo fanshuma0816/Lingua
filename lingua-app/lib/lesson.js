@@ -1,6 +1,6 @@
 // Server-side lesson builder.
-// Always returns a valid lesson from a deterministic mock; when GEMINI_API_KEY
-// is set, enrich() upgrades the simulated parts (translations, word meanings +
+// Always returns a valid lesson from a deterministic mock; when Vertex AI is
+// configured, enrich() upgrades the simulated parts (translations, word meanings +
 // fresh examples, target-language quiz) with real model output.
 
 import { AI, chatComplete, parseJSON } from "./ai";
@@ -188,7 +188,7 @@ export function generateLesson(text, lang, level, goal, targetMin = null) {
 
 // ---- LLM enrichment (only runs when a key is present) ----
 export async function enrich(base, { text, lang, level, goal }) {
-  if (!AI.key) return base;
+  if (!AI.textEnabled) return base;
   const topSents = base.sents.slice(0, 10);
   const vocab = base.vocab.map(v => v.word);
 

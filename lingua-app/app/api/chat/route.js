@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req) {
-  if (!AI.key) return new Response(null, { status: 204 });
+  if (!AI.textEnabled) return new Response(null, { status: 204 });
   try {
     const b = await req.json();
 

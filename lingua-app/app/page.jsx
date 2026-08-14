@@ -70,10 +70,10 @@ const UI_TEXT={
     difficultyForYou:"Difficulty for you", basedOnLevel:(a,b)=>`Based on your level (${a}) vs the text's (${b}).`,
     session:"The session", stepsInBlocks:(s,b)=>`${s} steps in ${b} blocks`, start:(m)=>`Start · ~${m} min`,
     planNames:["Learning","Grammar & Vocabulary","Practicing","Using"],
-    planItems:[["Listen","Watch in your language","Listen & read"],["Sentence-by-sentence study"],["With subtitles","No subtitles","Understand everything","Recall from English"],["Write & talk with AI"]],
+    planItems:[["Listen","Watch in your language"],["Sentence-by-sentence study"],["With subtitles","No subtitles","Recall from English"],["Write & talk with AI"]],
     heavy:(n)=>`This one has ${n} new words — quite a few. For it to really stick, try each block at least twice, and don't be shy about repeating an earlier step if it feels heavy.`,
-    stepPhases:["Learning","Learning","Learning","Grammar & Vocabulary","Practicing","Practicing","Practicing","Practicing","Using"],
-    stepTitles:["Listen","Watch · your language","Listen & Read","Grammar & Vocabulary","Practice · with subtitles","Practice · no subtitles","Understand everything","Recall from English","Practice with AI"],
+    stepPhases:["Learning","Learning","Grammar & Vocabulary","Practicing","Practicing","Practicing","Using"],
+    stepTitles:["Listen","Watch · your language","Grammar & Vocabulary","Practice · with subtitles","Practice · no subtitles","Recall from English","Practice with AI"],
     stepOf:(n,total)=>`Step ${n} of ${total}`, min:(m)=>`~${m} min`,
     lockedGrammar:"Work through each sentence to unlock Continue.", lockedRecall:"Try each recall prompt before continuing.", lockedAI:"Get feedback in Part 1 and finish the Part 2 chat to unlock Finish.",
     translatingTitle:"Translating the lines", lookingUpTitle:"Looking up word meanings", aboutRemaining:(s)=>`about ${s}s left`, lineTranslating:(i,n)=>`Translating line ${i} of ${n}`, translationUnavailable:"translation unavailable",
@@ -84,7 +84,7 @@ const UI_TEXT={
     selfLow:"0% · nothing yet", selfHigh:"100% · all of it",
     sr:{teacher:"Trust your ears. Play each line, then choose the sentence you heard.",purpose:"This sharpens the bridge between sound and meaning, one small decision at a time.",check:"Nailing these? Great ear. A few tricky? Replay and try once more — no rush."},
     understand:{teacher:(lang)=>`One last full listen. Play it through with ${lang} text — it should feel clear now.`,purpose:"You have met the meaning, the sound, and the useful patterns. This pass helps everything settle together.",check:"Feels clearer than the first time? That's your progress showing."},
-    timed:{title:(subs)=>`Practice · ${subs?"with subtitles":"no subtitles"}`,teacherSubs:"Time to speak. First replay the sentence as many times as you like, then start the gentle countdown when you're ready.",teacherNoSubs:"Ears first. Replay the sentence, use slow audio if you need it, then repeat from memory. Reveal the text only if you need to peek.",purpose:"Speaking full sentences gives your mouth a path to follow, so the language starts to feel usable.",how:"How this works",tips:["One sentence fills the screen — just focus on that.","Play it more than once, or use slow audio before speaking.","Start the countdown only when you are ready; Back and Skip are always there."],ready:"I'm ready — start",breath:"Nothing plays automatically here. You choose when to listen and when to speak.",done:(n)=>`You practised all ${n} sentences. Press Continue when you're ready.`,again:"Practise again",doneCheck:"Said each one out loud? That's exactly it. Another round never hurts.",listen:"Listen first",yourTurn:"Your turn — read aloud",hide:"Hide text",reveal:"Reveal text",replay:"Play again",slow:"Slow",startSpeaking:"Start speaking",pause:"Pause",resume:"Resume",skip:"Skip"},
+    timed:{title:(subs)=>`Practice · ${subs?"with subtitles":"no subtitles"}`,teacherSubs:"This is shadowing. Each sentence plays on its own — read along out loud at the same time, matching the voice's rhythm.",teacherNoSubs:"Shadowing, ears only. Each sentence plays on its own — repeat it out loud right after. Reveal the text only if you get stuck.",purpose:"Speaking along with the voice gives your mouth a path to follow, so the language starts to feel usable.",how:"How this works",tips:["Each sentence plays automatically — just start speaking along with the voice.","Use Play again or slow audio to echo it a few more times.","Move on with Next whenever you're ready — Back is always there too."],ready:"Start shadowing",breath:"Each line plays by itself — read along out loud, no buttons needed.",done:(n)=>`You shadowed all ${n} sentences. Press Continue when you're ready.`,again:"Shadow again",doneCheck:"Read each one out loud? That's exactly it. Another round never hurts.",shadow:"Read along out loud",listen:"Listen first",yourTurn:"Your turn — read aloud",hide:"Hide text",reveal:"Reveal text",replay:"Play again",slow:"Slow",next:"Next",finishRound:"Finish",startSpeaking:"Start speaking",pause:"Pause",resume:"Resume",skip:"Skip"},
     aiUse:{title:"Practice with AI",teacher:"Let's actually use it. First write a little, then have a short chat — all with today's words.",purpose:"This turns the lesson into something you can say back, gently and in context.",writeTab:"Part 1 · Write",chatTab:"Part 2 · Talk",unlock:"Finish unlocks once you've got feedback in Part 1 and completed the Part 2 chat.",feedback:"Get feedback",reading:"Reading…",teacherReading:"Your teacher is reading your writing…",checking:"Checking grammar, vocabulary and sentence flow — just a few seconds.",nextTalk:"Next · talk with the AI",writePlaceholder:(lang)=>`Write your answer in ${lang}…`,question:(topic,lang)=>`Based on the passage — "${topic}" — what's your view? Write 3–4 sentences in ${lang} using today's words.`,saved:(n)=>`${n} words · saved locally`,feedbackTitle:(sim)=>`Feedback & suggested revision${sim?" · simulated":""}`,grammar:"Grammar",vocab:"Vocabulary",sentence:"Sentence construction",revision:"Suggested revision",mockGrammar:"Tenses look consistent. Check subject–verb agreement in your longer sentence.",mockVocab:"Nice reuse of today's words — add one connective phrase to link ideas.",mockSentence:"Clear structure. Try varying sentence length to sound more natural.",mockNote:"Showing sample feedback — the live AI check didn't respond just now, so try again in a moment for specific notes and a corrected draft."},
     focus:{title:"Today's focus",teacher:"A few things are especially worth carrying through the lesson today.",vocab:"Top vocabulary",grammar:"Top grammar",level:"Level",loading:"Choosing today's focus…"},
     recall:{title:"Recall from English",teacher:"Now make your brain reach back for the Dutch. Read the English cue, then say or type the original idea before checking.",purpose:"This forces active output, so the text becomes something you can produce, not only recognize.",englishCue:"English cue",yourDutch:"Your Dutch",placeholder:"Type the Dutch you remember…",speak:"Speak",check:"Check original",original:"Original",tryFirst:"Say or type your answer first.",done:"You tried every recall prompt.",progress:(a,b)=>`Prompt ${a} of ${b}`},
@@ -160,10 +160,10 @@ const UI_TEXT={
     difficultyForYou:"对你的难度", basedOnLevel:(a,b)=>`基于你的水平（${a}）和文本水平（${b}）估算。`,
     session:"学习流程", stepsInBlocks:(s,b)=>`${s} 个步骤，分成 ${b} 个模块`, start:(m)=>`开始 · 约 ${m} 分钟`,
     planNames:["学习","语法与词汇","练习","使用"],
-    planItems:[["听一遍","看懂意思","听读结合"],["逐句学习"],["带字幕练习","无字幕练习","完全听懂","英文提示回忆原文"],["和 AI 写作/对话"]],
+    planItems:[["听一遍","看懂意思"],["逐句学习"],["带字幕练习","无字幕练习","英文提示回忆原文"],["和 AI 写作/对话"]],
     heavy:(n)=>`这篇材料有 ${n} 个新词，数量不少。为了真正记住，建议每个模块至少练两遍；觉得吃力时可以随时回到前面的步骤。`,
-    stepPhases:["学习","学习","学习","语法与词汇","练习","练习","练习","练习","使用"],
-    stepTitles:["听一遍","看懂意思","听读结合","语法与词汇","带字幕练习","无字幕练习","完全听懂","英文提示回忆","和 AI 练习"],
+    stepPhases:["学习","学习","语法与词汇","练习","练习","练习","使用"],
+    stepTitles:["听一遍","看懂意思","语法与词汇","带字幕练习","无字幕练习","英文提示回忆","和 AI 练习"],
     stepOf:(n,total)=>`第 ${n} / ${total} 步`, min:(m)=>`约 ${m} 分钟`,
     lockedGrammar:"完成逐句学习后才能继续。", lockedRecall:"请先尝试每个回忆提示再继续。", lockedAI:"完成 Part 1 反馈和 Part 2 对话后才能结束。",
     translatingTitle:"正在翻译句子", lookingUpTitle:"正在查询单词含义", aboutRemaining:(s)=>`预计还需 ${s} 秒`, lineTranslating:(i,n)=>`正在翻译第 ${i} / ${n} 句`, translationUnavailable:"暂时没有翻译",
@@ -174,7 +174,7 @@ const UI_TEXT={
     selfLow:"0% · 还不太懂", selfHigh:"100% · 全部理解",
     sr:{teacher:"相信你的耳朵。播放每一句，然后选择你听到的句子。",purpose:"这个小判断会把声音和意思连起来，一次只练一个清晰选择。",check:"做得顺的话很好；如果有几句难，重播再试一次，不急。"},
     understand:{teacher:(lang)=>`最后完整听一遍。配合 ${lang} 原文播放，现在应该清楚很多。`,purpose:"你已经见过意思、声音和常用结构了。最后这一遍会帮它们自然合在一起。",check:"比第一次清楚了吗？这就是你的进步。"},
-    timed:{title:(subs)=>`练习 · ${subs?"带字幕":"无字幕"}`,teacherSubs:"开始说出来。你可以先反复播放这一句，也可以慢速播放；准备好了再开始温和倒计时。",teacherNoSubs:"现在先靠耳朵。你可以反复播放、慢速播放，然后凭记忆复述；需要时再显示文本。",purpose:"练完整句会让嘴巴有路可走，语言会慢慢变成你能说出口的东西。",how:"练习方式",tips:["屏幕一次只显示一句，专注这一句就好。","可以先多听几遍，或用慢速播放。","你准备好后才开始倒计时；返回和跳过一直可用。"],ready:"我准备好了，开始",breath:"这里不会自动播放。你自己决定什么时候听、什么时候开口。",done:(n)=>`你已经练完 ${n} 个句子。准备好后点继续。`,again:"再练一遍",doneCheck:"每一句都说出来了吗？就是这样。多来一轮也很好。",listen:"先听",yourTurn:"轮到你 · 读出来",hide:"隐藏文本",reveal:"显示文本",replay:"再播放",slow:"慢速",startSpeaking:"开始朗读",pause:"暂停",resume:"继续",skip:"跳过"},
+    timed:{title:(subs)=>`练习 · ${subs?"带字幕":"无字幕"}`,teacherSubs:"这是影子跟读。每句话会自动播放——同时跟着大声读出来，尽量贴合语音的节奏。",teacherNoSubs:"影子跟读，只用耳朵。每句话会自动播放——听完立刻大声复述。卡住时再显示文本。",purpose:"跟着语音一起说，会给嘴巴一条可循的路，语言会慢慢变成你能说出口的东西。",how:"练习方式",tips:["每句话会自动播放——直接跟着语音一起开口。","可以用“再播放”或慢速多跟读几遍。","准备好了就点“下一句”；“返回”也一直可用。"],ready:"开始跟读",breath:"每句话会自动播放——跟着大声读就行，不用点按钮。",done:(n)=>`你已经跟读完 ${n} 个句子。准备好后点继续。`,again:"再跟读一遍",doneCheck:"每一句都大声读出来了吗？就是这样。多来一轮也很好。",shadow:"跟着大声读",listen:"先听",yourTurn:"轮到你 · 读出来",hide:"隐藏文本",reveal:"显示文本",replay:"再播放",slow:"慢速",next:"下一句",finishRound:"完成",startSpeaking:"开始朗读",pause:"暂停",resume:"继续",skip:"跳过"},
     aiUse:{title:"和 AI 练习",teacher:"现在真正用起来。先写一点，再进行一段短对话，尽量用今天的词。",purpose:"这一步把课程变成你能回应、能表达的内容，轻一点，但要真的开口。",writeTab:"Part 1 · 写作",chatTab:"Part 2 · 对话",unlock:"完成 Part 1 反馈和 Part 2 对话后，就可以结束课程。",feedback:"获取反馈",reading:"阅读中…",teacherReading:"老师正在阅读你的写作…",checking:"正在检查语法、词汇和句子流畅度，几秒钟就好。",nextTalk:"下一步 · 和 AI 对话",writePlaceholder:(lang)=>`用 ${lang} 写下你的回答…`,question:(topic,lang)=>`根据这段材料 “${topic}”，你怎么看？请用 ${lang} 写 3–4 句，并尽量用今天的词。`,saved:(n)=>`${n} 个词 · 已本地保存`,feedbackTitle:(sim)=>`反馈和建议修改${sim?" · 模拟":""}`,grammar:"语法",vocab:"词汇",sentence:"句子结构",revision:"建议修改",mockGrammar:"时态整体一致。较长句子里可以再检查主语和动词是否对应。",mockVocab:"今天的词用得不错，可以再加一个连接短语让意思更连贯。",mockSentence:"结构清楚。试着变化一下句子长度，会更自然。",mockNote:"正在显示示例反馈；实时 AI 刚才没有响应，稍后可再试一次获得更具体的修改。"},
     focus:{title:"今日重点",teacher:"今天有几处特别值得一路带着学。",vocab:"重点词汇",grammar:"重点语法",level:"等级",loading:"正在提炼今日重点…"},
     recall:{title:"英文提示回忆",teacher:"现在让大脑主动把荷兰语找回来。先看英文提示，然后说出或写出原文意思，再查看答案。",purpose:"这一步会强迫主动输出，让文本不只是能看懂，也能说出来。",englishCue:"英文提示",yourDutch:"你的荷兰语",placeholder:"写下你记得的荷兰语…",speak:"语音输入",check:"查看原文",original:"原文",tryFirst:"请先说出或写下你的答案。",done:"每个回忆提示都尝试过了。",progress:(a,b)=>`第 ${a} / ${b} 题`},
@@ -329,6 +329,7 @@ const TTS_OK=typeof window!=="undefined" && "speechSynthesis" in window;
 // High-quality AI voice via /api/tts, with the browser voice as fallback.
 // ttsMode caches the outcome so we don't re-probe the API on every click.
 let ttsMode=null;            // null=unknown, "api", "browser"
+let ttsFailStreak=0;         // consecutive API failures; we only fall back permanently after several
 let activeHandle=null;
 function browserSpeak(handle,text,lang,rate){
   if(!("speechSynthesis" in window)){ if(handle.onend)handle.onend(); return; }
@@ -351,10 +352,23 @@ function playUrl(handle,url){ if(handle._cancelled) return; const a=new Audio(ur
   a.ontimeupdate=()=>{ if(!handle._cancelled&&handle.onprogress)handle.onprogress(a.currentTime,a.duration); };
   a.onended=()=>{ if(!handle._cancelled&&handle.onend)handle.onend(); }; a.play().catch(()=>{}); }
 
+// Fetch one clip from the high-quality API, retrying once on a transient failure.
+async function fetchTTSBlob(text,lang,rate,voiceRole,tries=2){
+  for(let i=0;i<tries;i++){
+    try{
+      const res=await fetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:(text||"").slice(0,4000),lang,rate,voiceRole})});
+      if(res.ok && (res.headers.get("content-type")||"").includes("audio")) return await res.blob();
+    }catch(e){ /* retry */ }
+  }
+  return null;
+}
 function speak(text,lang,rate=1,voiceRole){
   stopSpeak();
   const handle={_cancelled:false,onend:null};
   activeHandle=handle;
+  // Only give up on the high-quality voice after several consecutive API failures,
+  // so one transient hiccup on a long line never swaps the whole session to the
+  // lower-quality browser voice (which is what made words and passages sound different).
   if(ttsMode==="browser"){ browserSpeak(handle,text,lang,rate); return handle; }
   const key=cacheKey(text,lang,rate,voiceRole);
   (async()=>{
@@ -362,20 +376,20 @@ function speak(text,lang,rate=1,voiceRole){
     let url=audioMem && audioMem.get(key);
     // 2) IndexedDB cache (persists across reloads) — free
     if(!url){ const blob=await IDB.get(key); if(blob){ url=URL.createObjectURL(blob); audioMem&&audioMem.set(key,url); } }
-    if(url){ ttsMode="api"; playUrl(handle,url); return; }
+    if(url){ ttsMode="api"; ttsFailStreak=0; playUrl(handle,url); return; }
     // 3) not cached → call the API (the ONLY path that costs money)
-    try{
-      const res=await fetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:(text||"").slice(0,4000),lang,rate,voiceRole})});
-      if(res.ok && (res.headers.get("content-type")||"").includes("audio")){
-        ttsMode="api";
-        const blob=await res.blob();
-        IDB.put(key,blob);                                   // save for next time
-        const u2=URL.createObjectURL(blob); audioMem&&audioMem.set(key,u2);
-        playUrl(handle,u2);
-        return;
-      }
-      ttsMode="browser";
-    }catch(e){ /* network/route error → fall back */ }
+    const blob=await fetchTTSBlob(text,lang,rate,voiceRole,2);
+    if(handle._cancelled) return;
+    if(blob){
+      ttsMode="api"; ttsFailStreak=0;
+      IDB.put(key,blob);                                   // save for next time
+      const u2=URL.createObjectURL(blob); audioMem&&audioMem.set(key,u2);
+      playUrl(handle,u2);
+      return;
+    }
+    // This clip failed — use the browser voice just for this play. Latch to the
+    // browser voice only if the API keeps failing (e.g. no key configured).
+    if(++ttsFailStreak>=3) ttsMode="browser";
     if(!handle._cancelled) browserSpeak(handle,text,lang,rate);
   })();
   return handle;
@@ -681,20 +695,18 @@ function generateLesson(text,lang,level,goal,targetMin=null){ const chars=text.l
 const STEPS=[
   {phase:"Learning",title:"Listen",min:3},
   {phase:"Learning",title:"Watch · your language",min:3},
-  {phase:"Learning",title:"Listen & Read",min:3},
   {phase:"Grammar & Vocabulary",title:"Grammar & Vocabulary",min:7},
   {phase:"Practicing",title:"Practice · with subtitles",min:5},
   {phase:"Practicing",title:"Practice · no subtitles",min:5},
-  {phase:"Practicing",title:"Understand everything",min:3},
   {phase:"Practicing",title:"Recall from English",min:4},
   {phase:"Using",title:"Practice with AI",min:6},
 ];
 const TOTAL_MIN=STEPS.reduce((a,s)=>a+s.min,0);
 /* collapsed plan blocks (grammar kept as its own block) */
 const PLAN_BLOCKS=[
-  {name:"Learning",icon:"🎧",items:["Listen","Watch in your language","Listen & read"],min:9},
+  {name:"Learning",icon:"🎧",items:["Listen","Watch in your language"],min:6},
   {name:"Grammar & Vocabulary",icon:"🔍",items:["Sentence-by-sentence study"],min:7},
-  {name:"Practicing",icon:"🗣️",items:["With subtitles","No subtitles","Understand everything","Recall from English"],min:17},
+  {name:"Practicing",icon:"🗣️",items:["With subtitles","No subtitles","Recall from English"],min:14},
   {name:"Using",icon:"💬",items:["Write & talk with AI"],min:6},
 ];
 
@@ -1192,7 +1204,7 @@ function Lesson({lesson,text,onFinish}){
       {step<STEPS.length-1 ? <button className="btn btn-outline btn-sm" disabled={locked} onClick={()=>go(step+1)}>{t.continue} →</button>
         : <button className="btn btn-primary btn-sm" disabled={locked} onClick={onFinish}>{t.finish} ✓</button>}
     </div>
-    {locked && <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{step===3?t.lockedGrammar:step===7?t.lockedRecall:t.lockedAI}</div>}
+    {locked && <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{step===2?t.lockedGrammar:step===5?t.lockedRecall:t.lockedAI}</div>}
     <div style={{textAlign:"center",marginTop:16}}><button className="btn btn-ghost btn-sm muted" onClick={onFinish}>{t.exitSession}</button></div>
   </div>);
 }
@@ -1221,28 +1233,12 @@ function StepBody({step,lesson,text,onComplete}){
     <CheckIn>{t.watch.check}</CheckIn>
   </div>);
 
-  if(step===2) return (<div>
-    <div className="eyebrow">{t.stepPhases[2]}</div><h2>{t.stepTitles[2]}</h2>
-    <Teacher>{t.read.teacher(shownLang)}</Teacher>
-    <Purpose>{t.read.purpose}</Purpose>
-    <SyncReader key="listen-read-reader" items={sents.map(s=>({s}))} lang={lang} translation={false} rate={1} gap={900}/>
-    <CheckIn>{t.read.check}</CheckIn>
-  </div>);
+  if(step===2) return <GrammarStep lesson={lesson} onComplete={onComplete}/>;
 
-  if(step===3) return <GrammarStep lesson={lesson} onComplete={onComplete}/>;
+  if(step===3) return <TimedPractice key="subs" sents={sents} lang={lang} withSubs={true}/>;
+  if(step===4) return <TimedPractice key="nosubs" sents={sents} lang={lang} withSubs={false}/>;
 
-  if(step===4) return <TimedPractice key="subs" sents={sents} lang={lang} withSubs={true}/>;
-  if(step===5) return <TimedPractice key="nosubs" sents={sents} lang={lang} withSubs={false}/>;
-
-  if(step===6) return (<div>
-    <div className="eyebrow">{t.stepPhases[6]}</div><h2>{t.stepTitles[6]}</h2>
-    <Teacher>{t.understand.teacher(shownLang)}</Teacher>
-    <Purpose>{t.understand.purpose}</Purpose>
-    <SyncReader key="understand-reader" items={sents.map(s=>({s}))} lang={lang} level={lesson.level} translation={false}/>
-    <CheckIn>{t.understand.check}</CheckIn>
-  </div>);
-
-  if(step===7) return <RecallStep lesson={lesson} onComplete={onComplete}/>;
+  if(step===5) return <RecallStep lesson={lesson} onComplete={onComplete}/>;
 
   return <PracticeAI lesson={lesson} onComplete={onComplete}/>;
 }
@@ -1294,7 +1290,7 @@ function GrammarStep({lesson,onComplete}){
     cachedAiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen})),explanationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
       if(cancel) return; setLoadingKw(false);
       if(d&&Array.isArray(d.items)){ setExpl(prev=>{ const n={...prev};
-        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,pos:it.pos||null}; });
+        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,exampleTranslation:it.exampleTranslation||null,pos:it.pos||null}; });
         kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null}; });
         return n; }); }
       else setExpl(prev=>{ const n={...prev}; kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null}; }); return n; });
@@ -1334,7 +1330,7 @@ function GrammarStep({lesson,onComplete}){
   const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
 
   if(view==="summary") return (<div>
-    <div className="eyebrow">{t.stepPhases[3]}</div><h2>{t.gram.summaryTitle}</h2>
+    <div className="eyebrow">{t.stepPhases[2]}</div><h2>{t.gram.summaryTitle}</h2>
     <Teacher>{t.gram.summaryTeacher}</Teacher>
     <div className="summary-stack">
       <h3 className="lbl">{t.gram.allVocab}</h3>
@@ -1346,6 +1342,7 @@ function GrammarStep({lesson,onComplete}){
           </summary>
           {parts.detail && <div className="summary-detail">{parts.detail}</div>}
           {e&&e.example && <div className="word-example">“{e.example}”</div>}
+          {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
         </details>
       ); })}
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.patterns}</h3>
@@ -1367,7 +1364,7 @@ function GrammarStep({lesson,onComplete}){
   </div>);
 
   return (<div>
-    <div className="eyebrow">{t.stepPhases[3]}</div><h2>{t.gram.title}</h2>
+    <div className="eyebrow">{t.stepPhases[2]}</div><h2>{t.gram.title}</h2>
     <Teacher>{t.gram.teacher}</Teacher>
     <Purpose>{t.gram.purpose}</Purpose>
 
@@ -1401,6 +1398,7 @@ function GrammarStep({lesson,onComplete}){
           <div className="tiny muted" style={{marginTop:7}}>💡 {usageNote(w)}</div>
         </div>)}
         {e&&e.example && <div className="word-example">“{e.example}”</div>}
+        {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
       </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}
 
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.grammarCoach}</h3>
@@ -1429,34 +1427,35 @@ function GrammarStep({lesson,onComplete}){
   </div>);
 }
 
-/* ---------- steps 6 & 7 timed practice with a ready-buffer ---------- */
+/* ---------- shadowing practice: each line auto-plays, learner reads along ---------- */
 function TimedPractice({sents,lang,withSubs}){
   const {t}=useUI();
   const list=sents;
   const [started,setStarted]=useState(false);
   const [idx,setIdx]=useState(0);
-  const [phase,setPhase]=useState("prepare"); // prepare | speak | done
-  const [left,setLeft]=useState(0); const [paused,setPaused]=useState(false);
+  const [done,setDone]=useState(false);
   const [reveal,setReveal]=useState(withSubs);
   const cur=list[idx]||"";
-  const secs=Math.min(12,Math.max(4,Math.round(cur.split(/\s+/).filter(Boolean).length*0.9)));
-  const phaseIndex=withSubs?4:5;
+  const phaseIndex=withSubs?3:4;
+  const lastPlayed=useRef(-1);
 
-  useEffect(()=>{ setStarted(false); setIdx(0); setPhase("prepare"); setLeft(0); setPaused(false); setReveal(withSubs); stopSpeak(); },[withSubs,list.length]);
-  useEffect(()=>{ if(!started) return; setPhase("prepare"); setLeft(0); setPaused(false); setReveal(withSubs); stopSpeak(); },[idx,started,withSubs]);
-
-  useEffect(()=>{ if(!started||phase!=="speak"||paused)return;
-    if(left<=0){ if(idx<list.length-1){ setIdx(idx+1); } else setPhase("done"); return; }
-    const t=setTimeout(()=>setLeft(l=>l-1),1000); return ()=>clearTimeout(t);
-  },[phase,left,paused,idx,started]);
+  useEffect(()=>{ setStarted(false); setIdx(0); setDone(false); setReveal(withSubs); lastPlayed.current=-1; stopSpeak(); },[withSubs,list.length]);
+  useEffect(()=>()=>stopSpeak(),[]);
 
   function playLine(rate=1){
     const role=voiceRoleForLine(cur,idx,list);
     speak(role?spokenTextForLine(cur):cur,lang,rate,role);
   }
-  function startSpeaking(){ stopSpeak(); setPhase("speak"); setLeft(secs); setPaused(false); }
-  function togglePause(){ if(!paused){ stopSpeak(); setPaused(true); } else setPaused(false); }
-  function restartPractice(){ stopSpeak(); setStarted(true); setIdx(0); setPhase("prepare"); setLeft(0); setPaused(false); setReveal(withSubs); scrollToTop(); }
+  // Auto-play the current line whenever we land on a new sentence.
+  useEffect(()=>{ if(!started||done) return; if(lastPlayed.current===idx) return;
+    lastPlayed.current=idx; setReveal(withSubs);
+    const role=voiceRoleForLine(cur,idx,list);
+    speak(role?spokenTextForLine(cur):cur,lang,1,role);
+  },[started,idx,done]);
+
+  function begin(){ stopSpeak(); setStarted(true); setIdx(0); setDone(false); setReveal(withSubs); lastPlayed.current=-1; scrollToTop(); }
+  function goPrev(){ if(idx===0) return; stopSpeak(); setIdx(i=>Math.max(0,i-1)); scrollToTop(); }
+  function goNext(){ stopSpeak(); if(idx<list.length-1){ setIdx(i=>i+1); scrollToTop(); } else setDone(true); }
 
   const head=(<><div className="eyebrow">{t.stepPhases[phaseIndex]}</div><h2>{t.timed.title(withSubs)}</h2></>);
 
@@ -1467,34 +1466,29 @@ function TimedPractice({sents,lang,withSubs}){
       <div style={{fontWeight:500,marginBottom:6}}>{t.timed.how}</div>
       <ul className="clean tiny muted">{t.timed.tips.map((tip,i)=><li key={i}>{tip}</li>)}</ul>
     </div>
-    <button className="btn btn-primary" onClick={restartPractice}>▶ {t.timed.ready}</button>
+    <button className="btn btn-primary" onClick={begin}>▶ {t.timed.ready}</button>
     <div className="tiny muted" style={{marginTop:10}}>{t.timed.breath}</div>
   </div>);
 
-  if(phase==="done") return (<div>{head}
+  if(done) return (<div>{head}
     <div className="card bigcard"><div style={{fontSize:34}}>✓</div>
       <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div>
-      <button className="btn btn-outline btn-sm" onClick={restartPractice}>↺ {t.timed.again}</button></div>
+      <button className="btn btn-outline btn-sm" onClick={begin}>↺ {t.timed.again}</button></div>
     <CheckIn>{t.timed.doneCheck}</CheckIn>
   </div>);
 
   return (<div>{head}
     <div className="card bigcard">
       <div className="row" style={{gap:8}}><span className="badge badge-outline">{idx+1} / {list.length}</span>
-        <span className="phaselab" style={{color:phase==="speak"?"hsl(var(--success))":"hsl(var(--muted-foreground))"}}>{phase==="speak"?`🗣️ ${t.timed.yourTurn}`:`🎧 ${t.timed.listen}`}</span></div>
+        <span className="phaselab" style={{color:"hsl(var(--success))"}}>🗣️ {t.timed.shadow}</span></div>
       {(withSubs||reveal) ? <div className="bigsent">{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
-      {phase==="speak" && <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-        <div className="timerbar"><span style={{width:(left/secs*100)+"%"}}/></div><div className="count">{left}s</div></div>}
       {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
-      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>{stopSpeak();setIdx(i=>Math.max(0,i-1));scrollToTop();}}>← {t.back}</button>
+      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={goPrev}>← {t.back}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(1)}>▶ {t.timed.replay}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(.75)}>▶ {t.timed.slow} 0.75×</button>
-      {phase==="speak"
-        ? <button className="btn btn-outline btn-sm" onClick={togglePause}>{paused?t.timed.resume:t.timed.pause}</button>
-        : <button className="btn btn-primary btn-sm" onClick={startSpeaking}>{t.timed.startSpeaking}</button>}
-      <button className="btn btn-ghost btn-sm" onClick={()=>{stopSpeak(); if(idx<list.length-1){setIdx(i=>i+1);scrollToTop();} else setPhase("done");}}>{t.timed.skip} →</button>
+      <button className="btn btn-primary btn-sm" onClick={goNext}>{idx<list.length-1?`${t.timed.next} →`:`${t.timed.finishRound} ✓`}</button>
     </div>
   </div>);
 }
@@ -1536,7 +1530,7 @@ function RecallStep({lesson,onComplete}){
   function check(){ if(!canCheck) return; setShown(s=>({...s,[idx]:true})); }
   function move(next){ stopMic(); setIdx(Math.max(0,Math.min(list.length-1,next))); }
   return (<div>
-    <div className="eyebrow">{t.stepPhases[7]}</div><h2>{t.recall.title}</h2>
+    <div className="eyebrow">{t.stepPhases[5]}</div><h2>{t.recall.title}</h2>
     <Teacher>{t.recall.teacher}</Teacher>
     <Purpose>{t.recall.purpose}</Purpose>
     <div className="card card-p">
@@ -1573,7 +1567,7 @@ function PracticeAI({lesson,onComplete}){
   const [wrote,setWrote]=useState(false); const [talked,setTalked]=useState(false);
   useEffect(()=>{ if(wrote&&talked&&onComplete) onComplete(); },[wrote,talked]);
   return (<div>
-    <div className="eyebrow">{t.stepPhases[8]}</div><h2>{t.aiUse.title}</h2>
+    <div className="eyebrow">{t.stepPhases[6]}</div><h2>{t.aiUse.title}</h2>
     <Teacher>{t.aiUse.teacher}</Teacher>
     <Purpose>{t.aiUse.purpose}</Purpose>
     <div className="tabs">

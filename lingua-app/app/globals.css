@@ -94,6 +94,7 @@
   .meaning-simple{font-size:15px;font-weight:700;line-height:1.35;color:hsl(208 76% 34%)}
   .meaning-simple.inline{font-size:12.5px;font-weight:700}
   .word-example{font-size:12.5px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:7px;font-style:italic}
+  .word-example-translation{font-size:12.5px;color:hsl(208 76% 34%);line-height:1.45;margin-top:3px;font-weight:600}
   .meaning-loading{margin-top:10px}
   .skeleton{height:10px;border-radius:999px;background:linear-gradient(90deg,hsl(var(--secondary)),hsl(208 45% 92%),hsl(var(--secondary)));background-size:220% 100%;animation:shimmer 1.25s ease-in-out infinite}
   .skeleton.short{width:34%;margin-bottom:7px}
@@ -178,7 +179,8 @@
   .summary-card summary::-webkit-details-marker{display:none}
   .summary-card[open] summary{border-bottom:1px solid hsl(var(--border))}
   .summary-detail{font-size:12.5px;color:hsl(var(--muted-foreground));line-height:1.5;padding:10px 13px 0}
-  .summary-card .word-example{padding:0 13px 12px}
+  .summary-card .word-example{padding:0 13px 4px}
+  .summary-card .word-example-translation{padding:0 13px 12px}
   ul.clean{margin:0;padding-left:18px} ul.clean li{margin-bottom:7px}
   .star{color:hsl(var(--warm));font-size:15px} .star.off{color:hsl(var(--border))}
   .plan-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid hsl(var(--border))}

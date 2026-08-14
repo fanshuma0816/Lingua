@@ -9,9 +9,11 @@ export const maxDuration = 60;
 export async function GET() {
   const out = {
     config: {
-      textProvider: "Gemini (@google/genai)",
+      textProvider: "Gemini on Vertex AI (@google-cloud/vertexai)",
       model: AI.model,
-      hasGeminiKey: !!AI.key,
+      project: AI.project,
+      location: AI.location,
+      textEnabled: !!AI.textEnabled,
       translationProvider: "Google Cloud Translation v2",
       ttsProvider: "Google Cloud Text-to-Speech v1",
       hasGcpKey: !!AI.gcpKey,

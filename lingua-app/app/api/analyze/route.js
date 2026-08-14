@@ -22,9 +22,9 @@ function wordCount(text) {
 }
 
 export async function POST(req) {
-  // Text modes need the Gemini key; the translate mode needs the Cloud key.
+  // Text modes need Vertex AI; the translate mode needs the Cloud API key.
   // Bail out early only if neither is configured.
-  if (!AI.key && !AI.gcpKey) return new Response(null, { status: 204 });
+  if (!AI.textEnabled && !AI.gcpKey) return new Response(null, { status: 204 });
   try {
     const b = await req.json();
     const lang = b.lang || "the target language";
@@ -94,18 +94,67 @@ Use concrete details, not generic textbook filler. Do not include translations.`
       return Response.json({ translations: src.map((_, i) => r.translations[i] || null) });
     }
 
-    // --- explain a few words in context (meaning + a NEW example) ---
+    // --- explain a few words in context (meaning + a NEW example + its translation) ---
     if (b.mode === "explain") {
       const items = (b.items || []).slice(0, 6);
       if (!items.length) return Response.json({ items: [] });
       const explanationLanguage = b.explanationLanguage || "English";
-      const sys = "You are a warm, precise language teacher. Reply ONLY with minified JSON, no prose.";
-      const user = `A ${level} learner of ${lang} is studying these words, each shown with the sentence it appears in.
-Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>}]} — one object per input word, same order.
+      const words = items.map(it => String((it && it.word) || it || "")).filter(Boolean);
+
+      // 1) Ask the model for meanings + fresh examples (skip if Vertex isn't set up).
+      let aiItems = [];
+      if (AI.textEnabled) {
+        try {
+          const sys = "You are a warm, precise language teacher. Reply ONLY with minified JSON, no prose.";
+          const user = `A ${level} learner of ${lang} is studying these words, each shown with the sentence it appears in.
+Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
 Words:\n${JSON.stringify(items)}`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 1600 });
-      const p = parseJSON(out);
-      return Response.json({ items: Array.isArray(p.items) ? p.items : [] });
+          const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 1800 });
+          const p = parseJSON(out);
+          aiItems = Array.isArray(p.items) ? p.items : [];
+        } catch (e) { aiItems = []; }
+      }
+      const byWord = {};
+      aiItems.forEach(it => { if (it && it.word) byWord[String(it.word).toLowerCase()] = it; });
+
+      // 2) Guarantee every word has a real meaning: whenever the model didn't give
+      //    one (Vertex unavailable, quota, or it just echoed the word), fall back to
+      //    Google Translate — which uses the separate Cloud API key, so vocabulary
+      //    is always translated even when the text model is down.
+      const needMeaning = words.filter(w => {
+        const it = byWord[w.toLowerCase()];
+        const m = String((it && (it.simpleMeaning || it.meaning)) || "").trim();
+        return !m || m.toLowerCase() === w.toLowerCase();
+      });
+      const wordTr = {};
+      if (needMeaning.length && AI.gcpKey) {
+        const r = await googleTranslate(needMeaning, { target: explanationLanguage, source: lang });
+        if (!r.error) needMeaning.forEach((w, i) => { if (r.translations[i]) wordTr[w.toLowerCase()] = r.translations[i]; });
+      }
+
+      // 3) Make sure every example sentence carries a translation too.
+      const needExTr = aiItems.filter(it => it && it.example && !String(it.exampleTranslation || "").trim());
+      if (needExTr.length && AI.gcpKey) {
+        const r = await googleTranslate(needExTr.map(it => it.example), { target: explanationLanguage, source: lang });
+        if (!r.error) needExTr.forEach((it, i) => { it.exampleTranslation = r.translations[i] || ""; });
+      }
+
+      const outItems = words.map(w => {
+        const it = byWord[w.toLowerCase()] || {};
+        const modelMeaning = String(it.simpleMeaning || it.meaning || "").trim();
+        const usableModelMeaning = modelMeaning && modelMeaning.toLowerCase() !== w.toLowerCase() ? modelMeaning : "";
+        const simpleMeaning = usableModelMeaning || wordTr[w.toLowerCase()] || null;
+        return {
+          word: w,
+          pos: it.pos || null,
+          simpleMeaning,
+          detail: it.detail || null,
+          meaning: it.meaning || simpleMeaning || null,
+          example: it.example || null,
+          exampleTranslation: it.exampleTranslation || null,
+        };
+      });
+      return Response.json({ items: outItems });
     }
 
     // --- explain grammar in the current sentence, matched to the learner level ---
