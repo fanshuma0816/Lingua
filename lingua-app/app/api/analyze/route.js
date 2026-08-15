@@ -1,11 +1,16 @@
 // Small, focused, per-section AI calls. Each request handles ONE screen's worth
 // of analysis (a few sentences or words), so it stays fast and never truncates —
 // unlike the old one-shot enrichment that failed on long texts.
-// Modes: translate | explain | grammar | quiz | question
+// Modes: materials | grade | translate | explain | grammar | quiz | focus
 import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
+import { cleanText } from "../../../lib/lesson";
+import { validateForLevel, analyzeDifficulty, materialId } from "../../../lib/cefr.mjs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+// Generation must never be cached — regenerating should yield genuinely new text.
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 
 function durationSpec(label) {
   const nums = String(label || "").match(/\d+/g)?.map(Number) || [];
@@ -38,49 +43,90 @@ export async function POST(req) {
       const topics = (Array.isArray(b.topics) && b.topics.length ? b.topics : ["daily life"]).slice(0, 3);
       const levels = ["A1", "A2", "B1", "B2", "C1"];
       const cur = Math.max(0, levels.indexOf(String(level).slice(0, 2)));
-      // Pin every material to ONE CEFR level so the three options are equally
-      // hard \u2014 the learner picks by topic/format, not by an accidental
-      // difficulty spread.
       const targetLevel = levels[cur];
+      const capLevel = levels[Math.min(levels.length - 1, cur + 1)]; // i+1 ceiling
       const [wMin, wMax] = spec.words;
       const wMid = Math.round((wMin + wMax) / 2);
       const lengthGuide = `between ${wMin} and ${wMax} words (aim for about ${wMid})`;
-      const sys = "You are a careful language teacher selecting short study texts. Reply ONLY with minified JSON, no prose.";
-      const user = `Create 3 different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
-Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
-HARD CONSTRAINTS \u2014 every one of the 3 materials must obey these, with no exceptions:
-1) Length: each "text" must be ${lengthGuide}. Count the words. Do NOT return a text shorter than ${wMin} or longer than ${wMax} words. All three texts must be close in length to each other (within ~20%).
-2) Difficulty: EVERY material must sit at exactly CEFR ${targetLevel}. Use the same vocabulary range and sentence complexity across all three. Do not make one easier or harder than the others. Do not exceed ${targetLevel}.
-The three materials should differ by TOPIC and FORMAT, never by length or difficulty.
-Each material should be suitable for turning into a listening/reading/vocabulary lesson.
-For Dutch, the title and original text MUST be Dutch only. Never put Chinese, English explanations, or translations inside title or text.
-Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"level":"${targetLevel}","text":<original text in ${lang}, natural and level-appropriate>}]}.
-If source is "Dialogue", format each speaker turn on its own line with a short speaker label, for example "Sanne: ..." and "Amir: ...".
-If source is not "Dialogue", do not write fake speaker labels. Keep quoted speech intact, for example "Dank u wel. Tot ziens." must remain one quoted utterance.
-Use concrete details, not generic textbook filler. Do not include translations.`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.7, max: 2600 });
-      const p = parseJSON(out);
+      const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const avoid = (Array.isArray(b.avoid) ? b.avoid : []).filter(Boolean).slice(0, 12);
+      const avoidLine = avoid.length ? `Avoid these recently shown topics/titles \u2014 pick clearly different scenarios: ${avoid.join(" | ")}.` : "";
       const hasCjk = s => /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(String(s || ""));
-      // Map an actual word count to a full-lesson estimate inside the tier, so the
-      // displayed time matches the specific text the learner will study.
       const minutesForWords = (wc) => {
         const t = wMax > wMin ? (wc - wMin) / (wMax - wMin) : 0.5;
         const mins = spec.min + (spec.max - spec.min) * Math.max(0, Math.min(1, t));
         return Math.max(spec.min, Math.min(spec.max, Math.round(mins / 5) * 5));
       };
-      // Keep the word range soft on the edges (\u00b115%) so we rarely discard a good
-      // text, but still filter out anything wildly off-spec.
       const lo = Math.round(wMin * 0.85), hi = Math.round(wMax * 1.15);
-      let cleaned = (Array.isArray(p.materials) ? p.materials : [])
-        .filter(m => m && m.text && !hasCjk(m.title) && !hasCjk(m.text))
-        .map(m => { const wc = wordCount(m.text); return { ...m, duration: spec.label, wordCount: wc, targetMinutes: minutesForWords(wc), level: targetLevel }; });
-      const inRange = cleaned.filter(m => m.wordCount >= lo && m.wordCount <= hi);
-      // Prefer in-range texts; if too few survived, fall back to whatever we have
-      // (sorted by how close they are to the target length) rather than returning nothing.
-      const ordered = inRange.length >= Math.min(3, cleaned.length)
-        ? inRange
-        : cleaned.sort((a, b) => Math.abs(a.wordCount - wMid) - Math.abs(b.wordCount - wMid));
-      return Response.json({ materials: ordered.slice(0, 3) });
+
+      const buildPrompt = (nonce, extra = "") => `Create 3 different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
+Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
+DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
+- Write on a ${targetLevel} base. You MAY introduce a small, controlled amount of ${capLevel} vocabulary, but NEVER anything above ${capLevel}.
+- Option 1 (Comfortable): about 10-15% of words above ${targetLevel}.
+- Option 2 (Balanced): about 15-22% above ${targetLevel}.
+- Option 3 (Stretch): about 22-30% above ${targetLevel}.
+- The three options must increase gradually in difficulty. Do NOT jump straight from ${targetLevel} to ${levels[Math.min(levels.length - 1, cur + 2)]}.
+LENGTH: each "text" must be ${lengthGuide}. Count the words. All three should be close in length (within ~20%).
+${avoidLine}
+For Dutch, the title and text MUST be Dutch only \u2014 never Chinese/English explanations or translations.
+Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":<"comfortable"|"balanced"|"stretch">,"text":<original text in ${lang}>}]}.
+If source is "Dialogue", put each speaker turn on its own line with a short label (e.g. "Sanne: ..."). Otherwise no fake speaker labels; keep quoted speech intact.
+Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.${extra}`;
+
+      const sys = "You are a careful language teacher writing short study texts calibrated to a learner's level. Reply ONLY with minified JSON, no prose.";
+      const runOnce = async (nonce, extra) => {
+        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: buildPrompt(nonce, extra) }], { json: true, temp: 0.9, max: 2600 });
+        const p = parseJSON(out);
+        return (Array.isArray(p.materials) ? p.materials : [])
+          .filter(m => m && m.text && !hasCjk(m.title) && !hasCjk(m.text));
+      };
+
+      // Validate against the deterministic CEFR analyzer \u2014 never trust the model's
+      // self-reported level. Reject anything over the i+1 cap or above 30% hard words.
+      const seen = new Set();
+      const accepted = [];
+      let rejected = 0;
+      const consider = (raw) => {
+        for (const m of raw) {
+          // Analyze the SAME cleaned text the lesson will be built from, so the
+          // id, level and annotations stay identical downstream.
+          const text = cleanText(m.text || "");
+          const wc = wordCount(text);
+          if (wc < lo || wc > hi) { rejected++; continue; }
+          const v = validateForLevel(text, level);
+          if (!v.ok) { rejected++; continue; }
+          const id = materialId(text);
+          if (seen.has(id)) continue;
+          seen.add(id);
+          accepted.push({
+            id, title: m.title || null, source: m.source || "AI text", text,
+            duration: spec.label, wordCount: wc, targetMinutes: minutesForWords(wc),
+            targetUserLevel: targetLevel,
+            validatedTextLevel: v.analysis.validatedTextLevel,
+            level: v.analysis.validatedTextLevel,       // card badge reads this
+            hardWordRatio: v.analysis.hardWordRatio,
+            difficultyTier: v.analysis.difficultyTier,
+            vocabularyAnnotations: v.analysis.annotations,
+            resultSource: "ai",
+          });
+        }
+      };
+
+      try { consider(await runOnce(requestId, "")); } catch (e) { /* fall through to retry */ }
+      if (accepted.length < 3) {
+        // One stricter retry with a fresh nonce so we don't repeat the same text.
+        try { consider(await runOnce(requestId + "-r", ` Keep vocabulary firmly at ${targetLevel} with only a light touch of ${capLevel}; make the three scenarios clearly distinct from each other.`)); } catch (e) { /* ignore */ }
+      }
+
+      // Order by increasing difficulty and label the three tiers accordingly.
+      accepted.sort((a, b2) => a.hardWordRatio - b2.hardWordRatio);
+      const tierNames = ["comfortable", "balanced", "stretch"];
+      const final = accepted.slice(0, 3).map((m, i) => ({ ...m, difficultyTier: tierNames[i] || m.difficultyTier }));
+
+      const debug = { requestId, requestedLevel: level, capLevel, materialIds: final.map(m => m.id), resultSource: final.length ? "ai" : "none", accepted: accepted.length, rejected };
+      console.log("[analyze:materials]", JSON.stringify(debug));
+      return Response.json({ materials: final, debug });
     }
 
     // --- grade candidate words by strict CEFR level (for the reading check) ---

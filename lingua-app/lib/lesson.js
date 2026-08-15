@@ -4,6 +4,7 @@
 // fresh examples, target-language quiz) with real model output.
 
 import { AI, chatComplete, parseJSON } from "./ai";
+import { analyzeDifficulty, buildMaterialAnalysis, estimateWordCefr, cefrIdx, idxToCefr, materialId } from "./cefr.mjs";
 
 const STOP = new Set(("the a an and or but of to in on for with at by from as is are was were be been being this that these those it its i you he she we they my your our their not no so if then than into about over under out up down el la los las de que y a en un una por con para se su lo le les des du le la un une et ou de à dans pour qui ne pas ce cette der die das und ist im den").split(" "));
 const POS = ["noun", "verb", "adjective", "adverb", "phrase"];
@@ -47,11 +48,18 @@ export function cleanText(raw) {
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 function words(text) { return (text.toLowerCase().match(/[\p{L}][\p{L}'’-]{2,}/gu) || []); }
+// CEFR-aware vocabulary selection. Harder words (higher CEFR) surface first so a
+// beginner reading an A2/B1 text still sees the A2/B1 vocabulary — instead of the
+// old length+frequency sort, which mostly returned common A1/A2 words.
 function pickVocab(text, n) {
   const ws = words(text); const freq = {};
   ws.forEach(w => { if (!STOP.has(w) && w.length > 3) freq[w] = (freq[w] || 0) + 1; });
   const uniq = [...new Set(ws)].filter(w => !STOP.has(w) && w.length > 3);
-  uniq.sort((a, b) => (b.length + (freq[b] || 0)) - (a.length + (freq[a] || 0)));
+  uniq.sort((a, b) => {
+    const ca = cefrIdx(estimateWordCefr(a)), cb = cefrIdx(estimateWordCefr(b));
+    if (cb !== ca) return cb - ca;                 // harder words first
+    return (b.length + (freq[b] || 0)) - (a.length + (freq[a] || 0));
+  });
   return uniq.slice(0, n);
 }
 const ABBR = "Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|vs|etc|e\\.g|i\\.e|bijv|enz|nr|resp|approx|no|No|Inc|Ltd|Co";
@@ -161,7 +169,7 @@ function estimateMinutes(chars, sentCount, vocabCount, diff, wordCount = 0) {
   return clamp(Math.round((base * mult) / 5) * 5, 10, 60);
 }
 
-export function generateLesson(text, lang, level, goal, targetMin = null) {
+export function generateLesson(text, lang, level, goal, targetMin = null, providedMaterial = null) {
   const chars = text.length; const sents = sentencesOf(text);
   const vocabCount = estimateVocabCount(text, chars);
   const vlist = pickVocab(text, vocabCount);
@@ -169,15 +177,34 @@ export function generateLesson(text, lang, level, goal, targetMin = null) {
     const hint = lang === "Dutch" ? DUTCH_HINTS[w.toLowerCase()] : null;
     return { word: w.replace(/^./, c => c.toUpperCase()), pos: hint?.pos || inferPos(w, lang), context: contextFor(w, sents), meaning: hint?.meaning || null, simpleMeaning: hint?.meaning || null, example: null };
   });
-  const recommended = recommendLevel(text, sents);
+  // ONE material analysis, computed here and reused by card, preview, and
+  // diagnosis. The material's CEFR is the validated text level — never a
+  // per-page recomputation and never the learner's own level.
+  const analysis = analyzeDifficulty(text, level);
+  const estimated = estimateMinutes(chars, sents.length, vocabCount, analysis.difficultyTier === "over" ? 5 : 3 + (analysis.validatedTextLevelIdx - cefrIdx(level)), words(text).length);
+  const estMin = targetMin || estimated;
+  const material = providedMaterial && providedMaterial.validatedTextLevel
+    ? { ...providedMaterial, targetUserLevel: idxToCefr(cefrIdx(level)), estimatedLessonTime: estMin }
+    : {
+        id: materialId(text), title: null, source: null,
+        targetUserLevel: analysis.targetUserLevel,
+        validatedTextLevel: analysis.validatedTextLevel,
+        difficultyTier: analysis.difficultyTier,
+        hardWordRatio: analysis.hardWordRatio,
+        vocabularyAnnotations: analysis.annotations,
+        estimatedLessonTime: estMin,
+      };
+  // Keep `recommended` for backward compatibility, but source it from the same
+  // validated analysis so every screen agrees.
+  const recommended = LEVELS.find(l => l.slice(0, 2) === material.validatedTextLevel) || LEVELS[cefrIdx(material.validatedTextLevel)] || LEVELS[1];
+  const diff = Math.max(1, Math.min(5, 3 + (cefrIdx(material.validatedTextLevel) - cefrIdx(level))));
   const simple = [...sents].sort((a, b) => a.split(/\s+/).length - b.split(/\s+/).length);
-  const diff = Math.max(1, Math.min(5, 3 + (levelIdx(recommended) - levelIdx(level))));
-  const estimated = estimateMinutes(chars, sents.length, vocabCount, diff, words(text).length);
   return {
     lang, level, goal, charCount: chars, sents, vocab, vocabCount, vlist, recommended,
+    material,
     topics: inferTopics(text),
     diff,
-    estMin: targetMin || estimated,
+    estMin,
     grammarFocus: ["Verb position in main clauses", "Useful tense patterns", "Connectors and sentence flow"],
     comprehension: quizItems(simple, vlist, 3),
     recognition: quizItems(sents, vlist, 3),

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useMemo, createContext, useContext } from "react";
+import { analyzeDifficulty, materialId as cefrMaterialId, cefrIdx as cefrIndex } from "../lib/cefr.mjs";
 
 
 
@@ -727,16 +728,24 @@ function fallbackGrammarItems(sentence,level,uiLang){
     ],
   }];
 }
-function generateLesson(text,lang,level,goal,targetMin=null){ const chars=text.length; const sents=sentencesOf(text);
+function generateLesson(text,lang,level,goal,targetMin=null,providedMaterial=null){ const chars=text.length; const sents=sentencesOf(text);
   const vocabCount=estimateVocabCount(text,chars);
   const vlist=pickVocab(text,vocabCount);
   const vocab=vlist.map(w=>{ const f=fallbackWordInfo(w,lang,"en"); return {...f,word:w.replace(/^./,c=>c.toUpperCase()),context:contextFor(w,sents)}; });
-  const recommended=recommendLevel(text,sents);
-  const diff=Math.max(1,Math.min(5,3+(levelIdx(recommended)-levelIdx(level))));
-  const estimated=estimateMinutes(chars,sents.length,vocabCount,diff,words(text).length);
-  return { lang,level,goal,charCount:chars,sents,vocab,vocabCount,vlist,recommended,diff,
+  // ONE material analysis, shared with the server path via lib/cefr.mjs.
+  const analysis=analyzeDifficulty(text,level);
+  const estimated=estimateMinutes(chars,sents.length,vocabCount,Math.max(1,Math.min(5,3+(analysis.validatedTextLevelIdx-cefrIndex(level)))),words(text).length);
+  const estMin=targetMin||estimated;
+  const material=(providedMaterial&&providedMaterial.validatedTextLevel)
+    ? {...providedMaterial,estimatedLessonTime:estMin}
+    : { id:cefrMaterialId(text),title:null,source:null,targetUserLevel:analysis.targetUserLevel,
+        validatedTextLevel:analysis.validatedTextLevel,difficultyTier:analysis.difficultyTier,
+        hardWordRatio:analysis.hardWordRatio,vocabularyAnnotations:analysis.annotations,estimatedLessonTime:estMin };
+  const recommended=LEVELS.find(l=>l.slice(0,2)===material.validatedTextLevel)||LEVELS[1];
+  const diff=Math.max(1,Math.min(5,3+(cefrIndex(material.validatedTextLevel)-levelIdx(level))));
+  return { lang,level,goal,charCount:chars,sents,vocab,vocabCount,vlist,recommended,material,diff,
     topics:inferTopics(text),
-    estMin:targetMin||estimated,
+    estMin,
     grammarFocus:["Verb position in main clauses","Useful tense patterns","Connectors and sentence flow"],
     comprehension:quizItems([...sents].sort((a,b)=>a.split(/\s+/).length-b.split(/\s+/).length),vlist,3),
     recognition:quizItems(sents,vlist,3) }; }
@@ -887,7 +896,7 @@ function Say({text,lang,rate=1,voiceRole}){ const {t}=useUI(); return <button cl
 
 // Small per-section AI call. Returns parsed JSON or null (never throws).
 async function aiAnalyze(mode,payload){
-  try{ const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,...payload})});
+  try{ const r=await fetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,...payload})});
     if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
 }
 const CACHEABLE_ANALYSIS=new Set(["translate","explain","grammar","quiz","focus"]);
@@ -1059,6 +1068,7 @@ function InputScreen({onNext}){
   const [selectedMaterial,setSelectedMaterial]=useState(0);
   const [generating,setGenerating]=useState(false);
   const fileRef=useRef(null);
+  const recentTitles=useRef([]);   // anti-repeat memory across regenerations
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setRaw(String(r.result));r.readAsText(f);}
   const ready=count>40&&!over&&lang;
   const liveStats=count>40?materialStats(cleaned,level):null;
@@ -1071,17 +1081,40 @@ function InputScreen({onNext}){
   async function generateMaterials(){
     if(!lang) return;
     setGenerating(true);
-    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics});
-    const generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
     const spec=durationSpec(selectedDuration);
-    const items=(generated.length?generated:sampleMaterials(lang,level,goal,selectedDuration,topics)).slice(0,3)
-      .map(m=>({...m,duration:selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
+    // Anti-repeat: tell the server which topics/titles we just showed, plus a nonce.
+    const avoid=[...recentTitles.current,...topics].slice(0,12);
+    const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce});
+    let generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
+    if(generated.length){
+      generated=generated.map(m=>({...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
+    } else {
+      // Offline / AI-unavailable fallback: annotate + level-check + shuffle the
+      // static samples with the SAME analyzer, so a beginner never sees an
+      // over-level fallback and the order at least changes on regenerate.
+      generated=sampleMaterials(lang,level,goal,selectedDuration,topics)
+        .map(m=>{ const text=cleanText(m.text||""); const a=analyzeDifficulty(text,level);
+          return {...m,text,id:cefrMaterialId(text),validatedTextLevel:a.validatedTextLevel,level:a.validatedTextLevel,
+            targetUserLevel:level.slice(0,2),difficultyTier:a.difficultyTier,hardWordRatio:a.hardWordRatio,
+            vocabularyAnnotations:a.annotations,duration:selectedDuration,targetMinutes:m.targetMinutes||spec.target,resultSource:"fallback"}; })
+        .filter(m=>cefrIndex(m.validatedTextLevel)<=cefrIndex(level)+1)
+        .sort(()=>Math.random()-0.5);
+    }
+    const items=generated.slice(0,3);
+    recentTitles.current=[...items.map(m=>m.title).filter(Boolean),...recentTitles.current].slice(0,12);
     setMaterials(items); setSelectedMaterial(0); setGenerating(false);
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m) return;
-    const text=m.text||""; DB.set("draft",text); DB.set("lang",lang); DB.set("level",level); DB.set("goal",goal);
-    onNext({text:cleanText(text),lang,level,goal,targetMin:m.targetMinutes||durationSpec(selectedDuration).target});
+    const text=cleanText(m.text||""); DB.set("draft",m.text||""); DB.set("lang",lang); DB.set("level",level); DB.set("goal",goal);
+    const targetMin=m.targetMinutes||durationSpec(selectedDuration).target;
+    // Pass the stored material analysis forward so card = preview = diagnosis.
+    const material={ id:m.id||cefrMaterialId(text), title:m.title||null, source:m.source||null,
+      targetUserLevel:m.targetUserLevel||level.slice(0,2), validatedTextLevel:m.validatedTextLevel||m.level||level.slice(0,2),
+      difficultyTier:m.difficultyTier||null, hardWordRatio:m.hardWordRatio??null,
+      vocabularyAnnotations:Array.isArray(m.vocabularyAnnotations)?m.vocabularyAnnotations:[], estimatedLessonTime:targetMin };
+    onNext({text,lang,level,goal,targetMin,material});
   }
   if(!mode) return (<div className="start-screen">
     <div className="start-head">
@@ -1138,7 +1171,7 @@ function InputScreen({onNext}){
       </div>
       <div className="generated-grid">
         {materials.map((m,i)=>{ const stats=materialStats(m.text,level,m.duration||selectedDuration); return <button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
-          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{m.level||level.slice(0,2)}</span></span>
+          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
           <span>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
@@ -1184,6 +1217,8 @@ function Preview({lesson,text,onStart,onBack}){
   const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
   const diffLabel=t.diffLabels[lesson.diff];
   const fullText=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
+  // The material's CEFR comes from the ONE stored analysis — not a recompute.
+  const matLevel=(lesson.material&&lesson.material.validatedTextLevel)||lesson.recommended.split(" — ")[0];
   return (<div>
     <h1>{t.previewTitle}</h1><p className="sub">{t.previewSub}</p>
     <div className="row wrap" style={{gap:7,marginBottom:16}}>
@@ -1199,7 +1234,7 @@ function Preview({lesson,text,onStart,onBack}){
       <div style={{maxHeight:280,overflowY:"auto",whiteSpace:"pre-wrap",lineHeight:1.7,fontSize:15,padding:"2px 2px"}}>{fullText}</div>
     </div>
     <div className="grid4" style={{marginBottom:14}}>
-      <Stat k={t.recommendedLevel} v={lesson.recommended.split(" — ")[0]}/>
+      <Stat k={t.recommendedLevel} v={matLevel}/>
       <Stat k={t.estimatedTime} v={t.min(total)}/>
       <Stat k={t.vocabulary} v={t.wordCount(lesson.vocabCount)}/>
       <Stat k={t.characters} v={lesson.charCount.toLocaleString()}/>
@@ -1212,7 +1247,7 @@ function Preview({lesson,text,onStart,onBack}){
       <div className="row" style={{justifyContent:"space-between"}}>
         <div><div className="stat-k" style={{fontSize:11,fontWeight:600,color:"hsl(var(--muted-foreground))",textTransform:"uppercase",letterSpacing:".05em"}}>{t.difficultyForYou}</div>
           <div style={{marginTop:5}}><Stars n={lesson.diff}/> <span style={{fontWeight:600,marginLeft:6}}>{diffLabel}</span></div></div>
-        <div className="tiny muted" style={{textAlign:"right",maxWidth:230}}>{t.basedOnLevel(lesson.level.split(" — ")[0],lesson.recommended.split(" — ")[0])}</div>
+        <div className="tiny muted" style={{textAlign:"right",maxWidth:230}}>{t.basedOnLevel(lesson.level.split(" — ")[0],matLevel)}</div>
       </div>
     </div>
     <DailyFocus lesson={lesson}/>
@@ -1305,58 +1340,46 @@ function StepBody({step,lesson,text,diag,setDiag}){
 }
 
 /* ---------- Diagnosis module ---------- */
-// Step 1 — Reading check. Words are graded by strict CEFR (real AI, heuristic
-// fallback); the learner taps the ones they know. Coverage = 1 − unknown/total.
+// Step 1 — Reading check. Reuses the ONE stored material analysis (CEFR-graded
+// vocabulary annotations) — it does NOT re-ask the model to grade words. The
+// learner taps the ones they know; coverage = 1 − unknown/total tokens.
 function ReadingCheck({lesson,text,diag,setDiag}){
   const {t}=useUI();
-  const {lang,level}=lesson;
+  const {level}=lesson;
   const src=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
+  // Candidate hard words come straight from the stored analysis (words above the
+  // learner's level). Fall back to a local, deterministic analysis if absent.
+  const annotations=useMemo(()=>{
+    const stored=lesson.material&&Array.isArray(lesson.material.vocabularyAnnotations)?lesson.material.vocabularyAnnotations:null;
+    const list=(stored&&stored.length)?stored:analyzeDifficulty(src,level).annotations;
+    return list.slice(0,20);
+  },[lesson.material,src,level]);
   const totalTokens=Math.max(1,words(src).length);
-  const learnerIdx=levelIdx(level);
-  const capIdx=Math.min(LEVELS.length-1,learnerIdx+1);
-  const candidates=useMemo(()=>{
-    const seen=new Set(); const out=[];
-    for(const w of words(src)){ if(STOP.has(w)||w.length<=3||seen.has(w)) continue; seen.add(w); out.push(w); }
-    return out.slice(0,24);
-  },[src]);
-  const [graded,setGraded]=useState([]);   // [{word, level, idx}]
+  const matLevel=(lesson.material&&lesson.material.validatedTextLevel)||LEVELS[levelIdx(level)].slice(0,2);
   const [known,setKnown]=useState(()=>new Set());
-  const [loading,setLoading]=useState(true);
-  useEffect(()=>{ let cancel=false; setLoading(true);
-    if(!candidates.length){ setGraded([]); setLoading(false); return; }
-    cachedAiAnalyze("grade",{lang,level,words:candidates}).then(d=>{
-      if(cancel) return; setLoading(false);
-      const rows=(d&&Array.isArray(d.words)?d.words:candidates.map(w=>({word:w,level:w.length<=4?"A1":w.length<=6?"A2":"B1"})))
-        .map(g=>({word:g.word,level:g.level,idx:levelIdx(g.level)}))
-        // keep words at the learner's level or one above (the "+1" study words)
-        .filter(g=>g.idx>=learnerIdx).sort((a,b)=>a.idx-b.idx);
-      setGraded((rows.length?rows:candidates.map(w=>({word:w,level:LEVELS[capIdx].slice(0,2),idx:capIdx}))).slice(0,14));
-    });
-    return ()=>{cancel=true;};
-  },[candidates.join("|"),lang,level]);
-  const unknownWords=graded.filter(g=>!known.has(g.word.toLowerCase())).map(g=>g.word);
+  const unknownWords=annotations.filter(g=>!known.has((g.lemma||g.surface||"").toLowerCase())).map(g=>g.surface||g.lemma);
   const coverage=Math.max(40,Math.min(99,Math.round((1-unknownWords.length/totalTokens)*100)));
   useEffect(()=>{ setDiag(d=>({...d,coverage,total:totalTokens,unknown:unknownWords}));
     DB.set("unknownWords",unknownWords);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[coverage,graded.length,known.size]);
+  },[coverage,annotations.length,known.size]);
   function toggle(w){ const lc=w.toLowerCase(); setKnown(prev=>{ const n=new Set(prev); n.has(lc)?n.delete(lc):n.add(lc); return n; }); }
-  const shownLevel=LEVELS[Math.min(LEVELS.length-1,learnerIdx)].slice(0,2);
   return (<div>
     <div className="eyebrow">{t.diagnosis.readEyebrow}</div><h2>{t.diagnosis.readTitle}</h2>
     <Teacher>{t.diagnosis.readTeacher}</Teacher>
     <div className="card card-p" style={{marginBottom:14}}>
-      <h3 className="lbl">{t.diagnosis.readTextLbl(shownLevel)}</h3>
+      <h3 className="lbl">{t.diagnosis.readTextLbl(matLevel)}</h3>
       <div style={{lineHeight:1.85,fontSize:15,whiteSpace:"pre-wrap",maxHeight:220,overflowY:"auto"}}>{src}</div>
     </div>
     <div className="card card-p">
       <div className="row" style={{justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
         <h3 className="lbl" style={{margin:0}}>{t.diagnosis.readWordsLbl}</h3>
         <span className="tiny muted">{t.diagnosis.coverage}: <b>{coverage}%</b></span></div>
-      {loading ? <div className="tiny muted">{t.diagnosis.gradingWords}</div>
-        : <div className="row wrap" style={{gap:8}}>{graded.map(g=>{ const on=known.has(g.word.toLowerCase());
-            return <button key={g.word} className={"vchip focusable"+(on?" known":"")} onClick={()=>toggle(g.word)}>
-              <span className="box">✓</span>{g.word}<span className="badge badge-outline" style={{padding:"0 5px"}}>{g.level}</span></button>; })}</div>}
+      {annotations.length===0
+        ? <div className="tiny muted">{t.diagnosis.gradingWords}</div>
+        : <div className="row wrap" style={{gap:8}}>{annotations.map((g,i)=>{ const w=g.surface||g.lemma; const on=known.has((g.lemma||w).toLowerCase());
+            return <button key={(g.lemma||w)+i} className={"vchip focusable"+(on?" known":"")} onClick={()=>toggle(g.lemma||w)}>
+              <span className="box">✓</span>{w}<span className="badge badge-outline" style={{padding:"0 5px"}}>{g.cefr}</span></button>; })}</div>}
       <div className="tiny muted" style={{marginTop:14}}>{t.diagnosis.readNote}</div>
     </div>
   </div>);
@@ -2022,10 +2045,10 @@ function App(){
   function onPrev(){ const n=Math.max(0,step-1); setStep(n); setOpenMod(STEPS[n].mod); scrollToTop(); }
 
   async function loadLesson(d){ setText(d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); setScreen("loading");
-    try{ const r=await fetch("/api/lesson",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); setScreen("preview");
+    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); setScreen("preview");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }
-    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null); setLesson(L); setScreen("preview");
+    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null); setLesson(L); setScreen("preview");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     } }
 

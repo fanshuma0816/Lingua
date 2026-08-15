@@ -15,7 +15,11 @@ export async function POST(req) {
     const level = body.level || "A2 — Elementary";
     const goal = body.goal || "General fluency";
     const targetMin = Number(body.targetMin) || null;
-    return Response.json(generateLesson(text, lang, level, goal, targetMin));
+    // If a validated material analysis came from the generation step, thread it
+    // through so its id / level / annotations are preserved verbatim (one source
+    // of truth). Otherwise the lesson builder computes it deterministically.
+    const providedMaterial = body.material && body.material.validatedTextLevel ? body.material : null;
+    return Response.json(generateLesson(text, lang, level, goal, targetMin, providedMaterial));
   } catch (e) {
     return Response.json({ error: "bad request" }, { status: 400 });
   }

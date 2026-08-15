@@ -2,7 +2,9 @@
 
 ## Product Summary
 
-This product helps self-motivated Dutch learners turn any Dutch material into a structured, AI-guided language lesson.
+This product helps self-motivated Dutch learners turn any Dutch material into a structured, AI-guided language lesson. Learners can bring their own material — an article, transcript, or textbook excerpt — or let the AI recommend level-matched material based on their level, goals, and interests.
+
+Every lesson follows the same guided path: the product first diagnoses how well the learner can already read and hear the text, then walks them from understanding, through grammar and vocabulary, into shadowing, recall, and real writing and speaking practice.
 
 It is designed for learners who want to build real Dutch ability through focused practice, not simply maintain a daily streak or casually browse vocabulary.
 
@@ -41,7 +43,7 @@ This product exists to lower the cost, time pressure, and uncertainty of learnin
 
 Self-motivated Dutch learners.
 
-People who are willing to spend 10-30 minutes in focused learning sessions and want to build real language ability.
+People who are willing to spend anywhere from 10 to 60 minutes in focused learning sessions — they choose the depth — and want to build real language ability.
 
 They may be:
 
@@ -122,38 +124,66 @@ AI should feel warm, useful, structured, and reliable. It should not feel like a
 
 ## Core Learning Experience
 
-The ideal session lasts about 10-30 minutes and requires focused attention.
+A session lasts roughly 10 to 60 minutes depending on the depth the learner chooses, and requires focused attention.
 
 A learner should be able to:
 
-1. Add or choose Dutch material.
-2. Get a structured lesson generated from that material.
-3. Study key vocabulary and phrases.
-4. Understand grammar and usage in context.
-5. Complete guided exercises.
-6. Practice output through writing or speaking.
-7. Receive corrections and explanations.
-8. Review what they learned and continue later.
+1. Bring their own Dutch material, or have the AI recommend level-matched material by topic and goal.
+2. Get a structured lesson generated from that material, pitched at their level and capped just above it.
+3. See where they stand first — how much of the text they can read, and how much they can catch by ear.
+4. Understand the meaning, then study grammar and vocabulary in context, one sentence at a time.
+5. Practice out loud by shadowing the audio, with and without subtitles.
+6. Recall the language from memory and use it in real writing and conversation with an AI partner.
+7. Receive corrections and explanations in their own interface language.
+8. Finish with a clear sense of progress, and pick the lesson back up later from where they left off.
 
 The experience should feel like studying with a thoughtful tutor who knows how to turn real content into deliberate practice.
+
+## The Learning Path
+
+Every lesson is organized as five modules the learner moves through in order, but can revisit at any time (a hub-and-spoke path with saved progress):
+
+1. **Diagnosis** — Before teaching anything, the product checks comprehension. The learner marks which words they already know (each graded by strict CEFR level), then listens to the full audio once with no text and reports how much they caught. Reading and listening are cross-checked into a plain-language diagnosis — a comfortable match, a listening gap, an overload, or a text that is too easy — so the lesson meets them at the right level.
+2. **Learning** — First the meaning, in a language the learner already knows, line by line. Then a sentence-by-sentence breakdown of the grammar patterns, vocabulary, and collocations that matter in this specific text.
+3. **Shadowing** — Speaking practice by reading and repeating out loud along with the audio, first with subtitles, then without.
+4. **Recall** — Active retrieval: the learner sees the English and produces the Dutch from memory before checking.
+5. **Using** — Real output: writing with the day's words and holding a short spoken conversation with an AI partner, with feedback.
+
+The material is always pitched to the learner's level, capped at roughly one level above it (the "i+1" comprehension sweet spot of about 60-70% understanding), so it is challenging without being overwhelming.
+
+### Research Basis
+
+The flow is grounded in the Delft Method: understand a meaningful text first, absorb high-frequency words and grammar in context, then move toward production and conversation. The method — not the AI — is the backbone of the product.
 
 ## Key Features
 
 ### Material-To-Lesson Conversion
 
-Turn Dutch articles, textbook pages, PDFs, or other materials into structured lessons.
+Turn Dutch articles, textbook pages, transcripts, or other materials into structured lessons.
+
+### AI Material Recommendation
+
+For learners who don't have their own text, recommend a few ready-to-study materials matched to their level, goal, and interests — each pinned to a single CEFR level and length so the choice is about topic, not difficulty.
+
+### Comprehension Diagnosis
+
+Check what the learner can already read and hear before teaching, and adapt the lesson to the right level (the i+1 sweet spot) instead of guessing.
 
 ### Vocabulary And Phrase Extraction
 
-Identify words, phrases, collocations, and expressions that are useful for the learner's level and goals.
+Identify words, phrases, collocations, and expressions that are useful for the learner's level and goals, each graded by CEFR level.
 
 ### Contextual Grammar Guidance
 
-Explain grammar through the learner's chosen material instead of abstract examples alone.
+Explain grammar through the learner's chosen material, one sentence at a time, instead of abstract examples alone.
 
-### Guided Practice
+### Listening And Shadowing
 
-Generate exercises that move the learner from recognition to active use.
+High-quality audio for every text, plus guided shadowing — reading and repeating out loud along with the voice, with and without subtitles — to build the sound-to-speech bridge.
+
+### Recall And Guided Practice
+
+Move the learner from recognition to active production through retrieval practice and exercises built from their own text.
 
 ### AI Conversation Practice
 
@@ -161,11 +191,11 @@ Let learners practice speaking or writing with an AI partner that responds natur
 
 ### Personalized Feedback
 
-Correct learner output and explain what to improve, with clear and encouraging feedback.
+Correct learner output and explain what to improve, with clear and encouraging feedback, in the learner's own interface language (English or Chinese).
 
 ### Progress And Review
 
-Help learners revisit vocabulary, phrases, grammar patterns, and mistakes from previous sessions.
+Save progress across a resumable learning path, and help learners revisit vocabulary, phrases, grammar patterns, and mistakes from previous sessions.
 
 ## Differentiation
 
@@ -179,7 +209,7 @@ This product is always available, lower cost, and endlessly patient, while still
 
 ### Compared With Duolingo-Style Apps
 
-This product is deeper and more focused. It is for learners who want to study real Dutch materials and build practical ability, not just complete short gamified tasks.
+This product is deeper and more focused. It is for learners who want to study real Dutch materials and build practical ability, not just complete short gamified tasks. It diagnoses comprehension first, teaches from a meaningful text using a research-based method (the Delft Method), and moves the learner all the way to speaking — rather than drilling isolated words.
 
 ### Compared With Generic AI Chatbots
 
@@ -207,15 +237,15 @@ Dutch learning materials are limited, tutors are expensive, and fixed classes ar
 
 ### Solution
 
-Upload or choose Dutch material. The product turns it into a guided lesson with vocabulary, grammar, practice, conversation, and feedback.
+Bring your own Dutch material, or let AI find something at your level. The product turns it into a guided lesson that diagnoses what you already understand, then moves you through meaning, grammar and vocabulary, shadowing, recall, and real conversation — with feedback at every step.
 
 ### AI Explanation
 
-Your AI tutor helps you understand what matters, practice actively, correct mistakes, and keep improving.
+Your AI tutor checks where you stand, helps you understand what matters, practice actively, correct mistakes, and keep improving.
 
 ### Target User Signal
 
-Built for serious Dutch learners who can commit 10-30 minutes of focused practice and want to build real language ability.
+Built for serious Dutch learners who can commit 10 to 60 minutes of focused practice and want to build real language ability.
 
 ### Closing Promise
 
