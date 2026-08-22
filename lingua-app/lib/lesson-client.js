@@ -1,27 +1,58 @@
 import { analyzeDifficulty, cefrIdx as cefrIndex, materialId as cefrMaterialId } from "./cefr.mjs";
 import { LEVELS, levelIdx } from "../config/constants";
 import { fallbackWordInfo } from "./dutch";
-import { clamp, clampToDuration, compactQuote } from "./format";
+import { clamp, clampToDuration } from "./format";
 import { cleanText, contextFor, pickVocab, sentencesOf, words } from "./text";
 
 function practiceQuestion(lesson,shownLang,uiLang){
   const sents=lesson.sents||[];
-  const anchor=compactQuote(sents[Math.min(1,Math.max(0,sents.length-1))]||sents[0]||lesson.topics?.[0]||"the text",110);
   const fullText=(sents||[]).join(" ").toLowerCase();
-  const isSupermarket=/\b(supermarkt|brood|melk|appels|rijst|kassa)\b/i.test(fullText);
-  const focusWords=(lesson.focus&&Array.isArray(lesson.focus.vocab)?lesson.focus.vocab.map(x=>x.word).filter(Boolean):[]);
-  const v=(focusWords.length?focusWords:(lesson.vocab||[]).map(x=>x.word)).slice(0,3).join(", ");
+  const scene=writingScene(fullText,uiLang);
   const easy=levelIdx(lesson.level)<=1;
   if(uiLang==="zh"){
-    if(easy&&isSupermarket) return `想象你和 Mila 在超市。她正在买面包、牛奶、苹果和米。请用 ${shownLang} 写 2–3 个短句：你需要什么、你会选择什么，或者你会在收银台说什么。${v?`尽量自然用到：${v}。`:""}`;
     return easy
-      ? `想象你就在这个场景里：“${anchor}”。请用 ${shownLang} 写 2–3 个短句：你需要什么、你会选择什么，或者你接下来会说什么。${v?`尽量自然用到：${v}。`:""}`
-      : `进入文本里的这个场景：“${anchor}”。请用 ${shownLang} 写 3–5 句：先写发生了什么，再补一句你的看法、选择或类似经历。${v?`尽量自然用到：${v}。`:""}`;
+      ? `${scene.zh} 请用 ${shownLang} 写 2–3 个短句：你需要什么、你会选择什么，或者你接下来会说什么。`
+      : `${scene.zh} 请用 ${shownLang} 写 3–5 句：先写发生了什么，再补一句你的看法、选择或类似经历。`;
   }
-  if(easy&&isSupermarket) return `You are at the supermarket with Mila. She is buying bread, milk, apples, and rice. Write 2–3 short ${shownLang} sentences about what you need, what you choose, or what you say at the checkout.${v?` Try to use: ${v}.`:""}`;
   return easy
-    ? `Imagine you are in this scene: “${anchor}”. Write 2–3 short ${shownLang} sentences about what you need, what you choose, or what you say next.${v?` Try to use: ${v}.`:""}`
-    : `Step into this moment from the text: “${anchor}”. Write 3–5 ${shownLang} sentences: first say what is happening, then add your opinion, choice, or a similar experience.${v?` Try to reuse: ${v}.`:""}`;
+    ? `${scene.en} Write 2–3 short ${shownLang} sentences about what you need, what you choose, or what you say next.`
+    : `${scene.en} Write 3–5 ${shownLang} sentences: first say what is happening, then add your opinion, choice, or a similar experience.`;
+}
+
+function writingScene(text,uiLang){
+  const t=String(text||"");
+  const match=(re)=>re.test(t);
+  const scenes=[
+    [/\b(supermarkt|brood|melk|appels|rijst|kassa)\b/i,
+      "You are at the supermarket with Mila. She is buying bread, milk, apples, and rice.",
+      "想象你和 Mila 在超市。她正在买面包、牛奶、苹果和米。"],
+    [/\b(thuis|koffie|raam|pauze)\b/i,
+      "Someone is working at home and takes a short coffee break by the open window.",
+      "想象有人在家工作，十点做咖啡、打开窗户，短暂休息一下。"],
+    [/\b(bibliotheek|boek|taalgroep)\b/i,
+      "Someone is at the library choosing a book and noticing a language group.",
+      "想象有人在图书馆选书，也看到一个语言小组的信息。"],
+    [/\b(dokter|assistente?|afspraak|moe)\b/i,
+      "Someone calls the doctor's office and gets an appointment for later today.",
+      "想象有人打电话给诊所，并约到了今天晚些时候的时间。"],
+    [/\b(pasta|tomaten|kaas|koken|water)\b/i,
+      "Two friends are cooking a simple meal together.",
+      "想象两个朋友正在一起做一顿简单的饭。"],
+    [/\b(school|bericht|zoon|agenda|les)\b/i,
+      "A parent receives a school message and needs to adjust the day.",
+      "想象一位家长收到学校通知，需要调整当天安排。"],
+    [/\b(trein|station|reizigers|reizen)\b/i,
+      "Someone is planning or taking a train trip and thinking about the journey.",
+      "想象有人正在计划或乘坐火车，关注这段行程。"],
+    [/\b(weekend|markt|cadeau|station|koffie)\b/i,
+      "Two people are making simple weekend plans together.",
+      "想象两个人正在一起安排周末计划。"],
+  ];
+  const found=scenes.find(([re])=>match(re));
+  if(found) return {en:found[1],zh:found[2]};
+  return uiLang==="zh"
+    ? {en:"The text describes a small everyday situation.",zh:"这段文本描述了一个日常小场景。"}
+    : {en:"The text describes a small everyday situation.",zh:"这段文本描述了一个日常小场景。"};
 }
 
 function recommendLevel(text,sents){ const ws=words(text); if(!ws.length) return LEVELS[1];
