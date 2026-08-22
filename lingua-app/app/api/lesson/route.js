@@ -1,4 +1,5 @@
-import { generateLesson, cleanText } from "../../../lib/lesson";
+import { generateLesson } from "../../../lib/lesson-client";
+import { cleanText } from "../../../lib/text";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;

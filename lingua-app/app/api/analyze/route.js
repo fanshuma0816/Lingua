@@ -3,8 +3,8 @@
 // unlike the old one-shot enrichment that failed on long texts.
 // Modes: materials | grade | translate | explain | grammar | quiz | focus
 import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
-import { cleanText } from "../../../lib/lesson";
-import { validateForLevel, analyzeDifficulty, materialId } from "../../../lib/cefr.mjs";
+import { cleanText } from "../../../lib/text";
+import { validateForLevel, analyzeDifficulty, materialId, cefrIdx } from "../../../lib/cefr.mjs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -83,9 +83,12 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
       };
 
       // Validate against the deterministic CEFR analyzer \u2014 never trust the model's
-      // self-reported level. Reject anything over the i+1 cap or above 30% hard words.
+      // self-reported level. Keep near-miss AI text as a stretch option instead
+      // of dropping to static fallback samples whenever the local heuristic is
+      // stricter than the model.
       const seen = new Set();
       const accepted = [];
+      const nearMisses = [];
       let rejected = 0;
       const consider = (raw) => {
         for (const m of raw) {
@@ -95,11 +98,10 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
           const wc = wordCount(text);
           if (wc < lo || wc > hi) { rejected++; continue; }
           const v = validateForLevel(text, level);
-          if (!v.ok) { rejected++; continue; }
           const id = materialId(text);
           if (seen.has(id)) continue;
           seen.add(id);
-          accepted.push({
+          const material = {
             id, title: m.title || null, source: m.source || "AI text", text,
             duration: spec.label, wordCount: wc, targetMinutes: minutesForWords(wc),
             targetUserLevel: targetLevel,
@@ -109,7 +111,13 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
             difficultyTier: v.analysis.difficultyTier,
             vocabularyAnnotations: v.analysis.annotations,
             resultSource: "ai",
-          });
+          };
+          if (v.ok) accepted.push(material);
+          else {
+            rejected++;
+            const onlySlightlyHard = cefrIdx(v.analysis.validatedTextLevel) <= cefrIdx(capLevel) && v.analysis.hardWordRatio <= 0.38;
+            if (onlySlightlyHard) nearMisses.push({ ...material, difficultyTier: "stretch", validationWarning: v.reason });
+          }
         }
       };
 
@@ -121,10 +129,12 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
 
       // Order by increasing difficulty and label the three tiers accordingly.
       accepted.sort((a, b2) => a.hardWordRatio - b2.hardWordRatio);
+      nearMisses.sort((a, b2) => a.hardWordRatio - b2.hardWordRatio);
+      const candidates = [...accepted, ...nearMisses];
       const tierNames = ["comfortable", "balanced", "stretch"];
-      const final = accepted.slice(0, 3).map((m, i) => ({ ...m, difficultyTier: tierNames[i] || m.difficultyTier }));
+      const final = candidates.slice(0, 3).map((m, i) => ({ ...m, difficultyTier: tierNames[i] || m.difficultyTier }));
 
-      const debug = { requestId, requestedLevel: level, capLevel, materialIds: final.map(m => m.id), resultSource: final.length ? "ai" : "none", accepted: accepted.length, rejected };
+      const debug = { requestId, requestedLevel: level, capLevel, materialIds: final.map(m => m.id), resultSource: final.length ? "ai" : "none", accepted: accepted.length, nearMisses: nearMisses.length, rejected };
       console.log("[analyze:materials]", JSON.stringify(debug));
       return Response.json({ materials: final, debug });
     }
