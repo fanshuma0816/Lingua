@@ -7,17 +7,21 @@ import { cleanText, contextFor, pickVocab, sentencesOf, words } from "./text";
 function practiceQuestion(lesson,shownLang,uiLang){
   const sents=lesson.sents||[];
   const anchor=compactQuote(sents[Math.min(1,Math.max(0,sents.length-1))]||sents[0]||lesson.topics?.[0]||"the text",110);
+  const fullText=(sents||[]).join(" ").toLowerCase();
+  const isSupermarket=/\b(supermarkt|brood|melk|appels|rijst|kassa)\b/i.test(fullText);
   const focusWords=(lesson.focus&&Array.isArray(lesson.focus.vocab)?lesson.focus.vocab.map(x=>x.word).filter(Boolean):[]);
   const v=(focusWords.length?focusWords:(lesson.vocab||[]).map(x=>x.word)).slice(0,3).join(", ");
   const easy=levelIdx(lesson.level)<=1;
   if(uiLang==="zh"){
+    if(easy&&isSupermarket) return `想象你和 Mila 在超市。她正在买面包、牛奶、苹果和米。请用 ${shownLang} 写 2–3 个短句：你需要什么、你会选择什么，或者你会在收银台说什么。${v?`尽量自然用到：${v}。`:""}`;
     return easy
-      ? `围绕这句 “${anchor}”，用 ${shownLang} 写 2–3 个短句：发生了什么？你会怎么回应？${v?`尽量用到：${v}。`:""}`
-      : `围绕文本里的这个重点 “${anchor}”，用 ${shownLang} 写 3–5 句：先概括发生了什么，再说你的看法或类似经历。${v?`尽量自然用到：${v}。`:""}`;
+      ? `想象你就在这个场景里：“${anchor}”。请用 ${shownLang} 写 2–3 个短句：你需要什么、你会选择什么，或者你接下来会说什么。${v?`尽量自然用到：${v}。`:""}`
+      : `进入文本里的这个场景：“${anchor}”。请用 ${shownLang} 写 3–5 句：先写发生了什么，再补一句你的看法、选择或类似经历。${v?`尽量自然用到：${v}。`:""}`;
   }
+  if(easy&&isSupermarket) return `You are at the supermarket with Mila. She is buying bread, milk, apples, and rice. Write 2–3 short ${shownLang} sentences about what you need, what you choose, or what you say at the checkout.${v?` Try to use: ${v}.`:""}`;
   return easy
-    ? `Use this part of the text — “${anchor}”. Write 2–3 short sentences in ${shownLang}: what happens, and how would you respond?${v?` Try to use: ${v}.`:""}`
-    : `Use this moment from the text — “${anchor}”. Write 3–5 sentences in ${shownLang}: first explain what happens, then add your opinion or a similar experience.${v?` Try to reuse: ${v}.`:""}`;
+    ? `Imagine you are in this scene: “${anchor}”. Write 2–3 short ${shownLang} sentences about what you need, what you choose, or what you say next.${v?` Try to use: ${v}.`:""}`
+    : `Step into this moment from the text: “${anchor}”. Write 3–5 ${shownLang} sentences: first say what is happening, then add your opinion, choice, or a similar experience.${v?` Try to reuse: ${v}.`:""}`;
 }
 
 function recommendLevel(text,sents){ const ws=words(text); if(!ws.length) return LEVELS[1];
