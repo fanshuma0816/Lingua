@@ -13,6 +13,8 @@ export async function GET() {
       model: AI.model,
       project: AI.project,
       location: AI.location,
+      geminiAuthMode: AI.geminiAuthMode,
+      hasGeminiApiKey: !!AI.geminiApiKey,
       textEnabled: !!AI.textEnabled,
       translationProvider: "Google Cloud Translation v2",
       ttsProvider: "Google Cloud Text-to-Speech v1",

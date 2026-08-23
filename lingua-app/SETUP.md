@@ -6,7 +6,7 @@
 
 **这个项目用到两套 Google Cloud 凭据（都在同一个 GCP 项目里）：**
 
-- `GEMINI_API_KEY`（推荐）或 **服务账号 JSON**（`GOOGLE_APPLICATION_CREDENTIALS_JSON`）—— 文本生成走 **Google Gen AI SDK + Vertex AI global endpoint**（Gemini `gemini-3.7-flash` 模型），负责语法分析、课程内容、写作反馈、AI 对话。
+- **服务账号 JSON**（`GOOGLE_APPLICATION_CREDENTIALS_JSON`，推荐）或支持 **Agent Platform (Vertex)** 的 `GEMINI_API_KEY` —— 文本生成走 **Google Gen AI SDK + Vertex AI global endpoint**（Gemini `gemini-3.7-flash` 模型），负责语法分析、课程内容、写作反馈、AI 对话。
 - `GCP_API_KEY` —— 来自 Google Cloud，负责翻译（Cloud Translation API）和语音朗读（Cloud Text-to-Speech API）。这一个 API key 要在同一个项目里同时开通这两个 API。
 
 ---
@@ -39,11 +39,11 @@
 2. **部署到 Vercel**
    - 打开 https://vercel.com/ ，用 GitHub 账号登录，点 "Add New → Project"，选中你刚上传的仓库，点 Import。
    - 在 "Environment Variables" 里加这几条：
-     - 名字 `GEMINI_API_KEY`，值粘贴你的 Gemini / Vertex AI API key。
+     - 名字 `GOOGLE_APPLICATION_CREDENTIALS_JSON`，值粘贴你**整份服务账号 JSON 的内容**（可以直接粘原始 JSON，推荐）。
      - 名字 `GCP_API_KEY`，值粘贴你的 Google Cloud API key。
      - （可选）名字 `GCP_PROJECT_ID`，值填你的 GCP 项目 ID（默认 `lingua-tts-504817`）。
      - （可选）名字 `GEMINI_MODEL`，默认已经是 `gemini-3.7-flash`。
-     - （可选）如果不用 `GEMINI_API_KEY`，也可以继续用 `GOOGLE_APPLICATION_CREDENTIALS_JSON`，值粘贴你**整份服务账号 JSON 的内容**（可以直接粘原始 JSON）。
+     - （可选）如果不用服务账号，也可以用 `GEMINI_API_KEY`；但这个 key 需要在 Google Cloud 里允许 **Agent Platform (Vertex)**，普通只允许 Translation/TTS 或 Gemini API 的 key 会被 `aiplatform.googleapis.com` 拦截。
    - 点 Deploy，等一两分钟，就会得到一个 `https://...vercel.app` 的网址——这就是你可以分享给测试者的真实产品。
 
 > Gemini 的服务位置在代码里固定为 `global`，不用再设置 `VERTEX_LOCATION`。

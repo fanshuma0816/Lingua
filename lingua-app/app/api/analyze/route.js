@@ -4,7 +4,7 @@
 // Modes: materials | grade | translate | explain | grammar | quiz | focus
 import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
 import { cleanText } from "../../../lib/text";
-import { validateMaterialFit, materialId } from "../../../lib/cefr.mjs";
+import { cefrIdx, validateForLevel, validateMaterialFit, materialId } from "../../../lib/cefr.mjs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -87,6 +87,7 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
       // self-reported level.
       const seen = new Set();
       const accepted = [];
+      const usable = [];
       let rejected = 0;
       const consider = (raw) => {
         for (const m of raw) {
@@ -111,24 +112,48 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
             resultSource: "ai",
           };
           if (v.ok) accepted.push(material);
-          else rejected++;
+          else {
+            rejected++;
+            // The deterministic CEFR analyzer is intentionally conservative
+            // and has a compact Dutch lexicon. For B2/C1, model-generated
+            // learner texts can be useful while being under-scored locally.
+            // Keep the best non-dangerous candidates as a fallback instead of
+            // showing an empty state after multiple slow retries.
+            const loose = validateForLevel(text, level, { maxHardRatio: 0.36 });
+            const nearEnough = cefrIdx(loose.analysis.validatedTextLevel) >= Math.max(0, cefrIdx(level) - 1);
+            if (loose.ok && nearEnough) {
+              usable.push({
+                ...material,
+                validationWarning: v.reason,
+                resultSource: "ai-relaxed",
+              });
+            }
+          }
         }
       };
 
       try { consider(await runOnce(requestId, "")); } catch (e) { /* fall through to retry */ }
-      if (accepted.length < 3) {
+      if (accepted.length + usable.length < 3) {
         try { consider(await runOnce(requestId + "-r1", ` Regenerate. Every text must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; reject anything easier. Make the three scenarios clearly distinct from each other.`)); } catch (e) { /* ignore */ }
       }
-      if (accepted.length < 3) {
+      if (accepted.length + usable.length < 3) {
         try { consider(await runOnce(requestId + "-r2", ` Final retry. Keep the text firmly within ${targetLevel}${capLevel !== targetLevel ? `-${capLevel}` : ""}, with enough advanced vocabulary and sentence structure for that range.`)); } catch (e) { /* ignore */ }
       }
 
       // Order by increasing difficulty and label the three tiers accordingly.
       accepted.sort((a, b2) => a.hardWordRatio - b2.hardWordRatio);
+      usable.sort((a, b2) => {
+        const aGap = Math.abs(cefrIdx(a.validatedTextLevel) - cefrIdx(level));
+        const bGap = Math.abs(cefrIdx(b2.validatedTextLevel) - cefrIdx(level));
+        return aGap - bGap || a.hardWordRatio - b2.hardWordRatio;
+      });
       const tierNames = ["comfortable", "balanced", "stretch"];
-      const final = accepted.slice(0, 3).map((m, i) => ({ ...m, difficultyTier: tierNames[i] || m.difficultyTier }));
+      const final = [...accepted, ...usable]
+        .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
+        .slice(0, 3)
+        .map((m, i) => ({ ...m, difficultyTier: tierNames[i] || m.difficultyTier }));
 
-      const debug = { requestId, requestedLevel: level, capLevel, materialIds: final.map(m => m.id), resultSource: final.length ? "ai" : "none", accepted: accepted.length, rejected };
+      const debug = { requestId, requestedLevel: level, capLevel, materialIds: final.map(m => m.id), resultSource: final.length ? "ai" : "none", accepted: accepted.length, relaxed: usable.length, rejected };
       console.log("[analyze:materials]", JSON.stringify(debug));
       return Response.json({ materials: final, debug });
     }

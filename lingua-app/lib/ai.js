@@ -42,6 +42,7 @@ function resolveServiceAccount() {
 }
 
 const SERVICE_ACCOUNT = resolveServiceAccount();
+const HAS_GOOGLE_AUTH = !!(SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
 export const AI = {
   gcpKey: process.env.GCP_API_KEY || "",                                  // Cloud Translation + Cloud TTS
@@ -49,6 +50,7 @@ export const AI = {
   project: process.env.GCP_PROJECT_ID || process.env.GOOGLE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || (SERVICE_ACCOUNT && SERVICE_ACCOUNT.project_id) || "lingua-tts-504817",
   location: "global",
   model: process.env.VERTEX_MODEL || process.env.GEMINI_MODEL || "gemini-3.7-flash",
+  geminiAuthMode: HAS_GOOGLE_AUTH ? "google_auth" : (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY ? "api_key" : "none"),
   textEnabled: !!(
     process.env.GEMINI_API_KEY
     || process.env.GOOGLE_API_KEY
@@ -62,12 +64,13 @@ let _genaiClient = null;
 function getGenAIClient() {
   if (!AI.textEnabled) return null;
   if (_genaiClient) return _genaiClient;
+  const useApiKey = AI.geminiAuthMode === "api_key";
   // In @google/genai Node, API-key Vertex Express mode uses the global
   // aiplatform endpoint and rejects project/location constructor fields.
-  const opts = AI.geminiApiKey
+  const opts = useApiKey
     ? { vertexai: true, apiKey: AI.geminiApiKey }
     : { vertexai: true, project: AI.project, location: AI.location };
-  if (!AI.geminiApiKey && SERVICE_ACCOUNT) {
+  if (!useApiKey && SERVICE_ACCOUNT) {
     opts.googleAuthOptions = { credentials: SERVICE_ACCOUNT, projectId: AI.project };
   }
   _genaiClient = new GoogleGenAI(opts);
