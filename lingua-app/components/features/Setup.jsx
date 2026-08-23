@@ -11,7 +11,7 @@ import { durationSpec, scrollToTop } from "../../lib/format";
 import { materialStats, sourceIcon } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { cleanText } from "../../lib/text";
-import { aiAnalyze } from "../../services/api";
+import { aiAnalyze, sampleMaterials } from "../../services/api";
 
 function SourceIdeas({tips,hint}){
   const {t}=useUI();
@@ -72,8 +72,9 @@ function InputScreen({onNext}){
     // Anti-repeat: tell the server which topics/titles we just showed, plus a nonce.
     const avoid=[...recentTitles.current,...topics].slice(0,12);
     const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce});
+    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce},{timeoutMs:10000});
     let generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
+    if(!generated.length) generated=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid).filter(safeDutchMaterial);
     if(generated.length){
       generated=generated.map(m=>({...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
     }

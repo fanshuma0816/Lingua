@@ -133,12 +133,6 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
       };
 
       try { consider(await runOnce(requestId, "")); } catch (e) { /* fall through to retry */ }
-      if (accepted.length + usable.length < 3) {
-        try { consider(await runOnce(requestId + "-r1", ` Regenerate. Every text must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; reject anything easier. Make the three scenarios clearly distinct from each other.`)); } catch (e) { /* ignore */ }
-      }
-      if (accepted.length + usable.length < 3) {
-        try { consider(await runOnce(requestId + "-r2", ` Final retry. Keep the text firmly within ${targetLevel}${capLevel !== targetLevel ? `-${capLevel}` : ""}, with enough advanced vocabulary and sentence structure for that range.`)); } catch (e) { /* ignore */ }
-      }
 
       // Order by increasing difficulty and label the three tiers accordingly.
       accepted.sort((a, b2) => a.hardWordRatio - b2.hardWordRatio);

@@ -47,6 +47,12 @@ function sampleMaterials(lang,level,goal,duration,topics,avoid=[]){
     });
     return (filtered.length>=3?filtered:items).sort(()=>Math.random()-0.5);
   };
+  if(lang==="Dutch" && levelIdx(level)>=3) return fresh([
+    {title:"Een gesprek dat blijft hangen",source:"Dialogue",level:level.slice(0,2),text:"Sanne: Ik merk dat korte gesprekken op het werk soms meer invloed hebben dan lange vergaderingen.\nBram: Hoe bedoel je dat precies?\nSanne: Als iemand tijdens de lunch eerlijk vertelt waar hij tegenaan loopt, begrijp je meteen welke spanning er in een team zit.\nBram: Dat herken ik. Een losse opmerking kan duidelijk maken waarom een planning steeds verschuift.\nSanne: Precies. Daarom probeer ik niet alleen naar besluiten te luisteren, maar ook naar de toon ertussen.\nBram: Misschien is dat wel de kern van goede samenwerking: niet sneller praten, maar beter opmerken wat niet hardop wordt gezegd."},
+    {title:"De stille afspraak in de buurt",source:"Culture note",level:level.slice(0,2),text:"In veel Nederlandse buurten bestaan afspraken die nergens officieel zijn vastgelegd. Niemand heeft ze ondertekend, maar bijna iedereen kent ze. Je zet je fiets niet midden voor de ingang, je groet de buur die je vaak ziet en je klaagt pas over lawaai nadat je eerst vriendelijk hebt aangebeld. Zulke gewoonten lijken klein, maar ze bepalen hoe prettig mensen samenleven. Vooral nieuwe bewoners ontdekken deze regels pas wanneer ze per ongeluk iets verkeerd doen. Dan blijkt dat cultuur niet alleen in musea of tradities zit, maar ook in alledaagse verwachtingen over ruimte, rust en rekening houden met elkaar."},
+    {title:"Waarom thuiswerken niet voor iedereen vrijheid betekent",source:"News explainer",level:level.slice(0,2),text:"Thuiswerken wordt vaak gepresenteerd als een vorm van vrijheid, maar de werkelijkheid is genuanceerder. Voor sommige werknemers betekent het minder reistijd en meer concentratie. Voor anderen vervagen juist de grenzen tussen werk en privé. De keukentafel wordt een kantoor, een korte pauze voelt onterecht als tijdverlies en overleg via schermen maakt misverstanden soms groter. Bedrijven zoeken daarom naar een nieuw evenwicht. Niet de vraag of iedereen thuis of op kantoor moet werken is doorslaggevend, maar welke taken waar het beste tot hun recht komen. Flexibiliteit vraagt dus ook duidelijke afspraken."},
+    {title:"Een kleine beslissing in de supermarkt",source:"Practical situation",level:level.slice(0,2),text:"Bij de supermarkt twijfelt Noor tussen goedkope aardbeien uit het buitenland en duurdere aardbeien van een boerderij in de regio. Vroeger koos ze zonder nadenken de laagste prijs, maar tegenwoordig let ze vaker op herkomst, seizoen en verpakking. Toch is de keuze niet eenvoudig. Haar budget is beperkt en duurzame producten zijn niet altijd betaalbaar. Terwijl ze de bakjes vergelijkt, beseft ze dat consumenten vaak verantwoordelijk worden gemaakt voor problemen die groter zijn dan hun winkelmandje. Uiteindelijk kiest ze de regionale aardbeien, maar met het gevoel dat echte verandering niet alleen van individuele klanten kan afhangen."},
+  ]);
   if(lang==="Dutch") return fresh([
     {title:"Een rustige ochtend in de stad",source:"Daily story",level:level.slice(0,2),text:"Elke ochtend fietst Noor langs de gracht naar haar werk. Vandaag is de lucht helder en de stad voelt langzaam wakker. Bij de bakker koopt ze een klein broodje en praat ze kort met de man achter de toonbank. Hij vertelt dat het drukker wordt sinds de zon weer schijnt. Noor glimlacht, stapt op haar fiets en merkt dat ze deze gewone ochtend eigenlijk heel fijn vindt."},
     {title:"Waarom steeds meer mensen de trein nemen",source:"Short news explainer",level:levelIdx(level)<=1?"B1":level.slice(0,2),text:"In Nederland kiezen steeds meer mensen voor de trein als ze naar een andere stad reizen. De reis is vaak rustig, en reizigers kunnen onderweg lezen, werken of naar muziek luisteren. Toch zijn er ook klachten: soms zijn treinen vol of te laat. Volgens vervoersbedrijven blijft de trein belangrijk, vooral voor mensen die duurzamer willen reizen."},
@@ -70,9 +76,12 @@ function sampleMaterials(lang,level,goal,duration,topics,avoid=[]){
   ]);
 }
 
-async function aiAnalyze(mode,payload){
-  try{ const r=await fetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,...payload})});
+async function aiAnalyze(mode,payload,{timeoutMs=0}={}){
+  const controller=timeoutMs?new AbortController():null;
+  const timer=timeoutMs?setTimeout(()=>controller.abort(),timeoutMs):null;
+  try{ const r=await fetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},signal:controller?.signal,body:JSON.stringify({mode,...payload})});
     if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
+  finally{ if(timer) clearTimeout(timer); }
 }
 
 const CACHEABLE_ANALYSIS=new Set(["translate","explain","grammar","quiz","focus"]);
