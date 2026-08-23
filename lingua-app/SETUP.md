@@ -6,7 +6,7 @@
 
 **这个项目用到两套 Google Cloud 凭据（都在同一个 GCP 项目里）：**
 
-- **服务账号 JSON**（`GOOGLE_APPLICATION_CREDENTIALS_JSON`）—— 文本生成走 **Google Cloud Vertex AI**（Gemini `gemini-2.0-flash-001` 模型），负责语法分析、课程内容、写作反馈、AI 对话。走 Vertex AI 会消耗你 GCP 项目的额度／免费试用赠金，而**不是** Google AI Studio 的预付费扣费。
+- `GEMINI_API_KEY`（推荐）或 **服务账号 JSON**（`GOOGLE_APPLICATION_CREDENTIALS_JSON`）—— 文本生成走 **Google Gen AI SDK + Vertex AI global endpoint**（Gemini `gemini-3.7-flash` 模型），负责语法分析、课程内容、写作反馈、AI 对话。
 - `GCP_API_KEY` —— 来自 Google Cloud，负责翻译（Cloud Translation API）和语音朗读（Cloud Text-to-Speech API）。这一个 API key 要在同一个项目里同时开通这两个 API。
 
 ---
@@ -39,11 +39,14 @@
 2. **部署到 Vercel**
    - 打开 https://vercel.com/ ，用 GitHub 账号登录，点 "Add New → Project"，选中你刚上传的仓库，点 Import。
    - 在 "Environment Variables" 里加这几条：
-     - 名字 `GOOGLE_APPLICATION_CREDENTIALS_JSON`，值粘贴你**整份服务账号 JSON 的内容**（可以直接粘原始 JSON）。
+     - 名字 `GEMINI_API_KEY`，值粘贴你的 Gemini / Vertex AI API key。
      - 名字 `GCP_API_KEY`，值粘贴你的 Google Cloud API key。
-     - （可选）名字 `GOOGLE_PROJECT_ID`，值填你的 GCP 项目 ID（默认 `lingua-tts-504817`）。
+     - （可选）名字 `GCP_PROJECT_ID`，值填你的 GCP 项目 ID（默认 `lingua-tts-504817`）。
+     - （可选）名字 `GEMINI_MODEL`，默认已经是 `gemini-3.7-flash`。
+     - （可选）如果不用 `GEMINI_API_KEY`，也可以继续用 `GOOGLE_APPLICATION_CREDENTIALS_JSON`，值粘贴你**整份服务账号 JSON 的内容**（可以直接粘原始 JSON）。
    - 点 Deploy，等一两分钟，就会得到一个 `https://...vercel.app` 的网址——这就是你可以分享给测试者的真实产品。
 
+> Gemini 的服务位置在代码里固定为 `global`，不用再设置 `VERTEX_LOCATION`。
 > 想改密钥，以后在 Vercel 后台点几下即可，不用碰代码。
 > 部署完成后，打开 `你的网址/api/health` 可以逐项检查 Gemini、翻译、语音是否都连通（不会显示密钥，只显示是否正常）。
 
@@ -60,7 +63,7 @@
    ```
 3. 用文本编辑器打开 `.env.local`：
    - 本地最简单的方式：把下载的服务账号 JSON 文件放到项目里（例如 `lingua-app/service-account.json`），然后写一行 `GOOGLE_APPLICATION_CREDENTIALS=./service-account.json`。（或者把整份 JSON 压成一行粘到 `GOOGLE_APPLICATION_CREDENTIALS_JSON=` 后面。）
-   - 把你的 Google Cloud API key 粘到 `GCP_API_KEY=` 后面，保存。
+   - 把你的 Gemini / Vertex AI API key 粘到 `GEMINI_API_KEY=` 后面；把你的 Google Cloud API key 粘到 `GCP_API_KEY=` 后面，保存。
    - ⚠️ 别把 `service-account.json` 传到 GitHub（`.gitignore` 里加一行 `service-account.json`）。
 4. 回到终端运行：
    ```
@@ -73,9 +76,9 @@
 
 ## 填了密钥后，这些都是真实的
 - 翻译：每句的翻译由 **Google Cloud Translation** 生成（`/api/analyze` 的 translate）。
-- 课程内容与语法：词义 + 全新实用例句、逐句语法讲解、按你水平出的目标语选择题、AI 推荐学习材料，都由 **Gemini on Vertex AI** 生成（`/api/analyze`、`/api/lesson`）。
+- 课程内容与语法：词义 + 全新实用例句、逐句语法讲解、按你水平出的目标语选择题、AI 推荐学习材料，都由 **Gemini 3.7 Flash on Vertex AI global** 生成（`/api/analyze`、`/api/lesson`）。
 - 高质量语音朗读：所有朗读都用 **Google Cloud Text-to-Speech**（`/api/tts`）；没有密钥时自动退回浏览器自带声音。
-- Part 1 写作反馈 + Part 2 AI 对话：由 **Gemini on Vertex AI** 实时生成（`/api/chat`）。
+- Part 1 写作反馈 + Part 2 AI 对话：由 **Gemini 3.7 Flash on Vertex AI global** 实时生成（`/api/chat`）。
 
 > 没有对应密钥时，以上功能会自动退回"模拟版本"，应用照常运行。
 

@@ -516,15 +516,29 @@ function AIChat({lesson,onDone}){
   // Speak an AI line and reflect the "talking / your turn" state so it feels live.
   function sayAI(line){ setSpeaking(true); const u=speak(line,lang); if(u){ u.onend=()=>setSpeaking(false); } else setSpeaking(false); }
 
-  async function aiReply(history){
+  async function aiReply(history,onChunk){
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:"chat",lang,level,vocab:vwords,topic,grammar,sample,history})});
-      if(!r.ok) throw new Error("no api"); const d=await r.json(); return d.reply||null;
+        body:JSON.stringify({mode:"chat",stream:true,lang,level,vocab:vwords,topic,grammar,sample,history})});
+      if(!r.ok) throw new Error("no api");
+      const ct=r.headers.get("content-type")||"";
+      if(r.body && !ct.includes("application/json")){
+        const reader=r.body.getReader(); const decoder=new TextDecoder(); let text="";
+        while(true){
+          const {value,done}=await reader.read();
+          if(done) break;
+          text+=decoder.decode(value,{stream:true});
+          onChunk&&onChunk(text);
+        }
+        text+=decoder.decode();
+        if(text) onChunk&&onChunk(text);
+        return text.trim()||null;
+      }
+      const d=await r.json(); return d.reply||null;
     }catch(e){ return null; }
   }
   useEffect(()=>{ (async()=>{
     setBusy(true);
-    const reply=await aiReply([]);
+    const reply=await aiReply([],partial=>{ mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
     if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); sayAI(reply); }
     else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
     setBusy(false);
@@ -554,7 +568,8 @@ function AIChat({lesson,onDone}){
     if(nx>=MAX_TURNS){ finish(withMe); return; }
     if(mockRef.current){ const line=fallback[nx]||fallback[fallback.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); sayAI(line); return; }
     setBusy(true);
-    const reply=await aiReply(toHistory(withMe));
+    setMsgs([...withMe,{who:"ai",t:""}]);
+    const reply=await aiReply(toHistory(withMe),partial=>setMsgs([...withMe,{who:"ai",t:partial}]));
     const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) sayAI(line);
     setBusy(false);
   }

@@ -1,30 +1,29 @@
 // Google-only AI backend.
 //   TEXT (lessons, grammar analysis, feedback, conversation): Gemini on
-//     Google Cloud Vertex AI via the @google-cloud/vertexai SDK.
+//     Google Cloud Vertex AI via the @google/genai SDK.
 //   TRANSLATION: Google Cloud Translation API v2 (REST, API key).
 //   VOICE (TTS): Google Cloud Text-to-Speech API v1 (REST, API key).
 //
 // Server-only credentials (never expose these to the client):
-//   Vertex AI (text) authenticates with a Google Cloud SERVICE ACCOUNT, so it
-//   consumes your GCP project's quota / free trial credits (not AI Studio billing):
+//   Gemini text can authenticate with a Vercel GEMINI_API_KEY or a Google Cloud
+//   service account / ADC, and it always uses Vertex AI location "global":
+//     GEMINI_API_KEY                         API key for Gemini / Vertex AI
+//     GCP_PROJECT_ID / GOOGLE_PROJECT_ID     GCP project id (defaults to lingua-tts-504817)
 //     GCP_SERVICE_ACCOUNT_KEY              full service-account JSON string (used on Vercel)
 //        (also accepts GOOGLE_APPLICATION_CREDENTIALS_JSON / GOOGLE_CREDENTIALS /
 //         GCP_SERVICE_ACCOUNT_JSON — raw JSON or base64)
 //     GOOGLE_APPLICATION_CREDENTIALS       path to a JSON key file (local/dev)
-//     GOOGLE_PROJECT_ID                    GCP project id (defaults to lingua-tts-504817)
-//     VERTEX_LOCATION                      region (defaults to us-central1)
-//     VERTEX_MODEL / GEMINI_MODEL          model id (defaults to gemini-1.5-flash)
+//     VERTEX_MODEL / GEMINI_MODEL          model id (defaults to gemini-3.7-flash)
 //   GCP_API_KEY   Google Cloud API key with Cloud Translation + Cloud TTS enabled.
 // Optional:
 //   GOOGLE_TTS_DUTCH_FEMALE   override the nl-NL female voice
 //   GOOGLE_TTS_DUTCH_MALE     override the nl-NL male voice
 
-import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleGenAI } from "@google/genai";
 
 // Resolve service-account credentials from the environment. Returns a parsed
-// credentials object for VertexAI's googleAuthOptions, or null to let the SDK
-// fall back to Application Default Credentials (e.g. GOOGLE_APPLICATION_CREDENTIALS
-// file path or the GCE metadata server).
+// credentials object for Google Auth, or null to let the SDK fall back to
+// Application Default Credentials (e.g. GOOGLE_APPLICATION_CREDENTIALS file path).
 function resolveServiceAccount() {
   const raw = process.env.GCP_SERVICE_ACCOUNT_KEY
     || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
@@ -46,24 +45,31 @@ const SERVICE_ACCOUNT = resolveServiceAccount();
 
 export const AI = {
   gcpKey: process.env.GCP_API_KEY || "",                                  // Cloud Translation + Cloud TTS
-  project: process.env.GOOGLE_PROJECT_ID || (SERVICE_ACCOUNT && SERVICE_ACCOUNT.project_id) || "lingua-tts-504817",
-  location: process.env.VERTEX_LOCATION || "us-central1",
-  model: process.env.VERTEX_MODEL || process.env.GEMINI_MODEL || "gemini-1.5-flash",
-  // Text is available when we can authenticate to Vertex: either an explicit
-  // service account, or a credentials file path for ADC.
-  textEnabled: !!(SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS),
+  geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "",
+  project: process.env.GCP_PROJECT_ID || process.env.GOOGLE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || (SERVICE_ACCOUNT && SERVICE_ACCOUNT.project_id) || "lingua-tts-504817",
+  location: "global",
+  model: process.env.VERTEX_MODEL || process.env.GEMINI_MODEL || "gemini-3.7-flash",
+  textEnabled: !!(
+    process.env.GEMINI_API_KEY
+    || process.env.GOOGLE_API_KEY
+    || SERVICE_ACCOUNT
+    || process.env.GOOGLE_APPLICATION_CREDENTIALS
+  ),
 };
 
-// ---- Vertex AI client (lazy singleton) ----
-let _vertexModel = null;
-function getVertexModel() {
+// ---- Gemini / Vertex AI client (lazy singleton) ----
+let _genaiClient = null;
+function getGenAIClient() {
   if (!AI.textEnabled) return null;
-  if (_vertexModel) return _vertexModel;
-  const opts = { project: AI.project, location: AI.location };
-  if (SERVICE_ACCOUNT) opts.googleAuthOptions = { credentials: SERVICE_ACCOUNT, projectId: AI.project };
-  const vertex = new VertexAI(opts);
-  _vertexModel = vertex.getGenerativeModel({ model: AI.model });
-  return _vertexModel;
+  if (_genaiClient) return _genaiClient;
+  const opts = AI.geminiApiKey
+    ? { vertexai: true, location: AI.location, apiKey: AI.geminiApiKey }
+    : { vertexai: true, project: AI.project, location: AI.location };
+  if (!AI.geminiApiKey && SERVICE_ACCOUNT) {
+    opts.googleAuthOptions = { credentials: SERVICE_ACCOUNT, projectId: AI.project };
+  }
+  _genaiClient = new GoogleGenAI(opts);
+  return _genaiClient;
 }
 
 // Some models can wrap reasoning in <think>…</think>; strip it so JSON parsing
@@ -77,33 +83,46 @@ function stripThink(s) {
   return t.trim();
 }
 
-// Chat/generation via Vertex AI. Accepts the same {role, content} message array
-// the rest of the app already uses ("system" → systemInstruction, "assistant" → model).
-export async function geminiComplete(messages, { json = false, temp = 0.6, max = 1200 } = {}) {
-  const model = getVertexModel();
-  if (!model) throw new Error("Vertex AI not configured (missing service-account credentials)");
-
+function buildGeminiRequest(messages, { json = false, temp = 0.6, max = 1200 } = {}) {
   const list = Array.isArray(messages) ? messages : [{ role: "user", content: String(messages || "") }];
   const sys = list.filter(m => m.role === "system").map(m => m.content).join("\n\n").trim();
-  const turns = list
+  const contents = list
     .filter(m => m.role !== "system")
     .map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: String(m.content ?? "") }] }));
-  const contents = turns.length ? turns : [{ role: "user", parts: [{ text: sys || "" }] }];
 
-  const generationConfig = {
-    temperature: temp,
+  const config = {
     maxOutputTokens: Math.max(max, 1200),
   };
-  if (json) generationConfig.responseMimeType = "application/json";
+  if (json) config.responseMimeType = "application/json";
+  if (sys) config.systemInstruction = sys;
+  // Gemini 3.x rejects deprecated sampling parameters. Keep temperature only
+  // for older override models.
+  if (!/^gemini-3(?:[.-]|$)/i.test(AI.model) && typeof temp === "number") config.temperature = temp;
 
-  const request = { contents, generationConfig };
-  if (sys) request.systemInstruction = { role: "system", parts: [{ text: sys }] };
+  return {
+    model: AI.model,
+    contents: contents.length ? contents : [{ role: "user", parts: [{ text: sys || "" }] }],
+    config,
+  };
+}
 
-  const result = await model.generateContent(request);
-  const cand = result?.response?.candidates?.[0];
+// Chat/generation via Gemini on Vertex AI. Accepts the same {role, content} message array
+// the rest of the app already uses ("system" → systemInstruction, "assistant" → model).
+export async function geminiComplete(messages, { json = false, temp = 0.6, max = 1200 } = {}) {
   let text = "";
-  if (cand?.content?.parts) text = cand.content.parts.map(p => p?.text || "").join("");
+  for await (const chunk of geminiStream(messages, { json, temp, max })) text += chunk;
   return stripThink(text);
+}
+
+export async function* geminiStream(messages, { json = false, temp = 0.6, max = 1200 } = {}) {
+  const client = getGenAIClient();
+  if (!client) throw new Error("Gemini on Vertex AI not configured (missing GEMINI_API_KEY or Google credentials)");
+
+  const response = await client.models.generateContentStream(buildGeminiRequest(messages, { json, temp, max }));
+  for await (const chunk of response) {
+    const text = chunk?.text || "";
+    if (text) yield text;
+  }
 }
 
 // Backwards-compatible name used across the routes.

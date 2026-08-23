@@ -1,10 +1,29 @@
 // AI writing feedback + live conversation + evaluation.
 // Uses whatever provider is configured in lib/ai.js. Returns 204 when no key
 // is set (or the call fails) so the client falls back to the simulated version.
-import { AI, chatComplete, parseJSON } from "../../../lib/ai";
+import { AI, chatComplete, geminiStream, parseJSON } from "../../../lib/ai";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+function streamText(chunks) {
+  const encoder = new TextEncoder();
+  return new Response(new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      } catch (e) {
+        controller.error(e);
+      }
+    },
+  }), {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+}
 
 export async function POST(req) {
   if (!AI.textEnabled) return new Response(null, { status: 204 });
@@ -26,9 +45,10 @@ If this is the first message, open naturally in ${b.lang}; do not say the Englis
 The learner just studied THIS text:
 """${(b.sample || "").slice(0, 700)}"""
 Ask concrete, specific questions ABOUT that text's ideas and details (not vague "what did you think?"). Give the learner something real to react to, so they always have something to say.
-Gently reuse today's words (${(b.vocab || []).join(", ")}) so replies feel achievable.
+      Gently reuse today's words (${(b.vocab || []).join(", ")}) so replies feel achievable.
 Keep EVERY reply to ONE short, natural sentence ending in a question, at or just below ${b.level}. React briefly to what they said before asking the next thing. Be encouraging and human. About 5 exchanges.`;
       const messages = [{ role: "system", content: sys }, ...(Array.isArray(b.history) ? b.history : [])];
+      if (b.stream) return streamText(geminiStream(messages, { temp: 0.7, max: 160 }));
       const out = await chatComplete(messages, { temp: 0.7, max: 160 });
       return Response.json({ reply: out.trim() });
     }
