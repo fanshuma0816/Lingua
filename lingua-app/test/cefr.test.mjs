@@ -5,7 +5,7 @@
 // words preserved in the candidate list, and deterministic (stable) analysis.
 
 import {
-  analyzeDifficulty, validateForLevel, materialId, buildMaterialAnalysis,
+  analyzeDifficulty, validateForLevel, validateMaterialFit, materialId, buildMaterialAnalysis,
   estimateWordCefr, cefrIdx, tierForRatio, CEFR_LEVELS,
 } from "../lib/cefr.mjs";
 
@@ -36,6 +36,10 @@ const HARD_TEXT =
   "Onderzoekers beweren dat de ontwikkeling desalniettemin cruciaal blijft voor de samenleving, " +
   "hoewel de consequenties nauwelijks te voorspellen zijn en het fenomeen problematisch genuanceerd wordt.";
 
+const C1_TEXT =
+  "De institutionalisering van het beleid roept fundamentele vragen op over legitimiteit en ondermijning. " +
+  "Critici beschouwen de veronderstelling achter deze paradigmaverschuiving als onverenigbaar met lokale autonomie.";
+
 // ---- 1. determinism: same text -> same id + same analysis (source of truth) ----
 {
   const id1 = materialId(A1_OK_TEXT), id2 = materialId(A1_OK_TEXT);
@@ -63,6 +67,14 @@ const HARD_TEXT =
   const v = validateForLevel(HARD_TEXT, "A1 — Beginner");
   ok("hard B1/B2 text is REJECTED for an A1 learner", v.ok === false, v.reason);
   ok("rejected text's raw level is above A2", cefrIdx(v.analysis.validatedTextLevel) > cefrIdx("A2"), v.analysis.validatedTextLevel);
+}
+
+// ---- 3b. generated material fit has both a lower and upper bound ----
+{
+  const tooEasy = validateMaterialFit(A2_TEXT, "B2 — Upper-intermediate");
+  ok("B2 learner rejects A2 generated material as too easy", tooEasy.ok === false, tooEasy.reason);
+  const c1Fit = validateMaterialFit(C1_TEXT, "C1 — Advanced");
+  ok("C1 learner accepts C1 generated material", c1Fit.ok === true, c1Fit.reason);
 }
 
 // ---- 4. same material id => same metadata everywhere (card = preview = diagnosis) ----

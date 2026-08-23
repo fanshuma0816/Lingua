@@ -62,8 +62,10 @@ let _genaiClient = null;
 function getGenAIClient() {
   if (!AI.textEnabled) return null;
   if (_genaiClient) return _genaiClient;
+  // In @google/genai Node, API-key Vertex Express mode uses the global
+  // aiplatform endpoint and rejects project/location constructor fields.
   const opts = AI.geminiApiKey
-    ? { vertexai: true, location: AI.location, apiKey: AI.geminiApiKey }
+    ? { vertexai: true, apiKey: AI.geminiApiKey }
     : { vertexai: true, project: AI.project, location: AI.location };
   if (!AI.geminiApiKey && SERVICE_ACCOUNT) {
     opts.googleAuthOptions = { credentials: SERVICE_ACCOUNT, projectId: AI.project };

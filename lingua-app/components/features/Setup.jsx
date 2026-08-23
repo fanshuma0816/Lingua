@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { analyzeDifficulty, cefrIdx as cefrIndex, materialId as cefrMaterialId } from "../../lib/cefr.mjs";
+import { materialId as cefrMaterialId } from "../../lib/cefr.mjs";
 import { Stars, Stat, Teacher } from "../ui/elements";
 import { GOALS, LANGS, LANG_CODE, LEVELS, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
 import { langName } from "../../config/uiText";
@@ -11,7 +11,7 @@ import { durationSpec, scrollToTop } from "../../lib/format";
 import { materialStats, sourceIcon } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { cleanText } from "../../lib/text";
-import { aiAnalyze, sampleMaterials } from "../../services/api";
+import { aiAnalyze } from "../../services/api";
 
 function SourceIdeas({tips,hint}){
   const {t}=useUI();
@@ -50,6 +50,7 @@ function InputScreen({onNext}){
   const [topicIdxs,setTopicIdxs]=useState([0]);
   const [materials,setMaterials]=useState([]);
   const [selectedMaterial,setSelectedMaterial]=useState(0);
+  const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
   const fileRef=useRef(null);
   const recentTitles=useRef([]);   // anti-repeat memory across regenerations
@@ -65,6 +66,8 @@ function InputScreen({onNext}){
   async function generateMaterials(){
     if(!lang) return;
     setGenerating(true);
+    setMaterialError(false);
+    setMaterials([]);
     const spec=durationSpec(selectedDuration);
     // Anti-repeat: tell the server which topics/titles we just showed, plus a nonce.
     const avoid=[...recentTitles.current,...topics].slice(0,12);
@@ -73,22 +76,10 @@ function InputScreen({onNext}){
     let generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
     if(generated.length){
       generated=generated.map(m=>({...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
-    } else {
-      // Offline / AI-unavailable fallback: annotate + level-check + shuffle the
-      // static samples with the SAME analyzer, so a beginner never sees an
-      // over-level fallback and the order at least changes on regenerate.
-      if(d&&d.debug) console.warn("[materials] using fallback", d.debug);
-      generated=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid)
-        .map(m=>{ const text=cleanText(m.text||""); const a=analyzeDifficulty(text,level);
-          return {...m,text,id:cefrMaterialId(text),validatedTextLevel:a.validatedTextLevel,level:a.validatedTextLevel,
-            targetUserLevel:level.slice(0,2),difficultyTier:a.difficultyTier,hardWordRatio:a.hardWordRatio,
-            vocabularyAnnotations:a.annotations,duration:selectedDuration,targetMinutes:m.targetMinutes||spec.target,resultSource:"fallback"}; })
-        .filter(m=>cefrIndex(m.validatedTextLevel)<=cefrIndex(level)+1)
-        .sort(()=>Math.random()-0.5);
     }
     const items=generated.slice(0,3);
     recentTitles.current=[...items.map(m=>m.title).filter(Boolean),...recentTitles.current].slice(0,12);
-    setMaterials(items); setSelectedMaterial(0); setGenerating(false);
+    setMaterials(items); setSelectedMaterial(0); setMaterialError(!items.length); setGenerating(false);
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m) return;
@@ -149,6 +140,9 @@ function InputScreen({onNext}){
       </div>
       {generating && <div className="track" style={{marginTop:14,overflow:"hidden"}}><span className="indet"/></div>}
     </div>
+    {materialError && !generating && <div className="card card-p" style={{marginTop:22}}>
+      <div className="tiny muted" style={{fontWeight:600}}>{t.noSuitableMaterials(level.slice(0,2))}</div>
+    </div>}
     {materials.length>0 && <div className="material-results">
       <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
         <div><h2 style={{margin:0}}>{t.chooseMaterial}</h2><div className="tiny muted">{t.switchAnytime}</div></div>

@@ -15,7 +15,7 @@ const UI_TEXT={
     startMaterialTitle:"I already have learning material", startMaterialSub:"Turn my textbook, transcript or article into an AI lesson.", startMaterialAction:"Use my material",
     startFindTitle:"Help me find something to learn", startFindSub:"AI recommends learning materials based on my language, level and learning goals.", startFindAction:"Find material",
     findTitle:"Find something to learn", findSub:"Tell us what you are learning, and AI will recommend a few materials that fit your level and goal.",
-    duration:"Full lesson time", interests:"Topics you like", generateMaterials:"Generate materials", generatingMaterials:"Finding good options…", chooseMaterial:"Choose one to study", useThisText:"Use this text", switchAnytime:"Pick any option below. You can switch before starting the lesson.",
+    duration:"Full lesson time", interests:"Topics you like", generateMaterials:"Generate materials", generatingMaterials:"Finding good options…", noSuitableMaterials:(level)=>`We couldn't find suitable ${level} materials just now. Try again, change the topic, or choose a shorter lesson time.`, chooseMaterial:"Choose one to study", useThisText:"Use this text", switchAnytime:"Pick any option below. You can switch before starting the lesson.",
     durationPlans:[
       {label:"10-15 min",icon:"🌱",length:"40-70 words",vocab:"~4-6 new words"},
       {label:"25-35 min",icon:"📗",length:"90-150 words",vocab:"~7-12 new words"},
@@ -130,7 +130,7 @@ const UI_TEXT={
     startMaterialTitle:"我已经有学习材料", startMaterialSub:"把教材、字幕或文章变成一节 AI 课程。", startMaterialAction:"使用我的材料",
     startFindTitle:"帮我找一段内容来学", startFindSub:"AI 会根据语言、水平和学习目标推荐材料。", startFindAction:"寻找材料",
     findTitle:"寻找学习材料", findSub:"告诉我们你在学什么，AI 会推荐适合你水平和目标的材料。",
-    duration:"完整课程时长", interests:"感兴趣的话题", generateMaterials:"生成学习材料", generatingMaterials:"正在寻找合适内容…", chooseMaterial:"选择一段来学习", useThisText:"使用这段文本", switchAnytime:"在开始课程前，你可以在下面几段材料之间切换。",
+    duration:"完整课程时长", interests:"感兴趣的话题", generateMaterials:"生成学习材料", generatingMaterials:"正在寻找合适内容…", noSuitableMaterials:(level)=>`暂时没有找到适合 ${level} 的材料。请重试，换一个主题，或选择更短的学习时长。`, chooseMaterial:"选择一段来学习", useThisText:"使用这段文本", switchAnytime:"在开始课程前，你可以在下面几段材料之间切换。",
     durationPlans:[
       {label:"10-15 分钟",icon:"🌱",length:"40-70 个词",vocab:"约 4-6 个生词"},
       {label:"25-35 分钟",icon:"📗",length:"90-150 个词",vocab:"约 7-12 个生词"},

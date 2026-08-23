@@ -58,6 +58,11 @@ const B2_WORDS = new Set((
   "implicatie perspectief tendens fenomeen consequentie doorslaggevend"
 ).split(/\s+/).filter(Boolean));
 
+const C1_WORDS = new Set((
+  "ambivalentie paradigma paradigmaverschuiving legitimeren institutionalisering conceptualiseren " +
+  "onverenigbaar epistemologisch decentralisatie veronderstelling vooronderstelling ondermijning"
+).split(/\s+/).filter(Boolean));
+
 // Function words that are trivially known (A1) and should never be treated as
 // "hard" vocabulary regardless of length.
 const FUNCTION_WORDS = new Set((
@@ -79,6 +84,7 @@ export function estimateWordCefr(word) {
   if (A2_WORDS.has(w)) return "A2";
   if (B1_WORDS.has(w)) return "B1";
   if (B2_WORDS.has(w)) return "B2";
+  if (C1_WORDS.has(w)) return "C1";
   // Diminutives (-je/-tje/-pje) are usually easy.
   if (/(tje|pje|je)$/.test(w) && w.length <= 8) return "A2";
   // Length heuristic for the long tail (conservative so we don't over-reject).
@@ -86,7 +92,8 @@ export function estimateWordCefr(word) {
   if (len <= 4) return "A1";
   if (len <= 7) return "A2";
   if (len <= 10) return "B1";
-  return "B2";
+  if (len <= 14) return "B2";
+  return "C1";
 }
 
 // A token that carries no learnable difficulty (pure number, single letter).
@@ -204,6 +211,23 @@ export function validateForLevel(text, userLevel, { maxHardRatio = 0.30 } = {}) 
   if (!levelOk) reasons.push(`level ${analysis.validatedTextLevel} exceeds cap ${idxToCefr(capIdx)}`);
   if (!ratioOk) reasons.push(`hard-word ratio ${(analysis.hardWordRatio * 100).toFixed(0)}% exceeds ${(maxHardRatio * 100).toFixed(0)}%`);
   return { ok: levelOk && ratioOk, reason: reasons.join("; ") || "ok", analysis };
+}
+
+// Strict fit for generated recommendations: material must be at the learner's
+// level or one level above. C1 has no C2 support in this app yet, so C1 learners
+// only receive C1 materials.
+export function validateMaterialFit(text, userLevel, { maxHardRatio = 0.30 } = {}) {
+  const userIdx = cefrIdx(userLevel);
+  const capIdx = Math.min(CEFR_LEVELS.length - 1, userIdx + 1);
+  const analysis = analyzeDifficulty(text, userLevel);
+  const minOk = analysis.validatedTextLevelIdx >= userIdx;
+  const maxOk = analysis.validatedTextLevelIdx <= capIdx;
+  const ratioOk = analysis.hardWordRatio <= maxHardRatio;
+  const reasons = [];
+  if (!minOk) reasons.push(`level ${analysis.validatedTextLevel} is below learner level ${idxToCefr(userIdx)}`);
+  if (!maxOk) reasons.push(`level ${analysis.validatedTextLevel} exceeds cap ${idxToCefr(capIdx)}`);
+  if (!ratioOk) reasons.push(`hard-word ratio ${(analysis.hardWordRatio * 100).toFixed(0)}% exceeds ${(maxHardRatio * 100).toFixed(0)}%`);
+  return { ok: minOk && maxOk && ratioOk, reason: reasons.join("; ") || "ok", analysis };
 }
 
 // Which of the three graded options a hard-word ratio corresponds to.
