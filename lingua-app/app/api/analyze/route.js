@@ -39,6 +39,10 @@ export async function POST(req) {
     if (b.mode === "materials") {
       const duration = b.duration || "45-60 min";
       const spec = durationSpec(duration);
+      // count=1 lets the client fire three small per-text requests in parallel
+      // (progressive display); slot picks the difficulty band for that one text.
+      const count = Math.max(1, Math.min(3, Number(b.count) || 3));
+      const slot = Math.max(0, Math.min(2, Number(b.slot) || 0));
       const goal = b.goal || "General fluency";
       const topics = (Array.isArray(b.topics) && b.topics.length ? b.topics : ["daily life"]).slice(0, 3);
       const levels = ["A1", "A2", "B1", "B2", "C1"];
@@ -57,7 +61,9 @@ export async function POST(req) {
         const mins = spec.min + (spec.max - spec.min) * Math.max(0, Math.min(1, t));
         return Math.max(spec.min, Math.min(spec.max, Math.round(mins / 5) * 5));
       };
-      const lo = Math.round(wMin * 0.85), hi = Math.round(wMax * 1.15);
+      // Word-count tolerance around the tier target: ±30% (was ±15%), so
+      // otherwise-good texts are not rejected on length alone.
+      const lo = Math.round(wMin * 0.7), hi = Math.round(wMax * 1.3);
 
       const buildPrompt = (nonce, extra = "") => `Create 3 different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
 Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
@@ -78,6 +84,33 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
       const sys = "You are a careful language teacher writing short study texts calibrated to a learner's level. Reply ONLY with minified JSON, no prose.";
       const runOnce = async (nonce, extra) => {
         const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: buildPrompt(nonce, extra) }], { json: true, temp: 0.9, max: 2600 });
+        const p = parseJSON(out);
+        return (Array.isArray(p.materials) ? p.materials : [])
+          .filter(m => m && m.text && !hasCjk(m.title) && !hasCjk(m.text));
+      };
+
+      // Single-text generation (count=1): one focused text per call, so three
+      // can run in parallel and each returns fast.
+      const bands = [
+        `Comfortable: about 10-15% of words above ${targetLevel}.`,
+        `Balanced: about 15-22% of words above ${targetLevel}.`,
+        `Stretch: about 22-30% of words above ${targetLevel}.`,
+      ];
+      const oneTopic = topics[slot % topics.length] || topics[0] || "daily life";
+      const buildPromptOne = (nonce, slotIdx) => `Create ONE short learning material in ${lang} for a CEFR ${targetLevel} learner.
+Goal: ${goal}. Full lesson time: ${duration}. Topic: ${oneTopic}.
+DIFFICULTY MODEL — comprehensible input at "i+1":
+- Write on a ${targetLevel} base. You MAY introduce a small, controlled amount of ${capLevel} vocabulary, but NEVER anything above ${capLevel}.
+- It must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; do NOT return an easier text.
+- Difficulty band — ${bands[slotIdx] || bands[1]}
+LENGTH: the "text" must be ${lengthGuide}. Count the words.
+${avoidLine}
+For Dutch, the title and text MUST be Dutch only — never Chinese/English explanations or translations.
+Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":<"comfortable"|"balanced"|"stretch">,"text":<original text in ${lang}>}]}.
+If source is "Dialogue", put each speaker turn on its own line with a short label (e.g. "Sanne: ..."). Otherwise no fake speaker labels; keep quoted speech intact.
+Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.`;
+      const runOne = async (nonce, slotIdx) => {
+        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: buildPromptOne(nonce, slotIdx) }], { json: true, temp: 0.9, max: 1200 });
         const p = parseJSON(out);
         return (Array.isArray(p.materials) ? p.materials : [])
           .filter(m => m && m.text && !hasCjk(m.title) && !hasCjk(m.text));
@@ -131,6 +164,18 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
           }
         }
       };
+
+      // Single-text mode: try once, and retry once if nothing usable came back.
+      if (count === 1) {
+        for (let attempt = 0; attempt < 2 && accepted.length === 0 && usable.length === 0; attempt++) {
+          try { consider(await runOne(`${requestId}-${slot}-${attempt}`, slot)); } catch (e) { /* retry */ }
+        }
+        const tierOne = ["comfortable", "balanced", "stretch"][slot] || "balanced";
+        const one = [...accepted, ...usable].slice(0, 1).map(m => ({ ...m, difficultyTier: tierOne }));
+        const debug1 = { requestId, mode: "one", slot, requestedLevel: level, capLevel, materialIds: one.map(m => m.id), resultSource: one.length ? one[0].resultSource : "none", accepted: accepted.length, relaxed: usable.length, rejected };
+        console.log("[analyze:materials:one]", JSON.stringify(debug1));
+        return Response.json({ materials: one, debug: debug1 });
+      }
 
       try { consider(await runOnce(requestId, "")); } catch (e) { /* fall through to retry */ }
 

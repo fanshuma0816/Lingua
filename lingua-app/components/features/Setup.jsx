@@ -7,11 +7,11 @@ import { GOALS, LANGS, LANG_CODE, LEVELS, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "
 import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
 import { safeDutchMaterial } from "../../lib/dutch";
-import { durationSpec, scrollToTop } from "../../lib/format";
+import { durationSpec, scrollToTop, stableHash } from "../../lib/format";
 import { materialStats, sourceIcon } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { cleanText } from "../../lib/text";
-import { aiAnalyze, sampleMaterials } from "../../services/api";
+import { aiAnalyze, pickFallbackMaterials } from "../../services/api";
 
 function SourceIdeas({tips,hint}){
   const {t}=useUI();
@@ -53,7 +53,8 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
   const fileRef=useRef(null);
-  const recentTitles=useRef([]);   // anti-repeat memory across regenerations
+  const recentTitles=useRef([]);   // short hints sent to the AI to steer it away from repeats
+  const shownSigs=useRef(new Set());   // signatures of every text shown, so regenerating never repeats content
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setRaw(String(r.result));r.readAsText(f);}
   const ready=count>40&&!over&&lang;
   const liveStats=count>40?materialStats(cleaned,level):null;
@@ -71,18 +72,43 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     setMaterialError(false);
     setMaterials([]);
     const spec=durationSpec(selectedDuration);
-    // Anti-repeat: tell the server which topics/titles we just showed, plus a nonce.
-    const avoid=[...recentTitles.current,...topics].slice(0,12);
-    const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce},{timeoutMs:10000});
-    let generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
-    if(!generated.length) generated=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid).filter(safeDutchMaterial);
-    if(generated.length){
-      generated=generated.map(m=>({...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
+    // Each text gets its own request and its own deadline: 1st ≤15s, 2nd ≤30s, 3rd ≤45s.
+    const slotTimeouts=[15000,30000,45000];
+    const sigOf=(text)=>stableHash(String(text||"").toLowerCase().replace(/\s+/g," ").trim());
+    let placedCount=0;
+    // Show one text as soon as it is ready; never repeat a text already shown this session.
+    const tryShow=(m)=>{
+      if(!m||!m.text||!safeDutchMaterial(m)) return false;
+      const sig=sigOf(m.text);
+      if(shownSigs.current.has(sig)) return false;
+      shownSigs.current.add(sig);
+      const withMeta={...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target};
+      if(withMeta.title) recentTitles.current=[withMeta.title,...recentTitles.current].slice(0,12);
+      placedCount++;
+      setMaterials(prev=>[...prev,withMeta]);
+      return true;
+    };
+    // Fire three small single-text requests in parallel; each renders the moment it lands.
+    await Promise.all([0,1,2].map(async slot=>{
+      const slotTopics=topics.length?[topics[slot%topics.length]]:topics;
+      const avoid=[...recentTitles.current,...topics].slice(0,12);
+      const nonce=Date.now().toString(36)+"-"+slot+"-"+Math.random().toString(36).slice(2,8);
+      const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics:slotTopics,avoid,nonce,count:1,slot},{timeoutMs:slotTimeouts[slot]});
+      const cand=d&&Array.isArray(d.materials)?d.materials:[];
+      let placed=false;
+      for(const m of cand){ if(tryShow(m)){ placed=true; break; } }
+      if(!placed){
+        // AI was slow or failed for this slot → show a fresh library text instead.
+        const fb=pickFallbackMaterials(lang,level,selectedDuration,slotTopics.length?slotTopics:topics,[...shownSigs.current],1);
+        for(const m of fb){ if(tryShow(m)) break; }
+      }
+    }));
+    // If dedup collisions left fewer than three, top up from the library.
+    if(placedCount<3){
+      const fb=pickFallbackMaterials(lang,level,selectedDuration,topics,[...shownSigs.current],3-placedCount);
+      for(const m of fb) tryShow(m);
     }
-    const items=generated.slice(0,3);
-    recentTitles.current=[...items.map(m=>m.title).filter(Boolean),...recentTitles.current].slice(0,12);
-    setMaterials(items); setSelectedMaterial(0); setMaterialError(!items.length); setGenerating(false);
+    setSelectedMaterial(0); setMaterialError(placedCount===0); setGenerating(false);
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m) return;
