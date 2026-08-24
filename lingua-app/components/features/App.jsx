@@ -25,12 +25,19 @@ const ROUTES={
   done:{screen:"done",inputMode:null,path:"/done"}
 };
 
+function lessonPath(stepId){ return `/lesson/${stepId||STEPS[0].id}`; }
+
 function routeState(pathname){
   const path=(pathname||"/").replace(/\/+$/,"")||"/";
   if(path==="/find") return ROUTES.find;
   if(path==="/import") return ROUTES.import;
   if(path==="/preview") return ROUTES.preview;
-  if(path==="/lesson") return ROUTES.lesson;
+  if(path==="/lesson") return {...ROUTES.lesson,stepId:null};
+  if(path.startsWith("/lesson/")){
+    const stepId=path.slice("/lesson/".length);
+    const valid=stepIndex(stepId)>=0;
+    return {...ROUTES.lesson,stepId:valid?stepId:null,path:valid?lessonPath(stepId):path,invalidStep:!valid};
+  }
   if(path==="/done") return ROUTES.done;
   return ROUTES.home;
 }
@@ -48,7 +55,7 @@ function App(){
   const [theme,setTheme]=useState(DB.get("theme","light"));
   const [pinned,setPinned]=useState(false);
   const [openMod,setOpenMod]=useState("diag");
-  const [step,setStep]=useState(0);
+  const [step,setStep]=useState(()=>currentRoute.stepId?stepIndex(currentRoute.stepId):0);
   const [doneSet,setDoneSet]=useState(()=>new Set());
   const [diag,setDiag]=useState({coverage:null,tier:null,total:0,unknown:[]});
   const [narrow,setNarrow]=useState(false);
@@ -61,6 +68,16 @@ function App(){
   useEffect(()=>{
     if(screen==="login") return;
     if((currentRoute.screen==="preview"||currentRoute.screen==="lesson"||currentRoute.screen==="done")&&!lesson){ setScreen("input"); if(pathname!=="/") router.replace("/"); return; }
+    if(currentRoute.screen==="lesson"){
+      const idx=currentRoute.stepId?stepIndex(currentRoute.stepId):0;
+      const next=Math.max(0,idx);
+      setStep(next);
+      setOpenMod(STEPS[next].mod);
+      setScreen("lesson");
+      const target=lessonPath(STEPS[next].id);
+      if((pathname==="/lesson"||currentRoute.invalidStep)&&pathname!==target) router.replace(target);
+      return;
+    }
     setScreen(currentRoute.screen);
   },[pathname]);
 
@@ -84,12 +101,12 @@ function App(){
     revealTimer.current=setTimeout(()=>{ if(autoReveal.current){ setPinned(false); autoReveal.current=false; } },2400);
   }
   function resetSession(){ setStep(0); setDoneSet(new Set()); setOpenMod("diag"); setDiag({coverage:null,tier:null,total:0,unknown:[]}); }
-  function startSession(){ resetSession(); navigateTo("lesson","/lesson"); revealThenCollapse(); }
-  function reviewSession(){ resetSession(); navigateTo("lesson","/lesson"); revealThenCollapse(); }
-  function go(id){ const idx=stepIndex(id); if(idx<0) return; if(screen==="done") navigateTo("lesson","/lesson"); setStep(idx); setOpenMod(STEPS[idx].mod); if(window.innerWidth<1200) setPinned(false); scrollToTop(); }
+  function startSession(){ resetSession(); navigateTo("lesson",lessonPath(STEPS[0].id)); revealThenCollapse(); }
+  function reviewSession(){ resetSession(); navigateTo("lesson",lessonPath(STEPS[0].id)); revealThenCollapse(); }
+  function go(id){ const idx=stepIndex(id); if(idx<0) return; navigateTo("lesson",lessonPath(id)); setStep(idx); setOpenMod(STEPS[idx].mod); if(window.innerWidth<1200) setPinned(false); scrollToTop(); }
   function onContinue(){ const cur=STEPS[step]; setDoneSet(prev=>new Set(prev).add(cur.id));
-    if(step===STEPS.length-1){ navigateTo("done","/done"); } else { const n=step+1; setStep(n); setOpenMod(STEPS[n].mod); scrollToTop(); } }
-  function onPrev(){ const n=Math.max(0,step-1); setStep(n); setOpenMod(STEPS[n].mod); scrollToTop(); }
+    if(step===STEPS.length-1){ navigateTo("done","/done"); } else { const n=step+1; setStep(n); setOpenMod(STEPS[n].mod); navigateTo("lesson",lessonPath(STEPS[n].id)); scrollToTop(); } }
+  function onPrev(){ const n=Math.max(0,step-1); setStep(n); setOpenMod(STEPS[n].mod); navigateTo("lesson",lessonPath(STEPS[n].id)); scrollToTop(); }
 
   async function loadLesson(d){ setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); navigateTo("preview","/preview");
