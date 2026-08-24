@@ -40,9 +40,9 @@ function SourceIdeas({tips,hint}){
   </div>);
 }
 
-function InputScreen({onNext}){
+function InputScreen({onNext,initialMode=null,onRouteChange}){
   const {t}=useUI();
-  const [mode,setMode]=useState(null);
+  const [mode,setMode]=useState(initialMode);
   const [raw,setRaw]=useState(DB.get("draft","")); const cleaned=cleanText(raw); const count=cleaned.length; const LIMIT=1200; const over=count>LIMIT;
   const savedLang=DB.get("lang","Dutch");
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(DB.get("level",LEVELS[1])); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
@@ -61,7 +61,9 @@ function InputScreen({onNext}){
   const durationPlans=t.durationPlans||[];
   const selectedDuration=durationPlans[durationIdx]?.label||"45-60 min";
   const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
+  useEffect(()=>{ setMode(initialMode); },[initialMode]);
   useEffect(()=>{ scrollToTop(); },[mode]);
+  function setModeRoute(nextMode,path){ setMode(nextMode); onRouteChange?.(path); }
   function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
   async function generateMaterials(){
     if(!lang) return;
@@ -99,7 +101,7 @@ function InputScreen({onNext}){
       <p className="sub">{t.startSub}</p>
     </div>
     <div className="entry-grid">
-      <button className="entry-card" onClick={()=>setMode("material")}>
+      <button className="entry-card" onClick={()=>setModeRoute("material","/import")}>
         <span className="entry-icon">📄</span>
         <span className="entry-copy">
           <span className="entry-title">{t.startMaterialTitle}</span>
@@ -107,7 +109,7 @@ function InputScreen({onNext}){
           <span className="entry-action">{t.startMaterialAction} →</span>
         </span>
       </button>
-      <button className="entry-card" onClick={()=>setMode("find")}>
+      <button className="entry-card" onClick={()=>setModeRoute("find","/find")}>
         <span className="entry-icon">✨</span>
         <span className="entry-copy">
           <span className="entry-title">{t.startFindTitle}</span>
@@ -119,7 +121,7 @@ function InputScreen({onNext}){
   </div>);
 
   if(mode==="find") return (<div>
-    <button className="btn btn-ghost btn-sm" style={{marginBottom:16}} onClick={()=>setMode(null)}>← {t.back}</button>
+    <button className="btn btn-ghost btn-sm" style={{marginBottom:16}} onClick={()=>setModeRoute(null,"/")}>← {t.back}</button>
     <h1>{t.findTitle}</h1><p className="sub">{t.findSub}</p>
     <div className="card card-p">
       <div className="grid3">
@@ -161,7 +163,7 @@ function InputScreen({onNext}){
   </div>);
 
   return (<div>
-    <button className="btn btn-ghost btn-sm" style={{marginBottom:16}} onClick={()=>setMode(null)}>← {t.back}</button>
+    <button className="btn btn-ghost btn-sm" style={{marginBottom:16}} onClick={()=>setModeRoute(null,"/")}>← {t.back}</button>
     <h1>{t.inputTitle}</h1><p className="sub">{t.inputSub}</p>
     <div className="card card-p">
       <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
