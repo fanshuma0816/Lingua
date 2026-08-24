@@ -1,5 +1,6 @@
 import { compactQuote, stableHash } from "../lib/format";
 import { DB } from "../lib/storage";
+import { cefrIdx, validateMaterialFit } from "../lib/cefr.mjs";
 import { FALLBACK_DUTCH, topicKey } from "./fallbackMaterials";
 
 const CHAT_FALLBACK={
@@ -57,24 +58,42 @@ function pickFallbackMaterials(lang,level,duration,topics,excludeSigs=[],n=3){
   const tier=durTier(duration);
   const keys=(Array.isArray(topics)?topics:[]).map(topicKey).filter(Boolean);
   const ex=new Set(excludeSigs||[]);
-  const avail=FALLBACK_DUTCH.filter(m=>!ex.has(textSig(m.text)));
-  // Preference order: exact tier+topic, then same tier, then same topic, then anything.
-  const pools=[
-    shuffle(avail.filter(m=>m.tier===tier && keys.includes(m.topic))),
-    shuffle(avail.filter(m=>m.tier===tier)),
-    shuffle(avail.filter(m=>keys.includes(m.topic))),
-    shuffle(avail),
-  ];
+  const userIdx=cefrIdx(level);
+  const capIdx=Math.min(4,userIdx+1);   // "i+1" ceiling: never harder than one level above the learner
+
+  // Keep only texts that are NOT too hard for this learner. A hand label is not
+  // trusted on its own: run the same CEFR check the AI path uses, and drop the
+  // text if the analyzer validates it above the i+1 cap or with too many hard
+  // words. This is what stops, e.g., an A1 learner ever being shown a B2 text.
+  const eligible=[];
+  for(const m of FALLBACK_DUTCH){
+    if(ex.has(textSig(m.text))) continue;
+    if(cefrIdx(m.level)>capIdx) continue;                 // cheap pre-filter on the hand label
+    const a=validateMaterialFit(m.text,level).analysis;
+    if(a.validatedTextLevelIdx>capIdx) continue;          // analyzer says too hard → drop
+    if(a.hardWordRatio>0.30) continue;                    // too many words above the learner's level → drop
+    eligible.push({ m, validated:a.validatedTextLevel, vIdx:a.validatedTextLevelIdx });
+  }
+
+  // Rank: prefer the matching duration tier, then a chosen topic, then the level
+  // closest to (but never above) the learner — so we don't hand out a needlessly
+  // trivial text when a level-appropriate one exists. Shuffle within equal ranks.
+  const scored=shuffle(eligible).map(e=>({ e, key:[
+    e.m.tier===tier?0:1,
+    keys.length?(keys.includes(e.m.topic)?0:1):0,
+    Math.abs(e.vIdx-userIdx),
+  ]}));
+  scored.sort((p,q)=>{ for(let i=0;i<p.key.length;i++){ if(p.key[i]!==q.key[i]) return p.key[i]-q.key[i]; } return 0; });
+
   const out=[]; const used=new Set();
-  for(const pool of pools){
-    for(const m of pool){
-      const s=textSig(m.text);
-      if(used.has(s)) continue;
-      used.add(s);
-      out.push({ title:m.title, source:m.source, text:m.text,
-        level:m.level||String(level||"A2").slice(0,2), duration, resultSource:"fallback" });
-      if(out.length>=n) return out;
-    }
+  for(const {e} of scored){
+    const s=textSig(e.m.text);
+    if(used.has(s)) continue;
+    used.add(s);
+    out.push({ title:e.m.title, source:e.m.source, text:e.m.text,
+      level:e.validated, validatedTextLevel:e.validated,   // honest, analyzer-validated badge
+      duration, resultSource:"fallback" });
+    if(out.length>=n) return out;
   }
   return out;
 }
