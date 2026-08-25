@@ -82,6 +82,7 @@ function BlindListen({lesson,text,diag,setDiag}){
 }
 
 function diagnosisCase(coverage,tier){
+  if(coverage==null||tier==null) return "incomplete";
   if(coverage!=null&&coverage<75) return "overload";
   if(tier!=null&&tier<=0) return "acoustic";
   if(coverage!=null&&coverage>=95&&tier!=null&&tier>=3) return "comfort";
@@ -93,7 +94,8 @@ function DiagnosisMatrix({lesson,diag}){
   const tiers=t.diagnosis.tiers;
   const cov=diag.coverage; const tier=diag.tier;
   const key=diagnosisCase(cov,tier);
-  const c=t.diagnosis.cases[key];
+  const incomplete=key==="incomplete";
+  const c=incomplete?null:t.diagnosis.cases[key];
   const cls=key==="overload"?"warn":(key==="acoustic"||key==="comfort")?"info":"";
   const listenLabel=tier!=null?tiers[tier].label:"—";
   return (<div>
@@ -102,13 +104,18 @@ function DiagnosisMatrix({lesson,diag}){
       <div className="mini-metric"><div className="k">{t.diagnosis.reading}</div><div className="v">{cov!=null?cov+"%":"—"}</div><div className="tiny muted" style={{marginTop:2}}>{t.diagnosis.ofWords}</div></div>
       <div className="mini-metric"><div className="k">{t.diagnosis.listening}</div><div className="v">{listenLabel}</div><div className="tiny muted" style={{marginTop:2}}>{tier!=null?t.diagnosis.byEar(tiers[tier].pct):t.diagnosis.tapFirst}</div></div>
     </div>
-    <div className={"diag-card "+cls}>
+    {incomplete ? <div className="diag-card info">
+      <div className="row" style={{gap:11}}><span style={{fontSize:26}}>•</span>
+        <span><div className="tiny muted" style={{fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>{t.nav.steps.d3}</div>
+        <div className="diag-name">{cov==null?t.nav.steps.d1:t.diagnosis.tapFirst}</div></span></div>
+      <div style={{fontSize:14,lineHeight:1.55}}>{cov==null?t.diagnosis.readNote:t.diagnosis.catchHint}</div>
+    </div> : <div className={"diag-card "+cls}>
       <div className="row" style={{gap:11}}><span style={{fontSize:26}}>{c.emoji}</span>
         <span><div className="tiny muted" style={{fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>{c.kicker}</div>
         <div className="diag-name">{c.name}</div></span></div>
       <div style={{fontSize:14,lineHeight:1.55}}>{c.body}</div>
       <div style={{background:"hsl(var(--background)/.6)",borderRadius:8,padding:"11px 13px",fontSize:14}}>{c.tip}</div>
-    </div>
+    </div>}
   </div>);
 }
 
@@ -620,7 +627,7 @@ function AIChat({lesson,onDone}){
 
 function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
-  const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
+  const name=t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
   const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);

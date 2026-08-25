@@ -10,19 +10,24 @@ import { cachedAiAnalyze } from "../../services/api";
 
 function FullPlayer({text,lang,label,sub}){
   const {t}=useUI();
-  const [playing,setPlaying]=useState(false); const [rate,setRate]=useState(1);
+  const [status,setStatus]=useState("idle"); const [rate,setRate]=useState(1);
   const [pos,setPos]=useState(0); const [dur,setDur]=useState(()=>estimateAudioSeconds(text,1));
   const seq=useRef(0);
   const timer=useRef(null);
+  const handleRef=useRef(null);
+  const playing=status==="playing";
   function clearTimer(){ if(timer.current){clearInterval(timer.current);timer.current=null;} }
   function attachProgress(u,estimated){
     setPos(0); setDur(estimated);
     clearTimer();
-    const started=Date.now();
-    timer.current=setInterval(()=>setPos(p=>Math.min(estimated,(Date.now()-started)/1000)),500);
     if(u){
       u.onmeta=(d)=>{ if(d&&isFinite(d))setDur(d); };
+      u.onloading=()=>setStatus("loading");
+      u.onready=()=>setStatus(s=>s==="loading"?"ready":s);
+      u.onplay=()=>setStatus("playing");
       u.onprogress=(p,d)=>{ clearTimer(); if(d&&isFinite(d))setDur(d); setPos(p||0); };
+      u.onerror=()=>{ clearTimer(); setStatus("error"); };
+      u.onblocked=()=>{ clearTimer(); setStatus("ready"); };
     }
   }
   useEffect(()=>()=>{seq.current++;clearTimer();stopSpeak();},[]);
@@ -30,9 +35,9 @@ function FullPlayer({text,lang,label,sub}){
     const run=++seq.current;
     const segments=dialogueSegments(text);
     const estimated=estimateAudioSeconds(text,r);
-    attachProgress(null,estimated);
+    setStatus("loading");
+    setPos(0); setDur(estimated); clearTimer();
     if(segments.length>1){
-      setPlaying(true);
       clearTimer();
       const known=segments.map(seg=>estimateAudioSeconds(seg.text,r));
       const total=()=>known.reduce((a,b)=>a+b,0);
@@ -40,28 +45,41 @@ function FullPlayer({text,lang,label,sub}){
       setPos(0); setDur(total());
       const playSegment=(i)=>{
         if(run!==seq.current) return;
-        if(i>=segments.length){clearTimer();setPos(total());setPlaying(false);return;}
+        if(i>=segments.length){clearTimer();setPos(total());setStatus("idle");return;}
         const seg=segments[i];
+        setStatus("loading");
         const u=speak(seg.text,lang,r,seg.voiceRole);
-        if(!u){setPlaying(false);return;}
+        handleRef.current=u;
+        if(!u){setStatus("error");return;}
         u.onmeta=(d)=>{ if(d&&isFinite(d)){ known[i]=d; setDur(total()); } };
+        u.onready=()=>setStatus(s=>s==="loading"?"ready":s);
+        u.onplay=()=>setStatus("playing");
+        u.onloading=()=>setStatus("loading");
         u.onprogress=(p,d)=>{ if(d&&isFinite(d)){ known[i]=d; setDur(total()); } setPos(Math.min(total(),doneDur+(p||0))); };
+        u.onerror=()=>setStatus("error");
+        u.onblocked=()=>setStatus("ready");
         u.onend=()=>{ doneDur+=known[i]||estimateAudioSeconds(seg.text,r); setPos(Math.min(total(),doneDur)); setTimeout(()=>playSegment(i+1),220); };
       };
       playSegment(0);
       return;
     }
     const u=speak(text,lang,r);
+    handleRef.current=u;
     attachProgress(u,estimated);
-    if(u){u.onend=()=>{clearTimer();setPos(estimated);setPlaying(false);};setPlaying(true);}
+    if(u){u.onend=()=>{clearTimer();setPos(estimated);setStatus("idle");};}
+    else setStatus("error");
   }
-  function toggle(){ if(playing){seq.current++;clearTimer();stopSpeak();setPlaying(false);return;} start(rate); }
-  function setR(r){ setRate(r); if(playing){seq.current++;clearTimer();stopSpeak();start(r);} else {setDur(estimateAudioSeconds(text,r));setPos(0);} }
+  function toggle(){
+    if(playing||status==="loading"){seq.current++;clearTimer();stopSpeak();handleRef.current=null;setStatus("idle");return;}
+    if(status==="ready"&&handleRef.current&&handleRef.current.play){ handleRef.current.play().catch(()=>setStatus("ready")); return; }
+    start(rate);
+  }
+  function setR(r){ setRate(r); if(playing||status==="loading"){seq.current++;clearTimer();stopSpeak();handleRef.current=null;start(r);} else {setDur(estimateAudioSeconds(text,r));setPos(0);setStatus("idle");} }
   const pct=dur?Math.min(100,Math.max(0,pos/dur*100)):0;
   return (<div className="player">
-    <button className="playbtn" onClick={toggle}>{playing?"❚❚":"▶"}</button>
+    <button className="playbtn" onClick={toggle}>{playing||status==="loading"?"❚❚":"▶"}</button>
     <div style={{flex:1}}><div style={{fontWeight:600}}>{label||t.fullSourceAudio}</div>
-      <div className="tiny muted">{TTS_OK?(sub||t.fullSourceRead):t.audioUnsupported}</div>
+      <div className="tiny muted">{status==="loading"?t.audioLoading:(status==="ready"?t.audioReady:status==="error"?t.audioUnavailable:(TTS_OK?(sub||t.fullSourceRead):t.audioUnsupported))}</div>
       <div className="audio-progress"><span style={{width:pct+"%"}}/></div>
       <div className="tiny muted row" style={{justifyContent:"space-between",gap:8}}>
         <span>{t.audioTime(fmtTime(pos),fmtTime(dur))}</span><span>{t.audioLeft(fmtTime(Math.max(0,dur-pos)))}</span>

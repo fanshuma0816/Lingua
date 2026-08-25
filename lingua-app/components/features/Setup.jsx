@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { materialId as cefrMaterialId } from "../../lib/cefr.mjs";
+import { materialId as cefrMaterialId, validateMaterialFit } from "../../lib/cefr.mjs";
 import { Stars, Stat, Teacher } from "../ui/elements";
 import { GOALS, LANGS, LANG_CODE, LEVELS, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
 import { safeDutchMaterial } from "../../lib/dutch";
+import { trackGenerateMaterialsClicked } from "../../lib/analytics";
 import { durationSpec, scrollToTop, stableHash } from "../../lib/format";
 import { materialStats, sourceIcon } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
@@ -62,12 +63,20 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const durationPlans=t.durationPlans||[];
   const selectedDuration=durationPlans[durationIdx]?.label||"45-60 min";
   const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
+  const currentLevelLabel=t.levels?.[LEVELS.indexOf(level)]||level;
+  const sessionGoalLabel=t.goals?.[GOALS.indexOf(goal)]||goal;
   useEffect(()=>{ setMode(initialMode); },[initialMode]);
   useEffect(()=>{ scrollToTop(); },[mode]);
   function setModeRoute(nextMode,path){ setMode(nextMode); onRouteChange?.(path); }
   function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
   async function generateMaterials(){
     if(!lang) return;
+    trackGenerateMaterialsClicked({
+      currentLevel: currentLevelLabel,
+      sessionGoal: sessionGoalLabel,
+      fullLessonTime: selectedDuration,
+      topicsYouLike: topics,
+    });
     setGenerating(true);
     setMaterialError(false);
     setMaterials([]);
@@ -79,10 +88,15 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     // Show one text as soon as it is ready; never repeat a text already shown this session.
     const tryShow=(m)=>{
       if(!m||!m.text||!safeDutchMaterial(m)) return false;
-      const sig=sigOf(m.text);
+      const text=cleanText(m.text||"");
+      const fit=validateMaterialFit(text,level);
+      if(!fit.ok) return false;
+      const sig=sigOf(text);
       if(shownSigs.current.has(sig)) return false;
       shownSigs.current.add(sig);
-      const withMeta={...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target};
+      const withMeta={...m,text,validatedTextLevel:fit.analysis.validatedTextLevel,level:fit.analysis.validatedTextLevel,
+        hardWordRatio:fit.analysis.hardWordRatio,difficultyTier:fit.analysis.difficultyTier,
+        vocabularyAnnotations:fit.analysis.annotations,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target};
       if(withMeta.title) recentTitles.current=[withMeta.title,...recentTitles.current].slice(0,12);
       placedCount++;
       setMaterials(prev=>[...prev,withMeta]);

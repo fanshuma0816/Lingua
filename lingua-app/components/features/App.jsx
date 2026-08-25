@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Login } from "./Login";
 import { SessionView, Sidebar } from "./Session";
 import { InputScreen, Preview } from "./Setup";
 import { Done } from "./Steps";
@@ -25,6 +24,7 @@ const ROUTES={
   done:{screen:"done",inputMode:null,path:"/done"}
 };
 
+function freshDiag(){ return {coverage:null,tier:null,total:0,unknown:[]}; }
 function lessonPath(stepId){ return `/lesson/${stepId||STEPS[0].id}`; }
 
 function routeState(pathname){
@@ -50,14 +50,14 @@ function App(){
   const t=UI_TEXT[uiLang]||UI_TEXT.en;
   function setUiLang(next){ setUiLangState(next); DB.set("uiLang",next); }
   useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
-  const [screen,setScreen]=useState(DB.get("email")?currentRoute.screen:"login");
+  const [screen,setScreen]=useState(currentRoute.screen);
   const [lesson,setLesson]=useState(()=>DB.get("currentLesson",null)); const [text,setText]=useState(()=>DB.get("currentText",""));
   const [theme,setTheme]=useState(DB.get("theme","light"));
   const [pinned,setPinned]=useState(false);
   const [openMod,setOpenMod]=useState("diag");
   const [step,setStep]=useState(()=>currentRoute.stepId?stepIndex(currentRoute.stepId):0);
   const [doneSet,setDoneSet]=useState(()=>new Set());
-  const [diag,setDiag]=useState({coverage:null,tier:null,total:0,unknown:[]});
+  const [diag,setDiagState]=useState(()=>DB.get("diagnosis",freshDiag()));
   const [narrow,setNarrow]=useState(false);
   const autoReveal=useRef(false); const revealTimer=useRef(null);
   const mode=screen==="lesson"?"session":screen==="done"?"done":"home";
@@ -66,7 +66,6 @@ function App(){
   useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen]);
   useEffect(()=>{ const on=()=>setNarrow(window.innerWidth<1200); on(); window.addEventListener("resize",on); return ()=>window.removeEventListener("resize",on); },[]);
   useEffect(()=>{
-    if(screen==="login") return;
     if((currentRoute.screen==="preview"||currentRoute.screen==="lesson"||currentRoute.screen==="done")&&!lesson){ setScreen("input"); if(pathname!=="/") router.replace("/"); return; }
     if(currentRoute.screen==="lesson"){
       const idx=currentRoute.stepId?stepIndex(currentRoute.stepId):0;
@@ -83,11 +82,6 @@ function App(){
 
   function navigateTo(nextScreen,path){ setScreen(nextScreen); if(pathname!==path) router.push(path); }
   function replaceWith(path){ if(pathname!==path) router.replace(path); }
-  function continueAfterLogin(){
-    if(currentRoute.screen==="input"){ navigateTo("input",currentRoute.path); return; }
-    if(lesson){ navigateTo(currentRoute.screen,currentRoute.path); return; }
-    navigateTo("input","/");
-  }
   function toggleTheme(){ setTheme(v=>{ const n=v==="dark"?"light":"dark"; DB.set("theme",n); return n; }); }
   function toggleSide(){ autoReveal.current=false; setPinned(p=>!p); }
   function clearAll(){ if(confirm(t.clearConfirm)){DB.clearAll();location.reload();} }
@@ -100,7 +94,8 @@ function App(){
     autoReveal.current=true; setPinned(true);
     revealTimer.current=setTimeout(()=>{ if(autoReveal.current){ setPinned(false); autoReveal.current=false; } },2400);
   }
-  function resetSession(){ setStep(0); setDoneSet(new Set()); setOpenMod("diag"); setDiag({coverage:null,tier:null,total:0,unknown:[]}); }
+  function setDiag(update){ setDiagState(prev=>{ const next=typeof update==="function"?update(prev):update; DB.set("diagnosis",next); return next; }); }
+  function resetSession(){ const empty=freshDiag(); setStep(0); setDoneSet(new Set()); setOpenMod("diag"); setDiagState(empty); DB.set("diagnosis",empty); }
   function startSession(){ resetSession(); navigateTo("lesson",lessonPath(STEPS[0].id)); revealThenCollapse(); }
   function reviewSession(){ resetSession(); navigateTo("lesson",lessonPath(STEPS[0].id)); revealThenCollapse(); }
   function go(id){ const idx=stepIndex(id); if(idx<0) return; navigateTo("lesson",lessonPath(id)); setStep(idx); setOpenMod(STEPS[idx].mod); if(window.innerWidth<1200) setPinned(false); scrollToTop(); }
@@ -115,9 +110,6 @@ function App(){
     catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null); setLesson(L); DB.set("currentLesson",L); navigateTo("preview","/preview");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     } }
-
-  if(screen==="login") return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
-    <main className="main"><Login onDone={continueAfterLogin}/></main></UIContext.Provider>);
 
   return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
     <div className={"shell"+(pinned?" pinned":"")}>
