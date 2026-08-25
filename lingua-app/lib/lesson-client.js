@@ -7,52 +7,133 @@ import { cleanText, contextFor, pickVocab, sentencesOf, words } from "./text";
 function practiceQuestion(lesson,shownLang,uiLang){
   const sents=lesson.sents||[];
   const fullText=(sents||[]).join(" ").toLowerCase();
-  const scene=writingScene(fullText,uiLang);
+  const scene=writingScene(fullText,lesson.topics,uiLang);
   const easy=levelIdx(lesson.level)<=1;
   if(uiLang==="zh"){
     return easy
-      ? `${scene.zh} 请用 ${shownLang} 写 2–3 个短句：你需要什么、你会选择什么，或者你接下来会说什么。`
-      : `${scene.zh} 请用 ${shownLang} 写 3–5 句：先写发生了什么，再补一句你的看法、选择或类似经历。`;
+      ? `${scene.zh} 请用 ${shownLang} 写 2–3 个短句：${scene.easyZh} 尽量自然地用上 2–3 个今天学到的词。`
+      : `${scene.zh} 请用 ${shownLang} 写 3–5 句：${scene.advancedZh} 尽量自然地用上今天学到的词和表达。`;
   }
   return easy
-    ? `${scene.en} Write 2–3 short ${shownLang} sentences about what you need, what you choose, or what you say next.`
-    : `${scene.en} Write 3–5 ${shownLang} sentences: first say what is happening, then add your opinion, choice, or a similar experience.`;
+    ? `${scene.en} Write 2–3 short ${shownLang} sentences about ${scene.easyEn} Try to use 2–3 words from today's lesson.`
+    : `${scene.en} Write 3–5 ${shownLang} sentences: ${scene.advancedEn} Try to reuse words and expressions from today's lesson.`;
 }
 
-function writingScene(text,uiLang){
+function writingScene(text,topics=[],uiLang){
   const t=String(text||"");
   const match=(re)=>re.test(t);
+  const topicText=topicSummary(topics,uiLang);
   const scenes=[
     [/\b(supermarkt|brood|melk|appels|rijst|kassa)\b/i,
       "You are at the supermarket with Mila. She is buying bread, milk, apples, and rice.",
-      "想象你和 Mila 在超市。她正在买面包、牛奶、苹果和米。"],
+      "想象你和 Mila 在超市。她正在买面包、牛奶、苹果和米。",
+      "what you need, what you choose, or what you say next.",
+      "你需要什么、你会选择什么，或者你接下来会说什么。",
+      "first say what is happening, then add your choice, opinion, or a similar experience.",
+      "先写发生了什么，再补一句你的选择、看法或类似经历。"],
     [/\b(thuis|koffie|raam|pauze)\b/i,
       "Someone is working at home and takes a short coffee break by the open window.",
-      "想象有人在家工作，十点做咖啡、打开窗户，短暂休息一下。"],
+      "想象有人在家工作，十点做咖啡、打开窗户，短暂休息一下。",
+      "what the person does, what they need, or how the break feels.",
+      "这个人在做什么、需要什么，或者这段休息感觉如何。",
+      "first describe the situation, then add how the person feels or what happens next.",
+      "先描述这个情境，再补一句这个人的感受或接下来发生什么。"],
     [/\b(bibliotheek|boek|taalgroep)\b/i,
       "Someone is at the library choosing a book and noticing a language group.",
-      "想象有人在图书馆选书，也看到一个语言小组的信息。"],
+      "想象有人在图书馆选书，也看到一个语言小组的信息。",
+      "what the person chooses, why it is useful, or what they ask next.",
+      "这个人会选择什么、为什么有用，或者接下来会问什么。",
+      "first describe the situation, then add a choice, reason, or question.",
+      "先描述这个情境，再补一句选择、原因或问题。"],
     [/\b(dokter|assistente?|afspraak|moe)\b/i,
       "Someone calls the doctor's office and gets an appointment for later today.",
-      "想象有人打电话给诊所，并约到了今天晚些时候的时间。"],
+      "想象有人打电话给诊所，并约到了今天晚些时候的时间。",
+      "what the person needs, what they say, or how they feel.",
+      "这个人需要什么、会说什么，或者感觉如何。",
+      "first describe the problem, then add what the person asks for or decides to do.",
+      "先描述问题，再补一句这个人会请求什么或决定做什么。"],
     [/\b(pasta|tomaten|kaas|koken|water)\b/i,
       "Two friends are cooking a simple meal together.",
-      "想象两个朋友正在一起做一顿简单的饭。"],
+      "想象两个朋友正在一起做一顿简单的饭。",
+      "what they make, what they need, or what they say to each other.",
+      "他们做什么、需要什么，或者会对彼此说什么。",
+      "first describe the meal, then add a choice, problem, or opinion.",
+      "先描述这顿饭，再补一句选择、问题或看法。"],
     [/\b(school|bericht|zoon|agenda|les)\b/i,
       "A parent receives a school message and needs to adjust the day.",
-      "想象一位家长收到学校通知，需要调整当天安排。"],
+      "想象一位家长收到学校通知，需要调整当天安排。",
+      "what the message says, what changes, or what the parent does next.",
+      "通知说了什么、有什么变化，或者家长接下来做什么。",
+      "first describe the message, then add what changes or how the parent reacts.",
+      "先描述通知内容，再补一句有什么变化或家长如何回应。"],
     [/\b(trein|station|reizigers|reizen)\b/i,
       "Someone is planning or taking a train trip and thinking about the journey.",
-      "想象有人正在计划或乘坐火车，关注这段行程。"],
+      "想象有人正在计划或乘坐火车，关注这段行程。",
+      "where the person goes, what they need, or what happens on the trip.",
+      "这个人去哪里、需要什么，或者路上发生了什么。",
+      "first describe the journey, then add a plan, problem, or feeling.",
+      "先描述这段行程，再补一句计划、问题或感受。"],
     [/\b(weekend|markt|cadeau|station|koffie)\b/i,
       "Two people are making simple weekend plans together.",
-      "想象两个人正在一起安排周末计划。"],
+      "想象两个人正在一起安排周末计划。",
+      "what they plan, what they choose, or what they say to each other.",
+      "他们计划什么、选择什么，或者会对彼此说什么。",
+      "first describe the plan, then add a choice, reason, or similar experience.",
+      "先描述这个计划，再补一句选择、原因或类似经历。"],
+    [/\b(klimaat|energie|energietransitie|duurzaam|duurzame|landbouw|voedselsysteem|maatschappelijke|vraagstukken|toekomstbestendig|oplossingen)\b/i,
+      "This lesson is about climate, energy, food systems, and new solutions for society.",
+      "这节课的主题是气候、能源、食物系统，以及面向社会的新解决方案。",
+      "one important problem, one idea that matters, or one solution you find interesting.",
+      "一个重要问题、一个你觉得重要的想法，或者一个你感兴趣的解决方案。",
+      "summarize the issue, then add your opinion, a possible solution, or a role you think is important.",
+      "先概括这个议题，再补充你的看法、一个可能的解决方案，或者你觉得重要的角色。"],
+    [/\b(ontwerper|vacature|baan|functie|beroep|werk|studie|opleiding|vaardigheden|ervaring|affiniteit|vermogen|project)\b/i,
+      "This lesson is about work, study, or a role someone can take.",
+      "这节课的主题是工作、学习，或者某个具体角色。",
+      "what the role is about, one skill it needs, or whether it sounds interesting.",
+      "这个角色是做什么的、需要哪项能力，或者它听起来是否有意思。",
+      "describe the role or task, then add one needed skill, reason, or personal opinion.",
+      "先描述这个角色或任务，再补充一项需要的能力、一个原因或你的个人看法。"],
+    [/\b(nieuws|vandaag|gisteren|regering|gemeente|minister|politie|onderzoek|rapport|besluit|verandering)\b/i,
+      "This lesson is about a news event or a recent change.",
+      "这节课的主题是一个新闻事件或近期变化。",
+      "what happened, who is affected, or what may happen next.",
+      "发生了什么、谁会受到影响，或者接下来可能发生什么。",
+      "summarize what happened, then add why it matters or what might happen next.",
+      "先概括发生了什么，再补充为什么重要或接下来可能怎样。"],
+    [/\b(cultuur|traditie|festival|museum|kunst|muziek|film|geschiedenis|gewoonte|feest)\b/i,
+      "This lesson is about culture, habits, or shared traditions.",
+      "这节课的主题是文化、习惯或共同传统。",
+      "one special detail, how it compares with your experience, or one question you have.",
+      "一个特别的细节、它和你的经验有什么异同，或者你的一个问题。",
+      "describe the cultural idea, then compare it with your experience or add a question.",
+      "先描述这个文化内容，再和你的经验比较，或者补充一个问题。"],
+    [/\b(technologie|computer|software|app|data|internet|ai|kunstmatige intelligentie|machine|systeem|ontwerp)\b/i,
+      "This lesson is about technology, systems, or design.",
+      "这节课的主题是技术、系统或设计。",
+      "the main idea, one useful detail, or one question you still have.",
+      "主要意思、一个有用细节，或者你还有的一个问题。",
+      "explain the main idea, then add one benefit, risk, or question.",
+      "先解释主要意思，再补充一个好处、风险或问题。"],
   ];
   const found=scenes.find(([re])=>match(re));
-  if(found) return {en:found[1],zh:found[2]};
-  return uiLang==="zh"
-    ? {en:"The text describes a small everyday situation.",zh:"这段文本描述了一个日常小场景。"}
-    : {en:"The text describes a small everyday situation.",zh:"这段文本描述了一个日常小场景。"};
+  if(found) return {en:found[1],zh:found[2],easyEn:found[3],easyZh:found[4],advancedEn:found[5],advancedZh:found[6]};
+  return {
+    en:`This lesson is about ${topicText.en}.`,
+    zh:`这节课的主题是：${topicText.zh}。`,
+    easyEn:"the main idea, one thing you think is important, or one question you have.",
+    easyZh:"主要意思、你觉得重要的一点，或者你的一个问题。",
+    advancedEn:"summarize the main idea, then add your opinion, a useful detail, or one question you still have.",
+    advancedZh:"先概括主要意思，再补充你的看法、一个有用细节，或者你还有的一个问题。",
+  };
+}
+
+function topicSummary(topics=[],uiLang){
+  const clean=(Array.isArray(topics)?topics:[]).map(t=>String(t||"").trim()).filter(Boolean).slice(0,3);
+  if(!clean.length) return uiLang==="zh"
+    ? {en:"the topic, problem, or situation in the text",zh:"文本中的主题、问题或情境"}
+    : {en:"the topic, problem, or situation in the text",zh:"文本中的主题、问题或情境"};
+  return {en:clean.join(", "),zh:clean.join("、")};
 }
 
 function recommendLevel(text,sents){ const ws=words(text); if(!ws.length) return LEVELS[1];
