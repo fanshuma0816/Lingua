@@ -1,7 +1,6 @@
+import { levelIdx } from "../config/constants";
 import { compactQuote, stableHash } from "../lib/format";
 import { DB } from "../lib/storage";
-import { cefrIdx, validateMaterialFit } from "../lib/cefr.mjs";
-import { FALLBACK_DUTCH, topicKey } from "./fallbackMaterials";
 
 const CHAT_FALLBACK={
   Dutch:["Laten we even in het Nederlands kletsen. Vertel me eens wat je interessant vond.",
@@ -38,66 +37,6 @@ function chatFallback(lang,word,topicLine){
   return base;
 }
 
-// --- Offline fallback picker (Dutch) --------------------------------------
-// Pick varied, level-appropriate texts from the bundled library, matching the
-// duration tier + chosen topics, and skipping anything already shown this
-// session (by text signature) so regenerating never repeats a text.
-function durTier(label){
-  const nums=String(label||"").match(/\d+/g)?.map(Number)||[];
-  const max=Math.min(60,nums[1]||nums[0]||45);
-  return max<=15?"short":max<=35?"medium":"long";
-}
-function textSig(text){
-  return stableHash(String(text||"").toLowerCase().replace(/\s+/g," ").trim());
-}
-function shuffle(arr){
-  return arr.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
-}
-function pickFallbackMaterials(lang,level,duration,topics,excludeSigs=[],n=3){
-  if(lang!=="Dutch") return [];
-  const tier=durTier(duration);
-  const keys=(Array.isArray(topics)?topics:[]).map(topicKey).filter(Boolean);
-  const ex=new Set(excludeSigs||[]);
-  const userIdx=cefrIdx(level);
-  const capIdx=Math.min(4,userIdx+1);   // "i+1" ceiling: never harder than one level above the learner
-
-  // Keep only texts that are NOT too hard for this learner. A hand label is not
-  // trusted on its own: run the same CEFR check the AI path uses, and drop the
-  // text if the analyzer validates it above the i+1 cap or with too many hard
-  // words. This is what stops, e.g., an A1 learner ever being shown a B2 text.
-  const eligible=[];
-  for(const m of FALLBACK_DUTCH){
-    if(ex.has(textSig(m.text))) continue;
-    if(cefrIdx(m.level)>capIdx) continue;                 // cheap pre-filter on the hand label
-    const a=validateMaterialFit(m.text,level).analysis;
-    if(a.validatedTextLevelIdx>capIdx) continue;          // analyzer says too hard → drop
-    if(a.hardWordRatio>0.30) continue;                    // too many words above the learner's level → drop
-    eligible.push({ m, validated:a.validatedTextLevel, vIdx:a.validatedTextLevelIdx });
-  }
-
-  // Rank: prefer the matching duration tier, then a chosen topic, then the level
-  // closest to (but never above) the learner — so we don't hand out a needlessly
-  // trivial text when a level-appropriate one exists. Shuffle within equal ranks.
-  const scored=shuffle(eligible).map(e=>({ e, key:[
-    e.m.tier===tier?0:1,
-    keys.length?(keys.includes(e.m.topic)?0:1):0,
-    Math.abs(e.vIdx-userIdx),
-  ]}));
-  scored.sort((p,q)=>{ for(let i=0;i<p.key.length;i++){ if(p.key[i]!==q.key[i]) return p.key[i]-q.key[i]; } return 0; });
-
-  const out=[]; const used=new Set();
-  for(const {e} of scored){
-    const s=textSig(e.m.text);
-    if(used.has(s)) continue;
-    used.add(s);
-    out.push({ title:e.m.title, source:e.m.source, text:e.m.text,
-      level:e.validated, validatedTextLevel:e.validated,   // honest, analyzer-validated badge
-      duration, resultSource:"fallback" });
-    if(out.length>=n) return out;
-  }
-  return out;
-}
-
 function sampleMaterials(lang,level,goal,duration,topics,avoid=[]){
   const topic=(topics&&topics[0])||"daily life";
   const avoidText=(Array.isArray(avoid)?avoid:[]).join(" | ").toLowerCase();
@@ -108,7 +47,23 @@ function sampleMaterials(lang,level,goal,duration,topics,avoid=[]){
     });
     return (filtered.length>=3?filtered:items).sort(()=>Math.random()-0.5);
   };
-  if(lang==="Dutch") return pickFallbackMaterials(lang,level,duration,topics,[],3);
+  if(lang==="Dutch" && levelIdx(level)>=3) return fresh([
+    {title:"Een gesprek dat blijft hangen",source:"Dialogue",level:level.slice(0,2),text:"Sanne: Ik merk dat korte gesprekken op het werk soms meer invloed hebben dan lange vergaderingen.\nBram: Hoe bedoel je dat precies?\nSanne: Als iemand tijdens de lunch eerlijk vertelt waar hij tegenaan loopt, begrijp je meteen welke spanning er in een team zit.\nBram: Dat herken ik. Een losse opmerking kan duidelijk maken waarom een planning steeds verschuift.\nSanne: Precies. Daarom probeer ik niet alleen naar besluiten te luisteren, maar ook naar de toon ertussen.\nBram: Misschien is dat wel de kern van goede samenwerking: niet sneller praten, maar beter opmerken wat niet hardop wordt gezegd."},
+    {title:"De stille afspraak in de buurt",source:"Culture note",level:level.slice(0,2),text:"In veel Nederlandse buurten bestaan afspraken die nergens officieel zijn vastgelegd. Niemand heeft ze ondertekend, maar bijna iedereen kent ze. Je zet je fiets niet midden voor de ingang, je groet de buur die je vaak ziet en je klaagt pas over lawaai nadat je eerst vriendelijk hebt aangebeld. Zulke gewoonten lijken klein, maar ze bepalen hoe prettig mensen samenleven. Vooral nieuwe bewoners ontdekken deze regels pas wanneer ze per ongeluk iets verkeerd doen. Dan blijkt dat cultuur niet alleen in musea of tradities zit, maar ook in alledaagse verwachtingen over ruimte, rust en rekening houden met elkaar."},
+    {title:"Waarom thuiswerken niet voor iedereen vrijheid betekent",source:"News explainer",level:level.slice(0,2),text:"Thuiswerken wordt vaak gepresenteerd als een vorm van vrijheid, maar de werkelijkheid is genuanceerder. Voor sommige werknemers betekent het minder reistijd en meer concentratie. Voor anderen vervagen juist de grenzen tussen werk en privé. De keukentafel wordt een kantoor, een korte pauze voelt onterecht als tijdverlies en overleg via schermen maakt misverstanden soms groter. Bedrijven zoeken daarom naar een nieuw evenwicht. Niet de vraag of iedereen thuis of op kantoor moet werken is doorslaggevend, maar welke taken waar het beste tot hun recht komen. Flexibiliteit vraagt dus ook duidelijke afspraken."},
+    {title:"Een kleine beslissing in de supermarkt",source:"Practical situation",level:level.slice(0,2),text:"Bij de supermarkt twijfelt Noor tussen goedkope aardbeien uit het buitenland en duurdere aardbeien van een boerderij in de regio. Vroeger koos ze zonder nadenken de laagste prijs, maar tegenwoordig let ze vaker op herkomst, seizoen en verpakking. Toch is de keuze niet eenvoudig. Haar budget is beperkt en duurzame producten zijn niet altijd betaalbaar. Terwijl ze de bakjes vergelijkt, beseft ze dat consumenten vaak verantwoordelijk worden gemaakt voor problemen die groter zijn dan hun winkelmandje. Uiteindelijk kiest ze de regionale aardbeien, maar met het gevoel dat echte verandering niet alleen van individuele klanten kan afhangen."},
+  ]);
+  if(lang==="Dutch") return fresh([
+    {title:"Een rustige ochtend in de stad",source:"Daily story",level:level.slice(0,2),text:"Elke ochtend fietst Noor langs de gracht naar haar werk. Vandaag is de lucht helder en de stad voelt langzaam wakker. Bij de bakker koopt ze een klein broodje en praat ze kort met de man achter de toonbank. Hij vertelt dat het drukker wordt sinds de zon weer schijnt. Noor glimlacht, stapt op haar fiets en merkt dat ze deze gewone ochtend eigenlijk heel fijn vindt."},
+    {title:"Waarom steeds meer mensen de trein nemen",source:"Short news explainer",level:levelIdx(level)<=1?"B1":level.slice(0,2),text:"In Nederland kiezen steeds meer mensen voor de trein als ze naar een andere stad reizen. De reis is vaak rustig, en reizigers kunnen onderweg lezen, werken of naar muziek luisteren. Toch zijn er ook klachten: soms zijn treinen vol of te laat. Volgens vervoersbedrijven blijft de trein belangrijk, vooral voor mensen die duurzamer willen reizen."},
+    {title:"Een gesprek over weekendplannen",source:"Dialogue",level:level.slice(0,2),text:"Sanne: Wat ga jij dit weekend doen?\nAmir: Ik wil naar een markt in Utrecht, omdat ik nieuwe kazen wil proeven en misschien een cadeau zoek voor mijn zus.\nSanne: Dat klinkt gezellig. Zullen we samen gaan?\nAmir: Goed idee. We spreken af bij het station en drinken daarna ergens koffie."},
+    {title:"Bij de supermarkt",source:"Practical situation",level:level.slice(0,2),text:"Mila gaat na het werk naar de supermarkt. Ze koopt brood, melk, appels en rijst. Bij de kassa zoekt ze haar pas. De vrouw achter haar wacht rustig. Mila zegt sorry en betaalt snel. Buiten stopt ze alles in haar tas en loopt ze naar huis."},
+    {title:"Een korte pauze",source:"Daily story",level:level.slice(0,2),text:"Tom werkt vandaag thuis. Om tien uur maakt hij koffie en opent hij het raam. Op straat hoort hij een fietsbel en twee kinderen lachen. Tom leest nog een korte mail. Daarna neemt hij vijf minuten pauze en kijkt hij naar de lichte lucht."},
+    {title:"In de bibliotheek",source:"Culture note",level:level.slice(0,2),text:"Sara gaat op woensdag naar de bibliotheek. Ze zoekt een boek met korte verhalen. De medewerker helpt haar en geeft ook een kleine kaart. Op die kaart staan de tijden van een taalgroep. Sara neemt het boek mee en wil volgende week terugkomen."},
+    {title:"Een afspraak bij de dokter",source:"Practical situation",level:level.slice(0,2),text:"Daan belt de dokter omdat hij al twee dagen moe is. De assistent vraagt naar zijn naam en geboortedatum. Daan krijgt een afspraak om half drie. Hij schrijft de tijd op papier en legt zijn pas klaar bij de deur."},
+    {title:"Koken met een vriend",source:"Dialogue",level:level.slice(0,2),text:"Lisa: Wat eten we vanavond?\nKoen: Ik heb pasta, tomaten en kaas.\nLisa: Dan maken we een simpele saus.\nKoen: Goed idee. Jij snijdt de tomaten, en ik zet het water op.\nLisa: Prima. Daarna eten we samen aan tafel."},
+    {title:"Een bericht van school",source:"Practical situation",level:level.slice(0,2),text:"Nora krijgt een bericht van de school van haar zoon. Morgen is er geen les in de ochtend. De kinderen komen pas om twaalf uur. Nora zet het in haar agenda en stuurt een kort bericht naar haar werk."},
+  ]);
   if(lang==="Japanese") return [
     {title:"朝の電車",source:"Daily story",text:"毎朝、ゆきは電車で学校へ行きます。今日は少し雨が降っていますが、駅はとてもにぎやかです。電車の中で、ゆきは短いニュースを読みます。となりの人は静かに音楽を聞いています。学校に着くころには、雨が止んで、空が少し明るくなりました。"},
     {title:"週末の予定",source:"Dialogue",text:"金曜日の午後、たけしは友だちに週末の予定を聞きました。友だちは新しいカフェに行きたいと言いました。そのカフェは駅の近くにあって、抹茶のケーキが有名です。二人は土曜日の午後に会うことにしました。"},
@@ -141,4 +96,4 @@ async function cachedAiAnalyze(mode,payload){
   return fresh;
 }
 
-export { CACHEABLE_ANALYSIS, CHAT_FALLBACK, aiAnalyze, cachedAiAnalyze, chatFallback, pickFallbackMaterials, sampleMaterials };
+export { CACHEABLE_ANALYSIS, CHAT_FALLBACK, aiAnalyze, cachedAiAnalyze, chatFallback, sampleMaterials };
