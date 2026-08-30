@@ -12,9 +12,7 @@ function browserSpeak(handle,text,lang,rate){
   if(!("speechSynthesis" in window)){ if(handle.onend)handle.onend(); return; }
   window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance((text||"").slice(0,4500)); u.lang=LANG_CODE[lang]||"en-US"; u.rate=rate;
-  u.onstart=()=>{ if(!handle._cancelled&&handle.onplay)handle.onplay(); };
   u.onend=()=>{ if(!handle._cancelled&&handle.onend)handle.onend(); };
-  u.onerror=()=>{ if(!handle._cancelled&&handle.onerror)handle.onerror(); };
   handle._synth=true; window.speechSynthesis.speak(u);
 }
 
@@ -30,18 +28,9 @@ const IDB={
 function cacheKey(text,lang,rate,voiceRole){ return lang+"|"+rate+"|"+(voiceRole||"default")+"|"+(text||"").slice(0,4000); }
 
 function playUrl(handle,url){ if(handle._cancelled) return; const a=new Audio(url); handle._audio=a;
-  handle.play=()=>a.play();
-  a.preload="auto";
   a.onloadedmetadata=()=>{ if(!handle._cancelled&&isFinite(a.duration)&&handle.onmeta)handle.onmeta(a.duration); };
-  a.oncanplay=()=>{ if(!handle._cancelled&&handle.onready)handle.onready(); };
-  a.onplay=()=>{ if(!handle._cancelled&&handle.onplay)handle.onplay(); };
-  a.onplaying=()=>{ if(!handle._cancelled&&handle.onplay)handle.onplay(); };
-  a.onwaiting=()=>{ if(!handle._cancelled&&handle.onloading)handle.onloading(); };
   a.ontimeupdate=()=>{ if(!handle._cancelled&&handle.onprogress)handle.onprogress(a.currentTime,a.duration); };
-  a.onerror=()=>{ if(!handle._cancelled&&handle.onerror)handle.onerror(); };
-  a.onended=()=>{ if(!handle._cancelled&&handle.onend)handle.onend(); };
-  a.play().catch(()=>{ if(!handle._cancelled&&handle.onblocked)handle.onblocked(); });
-}
+  a.onended=()=>{ if(!handle._cancelled&&handle.onend)handle.onend(); }; a.play().catch(()=>{}); }
 
 async function fetchTTSBlob(text,lang,rate,voiceRole,tries=2){
   for(let i=0;i<tries;i++){
@@ -55,7 +44,7 @@ async function fetchTTSBlob(text,lang,rate,voiceRole,tries=2){
 
 function speak(text,lang,rate=1,voiceRole){
   stopSpeak();
-  const handle={_cancelled:false,onend:null,onloading:null,onready:null,onplay:null,onprogress:null,onmeta:null,onerror:null,onblocked:null,play:null};
+  const handle={_cancelled:false,onend:null};
   activeHandle=handle;
   // Only give up on the high-quality voice after several consecutive API failures,
   // so one transient hiccup on a long line never swaps the whole session to the
