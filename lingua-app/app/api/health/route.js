@@ -1,23 +1,12 @@
-// Public health is intentionally cheap and non-diagnostic. Full diagnostics
-// require HEALTH_CHECK_TOKEN or DIAGNOSTIC_TOKEN, passed as x-health-token or
-// ?token=..., because they call paid Google services.
+// Full diagnostics. Open /api/health in your browser: it actually tests Gemini,
+// Google Cloud Translation, and Cloud Text-to-Speech — and shows the REAL error
+// for each if something fails. Keys are never shown. (Costs a few tokens per hit.)
+import { AI, chatComplete, googleTranslate, googleTTS } from "../../../lib/ai";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-export const dynamic = "force-dynamic";
 
-function authorized(req) {
-  const secret = process.env.HEALTH_CHECK_TOKEN || process.env.DIAGNOSTIC_TOKEN || "";
-  if (!secret) return false;
-  const url = new URL(req.url);
-  const provided = req.headers.get("x-health-token") || url.searchParams.get("token") || "";
-  return provided === secret;
-}
-
-export async function GET(req) {
-  if (!authorized(req)) return Response.json({ ok: true });
-
-  const { AI, chatComplete, googleTranslate, googleTTS } = await import("../../../lib/ai");
+export async function GET() {
   const out = {
     config: {
       textProvider: "Gemini on Vertex AI (@google/genai)",
