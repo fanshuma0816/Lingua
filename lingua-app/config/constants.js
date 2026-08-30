@@ -11,34 +11,37 @@ const LEVELS=["A1 — Beginner","A2 — Elementary","B1 — Intermediate","B2 �
 
 function levelIdx(l){ const p=(l||"").slice(0,2); return Math.max(0,LEVELS.findIndex(x=>x.startsWith(p))); }
 
+// The five learning modules. Each module maps 1:1 to a single step, so the
+// sidebar can show them as directly clickable items and learners can jump
+// freely between them.
 const MODULES=[
-  {id:"diag",icon:"target"},
-  {id:"learn",icon:"book"},
-  {id:"shadow",icon:"mic"},
+  {id:"understanding",icon:"book"},
+  {id:"vocabulary",icon:"target"},
+  {id:"shadowing",icon:"mic"},
   {id:"recall",icon:"recall"},
-  {id:"use",icon:"chat"},
+  {id:"using",icon:"chat"},
 ];
 
 const STEPS=[
-  {id:"d1",mod:"diag",kind:"reading",min:3},
-  {id:"d2",mod:"diag",kind:"listen",min:2},
-  {id:"d3",mod:"diag",kind:"diag",min:1},
-  {id:"l1",mod:"learn",kind:"watch",min:3},
-  {id:"l2",mod:"learn",kind:"grammar",min:7},
-  {id:"s1",mod:"shadow",kind:"subs",min:5},
-  {id:"s2",mod:"shadow",kind:"nosubs",min:5},
-  {id:"r1",mod:"recall",kind:"recall",min:4},
-  {id:"u1",mod:"use",kind:"ai",min:6},
+  {id:"understanding",mod:"understanding",kind:"understand",min:6},
+  {id:"vocabulary",mod:"vocabulary",kind:"grammar",min:8},
+  {id:"shadowing",mod:"shadowing",kind:"shadow",min:8},
+  {id:"recall",mod:"recall",kind:"recall",min:4},
+  {id:"using",mod:"using",kind:"using",min:6},
 ];
+
+// Each learning step maps to its own URL segment under /learn/<slug>.
+const STEP_SLUG={understanding:"understanding",vocabulary:"vocabulary",shadowing:"shadowing",recall:"recall",using:"using"};
 
 const TOTAL_MIN=STEPS.reduce((a,s)=>a+s.min,0);
 
 function stepIndex(id){ return STEPS.findIndex(s=>s.id===id); }
 
 const PLAN_BLOCKS=[
-  {name:"Learning",icon:"🎧",items:["Listen","Watch in your language"],min:6},
-  {name:"Grammar & Vocabulary",icon:"🔍",items:["Sentence-by-sentence study"],min:7},
-  {name:"Practicing",icon:"🗣️",items:["With subtitles","No subtitles","Recall from English"],min:14},
+  {name:"Understanding",icon:"📖",items:["Sentence-by-sentence meaning"],min:6},
+  {name:"Vocabulary & Grammar",icon:"🔍",items:["Your words + key patterns"],min:8},
+  {name:"Shadowing",icon:"🗣️",items:["Read along / hidden challenge"],min:8},
+  {name:"Recall",icon:"🧠",items:["Recall from meaning"],min:4},
   {name:"Using",icon:"💬",items:["Write & talk with AI"],min:6},
 ];
 
@@ -46,4 +49,4 @@ const LANGS=Object.keys(LANG_CODE).sort();
 
 const GOALS=["General fluency","Conversation & speaking","Reading comprehension","Vocabulary building","Exam preparation"];
 
-export { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PARTNER, PLAN_BLOCKS, POS, STEPS, TOTAL_MIN, levelIdx, stepIndex };
+export { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PARTNER, PLAN_BLOCKS, POS, STEPS, STEP_SLUG, TOTAL_MIN, levelIdx, stepIndex };

@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { materialId as cefrMaterialId, validateMaterialFit } from "../../lib/cefr.mjs";
+import posthog from "posthog-js";
+import { materialId as cefrMaterialId } from "../../lib/cefr.mjs";
 import { Stars, Stat, Teacher } from "../ui/elements";
-import { GOALS, LANGS, LANG_CODE, LEVELS, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
+import { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
 import { safeDutchMaterial } from "../../lib/dutch";
-import { trackGenerateMaterialsClicked } from "../../lib/analytics";
-import { durationSpec, scrollToTop, stableHash } from "../../lib/format";
+import { durationSpec, scrollToTop } from "../../lib/format";
 import { materialStats, sourceIcon } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { cleanText } from "../../lib/text";
-import { aiAnalyze, pickFallbackMaterials } from "../../services/api";
+import { aiAnalyze, sampleMaterials } from "../../services/api";
 
 function SourceIdeas({tips,hint}){
   const {t}=useUI();
@@ -54,8 +54,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
   const fileRef=useRef(null);
-  const recentTitles=useRef([]);   // short hints sent to the AI to steer it away from repeats
-  const shownSigs=useRef(new Set());   // signatures of every text shown, so regenerating never repeats content
+  const recentTitles=useRef([]);   // anti-repeat memory across regenerations
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setRaw(String(r.result));r.readAsText(f);}
   const ready=count>40&&!over&&lang;
   const liveStats=count>40?materialStats(cleaned,level):null;
@@ -63,66 +62,29 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const durationPlans=t.durationPlans||[];
   const selectedDuration=durationPlans[durationIdx]?.label||"45-60 min";
   const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
-  const currentLevelLabel=t.levels?.[LEVELS.indexOf(level)]||level;
-  const sessionGoalLabel=t.goals?.[GOALS.indexOf(goal)]||goal;
   useEffect(()=>{ setMode(initialMode); },[initialMode]);
   useEffect(()=>{ scrollToTop(); },[mode]);
   function setModeRoute(nextMode,path){ setMode(nextMode); onRouteChange?.(path); }
   function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
   async function generateMaterials(){
     if(!lang) return;
-    trackGenerateMaterialsClicked({
-      currentLevel: currentLevelLabel,
-      sessionGoal: sessionGoalLabel,
-      fullLessonTime: selectedDuration,
-      topicsYouLike: topics,
-    });
     setGenerating(true);
     setMaterialError(false);
     setMaterials([]);
     const spec=durationSpec(selectedDuration);
-    // Each text gets its own request and its own deadline: 1st ≤15s, 2nd ≤30s, 3rd ≤45s.
-    const slotTimeouts=[15000,30000,45000];
-    const sigOf=(text)=>stableHash(String(text||"").toLowerCase().replace(/\s+/g," ").trim());
-    let placedCount=0;
-    // Show one text as soon as it is ready; never repeat a text already shown this session.
-    const tryShow=(m)=>{
-      if(!m||!m.text||!safeDutchMaterial(m)) return false;
-      const text=cleanText(m.text||"");
-      const fit=validateMaterialFit(text,level);
-      if(!fit.ok) return false;
-      const sig=sigOf(text);
-      if(shownSigs.current.has(sig)) return false;
-      shownSigs.current.add(sig);
-      const withMeta={...m,text,validatedTextLevel:fit.analysis.validatedTextLevel,level:fit.analysis.validatedTextLevel,
-        hardWordRatio:fit.analysis.hardWordRatio,difficultyTier:fit.analysis.difficultyTier,
-        vocabularyAnnotations:fit.analysis.annotations,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target};
-      if(withMeta.title) recentTitles.current=[withMeta.title,...recentTitles.current].slice(0,12);
-      placedCount++;
-      setMaterials(prev=>[...prev,withMeta]);
-      return true;
-    };
-    // Fire three small single-text requests in parallel; each renders the moment it lands.
-    await Promise.all([0,1,2].map(async slot=>{
-      const slotTopics=topics.length?[topics[slot%topics.length]]:topics;
-      const avoid=[...recentTitles.current,...topics].slice(0,12);
-      const nonce=Date.now().toString(36)+"-"+slot+"-"+Math.random().toString(36).slice(2,8);
-      const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics:slotTopics,avoid,nonce,count:1,slot},{timeoutMs:slotTimeouts[slot]});
-      const cand=d&&Array.isArray(d.materials)?d.materials:[];
-      let placed=false;
-      for(const m of cand){ if(tryShow(m)){ placed=true; break; } }
-      if(!placed){
-        // AI was slow or failed for this slot → show a fresh library text instead.
-        const fb=pickFallbackMaterials(lang,level,selectedDuration,slotTopics.length?slotTopics:topics,[...shownSigs.current],1);
-        for(const m of fb){ if(tryShow(m)) break; }
-      }
-    }));
-    // If dedup collisions left fewer than three, top up from the library.
-    if(placedCount<3){
-      const fb=pickFallbackMaterials(lang,level,selectedDuration,topics,[...shownSigs.current],3-placedCount);
-      for(const m of fb) tryShow(m);
+    // Anti-repeat: tell the server which topics/titles we just showed, plus a nonce.
+    const avoid=[...recentTitles.current,...topics].slice(0,12);
+    const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce},{timeoutMs:10000});
+    let generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
+    if(!generated.length) generated=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid).filter(safeDutchMaterial);
+    if(generated.length){
+      generated=generated.map(m=>({...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
     }
-    setSelectedMaterial(0); setMaterialError(placedCount===0); setGenerating(false);
+    const items=generated.slice(0,3);
+    posthog.capture("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:items.length});
+    recentTitles.current=[...items.map(m=>m.title).filter(Boolean),...recentTitles.current].slice(0,12);
+    setMaterials(items); setSelectedMaterial(0); setMaterialError(!items.length); setGenerating(false);
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m) return;
@@ -233,9 +195,11 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   </div>);
 }
 
-function Preview({lesson,text,onStart,onBack}){
+function Preview({lesson,text,userWords,onStart,onBack}){
   const {t}=useUI();
-  const heavy=lesson.vocabCount>12;
+  const marked=Array.isArray(userWords)?userWords.filter(Boolean):[];
+  const vocabCount=marked.length||lesson.vocabCount;
+  const heavy=vocabCount>12;
   const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
   const diffLabel=t.diffLabels[lesson.diff];
   const fullText=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
@@ -258,7 +222,7 @@ function Preview({lesson,text,onStart,onBack}){
     <div className="grid4" style={{marginBottom:14}}>
       <Stat k={t.recommendedLevel} v={matLevel}/>
       <Stat k={t.estimatedTime} v={t.min(total)}/>
-      <Stat k={t.vocabulary} v={t.wordCount(lesson.vocabCount)}/>
+      <Stat k={t.vocabulary} v={t.wordCount(vocabCount)}/>
       <Stat k={t.characters} v={lesson.charCount.toLocaleString()}/>
     </div>
     {(lesson.charCount>1050||lesson.vocabCount>18) && <div className="split-warning" style={{marginBottom:14}}>
@@ -273,7 +237,18 @@ function Preview({lesson,text,onStart,onBack}){
       </div>
     </div>
     {heavy && <div className="checkin" style={{marginTop:16,background:"hsl(var(--warm)/.08)",borderColor:"hsl(var(--warm)/.3)"}}><span>💡</span>
-      <span>{t.heavy(lesson.vocabCount)}</span></div>}
+      <span>{t.heavy(vocabCount)}</span></div>}
+    <div className="card card-p" style={{marginBottom:16}}>
+      <h3 className="lbl">{t.previewPathTitle}</h3>
+      <div className="row wrap" style={{gap:8,marginTop:2}}>
+        {MODULES.map((m,i)=><span key={m.id} className="badge badge-outline">{i+1}. {t.nav.mods[m.id]}</span>)}
+      </div>
+      <div className="tiny muted" style={{marginTop:12}}>{t.previewSkipNote}</div>
+    </div>
+    {marked.length>0 && <div className="card card-p" style={{marginBottom:16}}>
+      <h3 className="lbl">{t.vocabulary}</h3>
+      <div className="row wrap" style={{gap:7}}>{marked.slice(0,40).map((w,i)=><span key={w+i} className="badge">{w}</span>)}</div>
+    </div>}
     <div className="row" style={{justifyContent:"space-between",marginTop:22}}>
       <button className="btn btn-ghost" onClick={onBack}>← {t.back}</button>
       <button className="btn btn-primary" onClick={onStart}>{t.start(total)} →</button></div>
