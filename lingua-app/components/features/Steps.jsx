@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import posthog from "posthog-js";
 import { analyzeDifficulty } from "../../lib/cefr.mjs";
 import { FullPlayer } from "./Player";
 import { CheckIn, Purpose, Say, Svg, Teacher } from "../ui/elements";
@@ -37,7 +38,7 @@ function ReadingCheck({lesson,text,diag,setDiag}){
     DB.set("unknownWords",unknownWords);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[coverage,annotations.length,known.size]);
-  function toggle(w){ const lc=w.toLowerCase(); setKnown(prev=>{ const n=new Set(prev); n.has(lc)?n.delete(lc):n.add(lc); return n; }); }
+  function toggle(w){ const lc=w.toLowerCase(); const markedKnown=!known.has(lc); posthog.capture("reading_diagnosis_updated",{language:lesson.lang,level:level.slice(0,2),word_count:annotations.length,marked_known:markedKnown}); setKnown(prev=>{ const n=new Set(prev); n.has(lc)?n.delete(lc):n.add(lc); return n; }); }
   return (<div>
     <div className="eyebrow">{t.diagnosis.readEyebrow}</div><h2>{t.diagnosis.readTitle}</h2>
     <Teacher>{t.diagnosis.readTeacher}</Teacher>
@@ -72,7 +73,7 @@ function BlindListen({lesson,text,diag,setDiag}){
       <div style={{fontWeight:700,marginBottom:3}}>{t.diagnosis.catch}</div>
       <div className="tiny muted" style={{marginBottom:13}}>{t.diagnosis.catchHint}</div>
       <div className="tier-grid">
-        {tiers.map((tr,i)=>(<button key={i} className={"tier focusable"+(diag.tier===i?" on":"")} data-fill={i+1} onClick={()=>setDiag(d=>({...d,tier:i}))}>
+        {tiers.map((tr,i)=>(<button key={i} className={"tier focusable"+(diag.tier===i?" on":"")} data-fill={i+1} onClick={()=>{posthog.capture("listening_diagnosis_selected",{language:lang,tier_number:i+1});setDiag(d=>({...d,tier:i}));}}>
           <span className="tpct">{tr.pct}</span>
           <div className="bars"><i/><i/><i/><i/></div>
           <div className="tlabel">{tr.label}</div><div className="tdesc">{tr.desc}</div></button>))}
@@ -82,7 +83,6 @@ function BlindListen({lesson,text,diag,setDiag}){
 }
 
 function diagnosisCase(coverage,tier){
-  if(coverage==null||tier==null) return "incomplete";
   if(coverage!=null&&coverage<75) return "overload";
   if(tier!=null&&tier<=0) return "acoustic";
   if(coverage!=null&&coverage>=95&&tier!=null&&tier>=3) return "comfort";
@@ -94,8 +94,7 @@ function DiagnosisMatrix({lesson,diag}){
   const tiers=t.diagnosis.tiers;
   const cov=diag.coverage; const tier=diag.tier;
   const key=diagnosisCase(cov,tier);
-  const incomplete=key==="incomplete";
-  const c=incomplete?null:t.diagnosis.cases[key];
+  const c=t.diagnosis.cases[key];
   const cls=key==="overload"?"warn":(key==="acoustic"||key==="comfort")?"info":"";
   const listenLabel=tier!=null?tiers[tier].label:"—";
   return (<div>
@@ -104,18 +103,13 @@ function DiagnosisMatrix({lesson,diag}){
       <div className="mini-metric"><div className="k">{t.diagnosis.reading}</div><div className="v">{cov!=null?cov+"%":"—"}</div><div className="tiny muted" style={{marginTop:2}}>{t.diagnosis.ofWords}</div></div>
       <div className="mini-metric"><div className="k">{t.diagnosis.listening}</div><div className="v">{listenLabel}</div><div className="tiny muted" style={{marginTop:2}}>{tier!=null?t.diagnosis.byEar(tiers[tier].pct):t.diagnosis.tapFirst}</div></div>
     </div>
-    {incomplete ? <div className="diag-card info">
-      <div className="row" style={{gap:11}}><span style={{fontSize:26}}>•</span>
-        <span><div className="tiny muted" style={{fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>{t.nav.steps.d3}</div>
-        <div className="diag-name">{cov==null?t.nav.steps.d1:t.diagnosis.tapFirst}</div></span></div>
-      <div style={{fontSize:14,lineHeight:1.55}}>{cov==null?t.diagnosis.readNote:t.diagnosis.catchHint}</div>
-    </div> : <div className={"diag-card "+cls}>
+    <div className={"diag-card "+cls}>
       <div className="row" style={{gap:11}}><span style={{fontSize:26}}>{c.emoji}</span>
         <span><div className="tiny muted" style={{fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>{c.kicker}</div>
         <div className="diag-name">{c.name}</div></span></div>
       <div style={{fontSize:14,lineHeight:1.55}}>{c.body}</div>
       <div style={{background:"hsl(var(--background)/.6)",borderRadius:8,padding:"11px 13px",fontSize:14}}>{c.tip}</div>
-    </div>}
+    </div>
   </div>);
 }
 
@@ -461,6 +455,7 @@ function AIWrite({lesson,onNext,onDone}){
   const [textv,setTextv]=useState(DB.get("aiPractice","")); const [fb,setFb]=useState(null); // null | "loading" | {real} | "mock"
   useEffect(()=>DB.set("aiPractice",textv),[textv]);
   async function getFeedback(){
+    posthog.capture("writing_feedback_requested",{language:lang,level:level.slice(0,2),word_count:textv.trim().split(/\s+/).filter(Boolean).length});
     setFb("loading"); onDone&&onDone();
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -563,7 +558,7 @@ function AIChat({lesson,onDone}){
     recRef.current=r; try{ r.start(); setListening(true); }catch(e){ setListening(false); } }
   function stopMic(){ if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
-  async function finish(list){ setDone(true); onDone&&onDone();
+  async function finish(list){ posthog.capture("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
     if(mockRef.current) return;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
@@ -627,7 +622,7 @@ function AIChat({lesson,onDone}){
 
 function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
-  const name=t.done.friend;
+  const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
   const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
