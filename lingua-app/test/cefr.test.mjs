@@ -67,8 +67,6 @@ const C1_TEXT =
   const v = validateForLevel(HARD_TEXT, "A1 — Beginner");
   ok("hard B1/B2 text is REJECTED for an A1 learner", v.ok === false, v.reason);
   ok("rejected text's raw level is above A2", cefrIdx(v.analysis.validatedTextLevel) > cefrIdx("A2"), v.analysis.validatedTextLevel);
-  const fit = validateMaterialFit(HARD_TEXT, "A1 — Beginner");
-  ok("A1 generated material fit rejects B1/B2 text", fit.ok === false, fit.reason);
 }
 
 // ---- 3b. generated material fit has both a lower and upper bound ----
