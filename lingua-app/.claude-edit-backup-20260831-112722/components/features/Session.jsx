@@ -15,7 +15,7 @@ function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
   const stepMin=Math.max(1,Math.round(S.min*((lesson.estMin||TOTAL_MIN)/TOTAL_MIN)));
   const last=step===STEPS.length-1;
   const internalContinue=(S.kind==="grammar"||S.kind==="recall");
-  const hideFoot=(S.kind==="grammar"||S.kind==="recall"||S.kind==="shadow");
+  const hideFoot=(S.kind==="grammar");
   return (<div>
     <div className="learnbar">
       <div className="track"><span style={{width:pct+"%"}}/></div>
@@ -26,8 +26,8 @@ function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
     <div className="stage"><StepBody step={S} lesson={lesson} text={text} onContinue={onContinue} onSkip={onSkip} onPrev={step===0?onPreview:onPrev}/></div>
     {!hideFoot && <div className="footnav">
       {step===0
-        ? <button className="btn btn-ghost btn-sm focusable" onClick={onPreview}>← {t.backToPreview}</button>
-        : <button className="btn btn-ghost btn-sm focusable" onClick={onPrev}>← {t.previous}</button>}
+        ? <button className="btn btn-outline btn-sm focusable" onClick={onPreview}>← {t.backToPreview}</button>
+        : <button className="btn btn-outline btn-sm focusable" onClick={onPrev}>← {t.previous}</button>}
       <div className="row" style={{gap:8}}>
         {!internalContinue && <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{last?`${t.finish} ✓`:`${t.continue} →`}</button>}
       </div>
@@ -47,8 +47,8 @@ function StepBody({step,lesson,text,onContinue,onSkip,onPrev}){
       <CheckIn>{t.watch.check}</CheckIn>
     </div>);
     case "grammar": return <GrammarStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
-    case "shadow":  return <Shadowing key="shadow" sents={sents} lang={lang} onSkip={onSkip} onPrev={onPrev} onContinue={onContinue}/>;
-    case "recall":  return <RecallStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
+    case "shadow":  return <Shadowing key="shadow" sents={sents} lang={lang} onSkip={onSkip}/>;
+    case "recall":  return <RecallStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip}/>;
     default:        return <PracticeAI lesson={lesson} onComplete={()=>{}} onSkip={onSkip}/>;
   }
 }

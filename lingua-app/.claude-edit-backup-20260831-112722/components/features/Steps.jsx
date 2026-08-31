@@ -31,7 +31,7 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   const count=marked.size;
   return (<div>
     <div className="step-head"><div className="step-head-main"><div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2></div>
-      <button className="btn btn-outline btn-sm step-skip focusable" onClick={onSkip}>{t.scan.skip}</button></div>
+      {onBack && <button className="btn btn-outline btn-sm step-skip focusable" onClick={onBack}>{t.scan.reselect}</button>}</div>
     <Teacher>{t.scan.teacher}</Teacher>
     <div className="card card-p" style={{marginBottom:14}}>
       <div style={{whiteSpace:"pre-wrap",lineHeight:2.05,fontSize:16,maxHeight:360,overflowY:"auto"}}>
@@ -45,11 +45,11 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
       <div className="tiny muted" style={{marginTop:12}}>{t.scan.hint}</div>
     </div>
     <div className="row" style={{justifyContent:"space-between",alignItems:"center"}}>
-      <div className="row" style={{gap:12}}>
-        {onBack && <button className="btn btn-ghost btn-sm focusable" onClick={onBack}>{t.scan.reselect}</button>}
-        <span className="tiny muted">{count?t.scan.marked(count):t.scan.none}</span>
+      <span className="tiny muted">{count?t.scan.marked(count):t.scan.none}</span>
+      <div className="row" style={{gap:8}}>
+        <button className="btn btn-ghost btn-sm" onClick={onSkip}>{t.scan.skip}</button>
+        <button className="btn btn-primary" onClick={()=>onDone([...marked])}>{t.scan.done}</button>
       </div>
-      <button className="btn btn-primary focusable" onClick={()=>onDone([...marked])}>{t.scan.done}</button>
     </div>
   </div>);
 }
@@ -243,7 +243,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
     </div>
 
     <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(gi===0){ onPrev&&onPrev(); } else setGi(g=>g-1); }}>← {gi===0?t.previous:t.gram.previous}</button>
+      <button className="btn btn-outline btn-sm focusable" onClick={()=>{ if(gi===0){ onPrev&&onPrev(); } else setGi(g=>g-1); }}>← {gi===0?t.previous:t.gram.previous}</button>
       {gi<N-1
         ? <button className="btn btn-primary btn-sm focusable" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
         : <button className="btn btn-primary btn-sm focusable" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
@@ -254,7 +254,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
 
 // Shadowing — one page, two modes the learner can switch between: read along
 // with the text, or hide the text for a challenge.
-function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
+function Shadowing({sents,lang,onSkip}){
   const {t}=useUI();
   const list=sents;
   const [withSubs,setWithSubs]=useState(true);
@@ -292,21 +292,15 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
       <div style={{fontWeight:500,marginBottom:6}}>{t.timed.how}</div>
       <ul className="clean tiny muted">{t.timed.tips.map((tip,i)=><li key={i}>{tip}</li>)}</ul>
     </div>
-    <div className="tiny muted" style={{marginBottom:10}}>{t.timed.breath}</div>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>onPrev&&onPrev()}>← {t.previous}</button>
-      <button className="btn btn-primary btn-sm focusable" onClick={begin}>▶ {t.timed.ready}</button>
-    </div>
+    <button className="btn btn-primary" onClick={begin}>▶ {t.timed.ready}</button>
+    <div className="tiny muted" style={{marginTop:10}}>{t.timed.breath}</div>
   </div>);
 
   if(done) return (<div>{head}{modeSwitch}
     <div className="card bigcard"><div style={{fontSize:34}}>✓</div>
-      <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div></div>
+      <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div>
+      <button className="btn btn-outline btn-sm" onClick={begin}>↺ {t.timed.again}</button></div>
     <CheckIn>{t.timed.doneCheck}</CheckIn>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={begin}>↺ {t.timed.again}</button>
-      <button className="btn btn-primary btn-sm focusable" onClick={()=>onContinue&&onContinue()}>{t.continue} →</button>
-    </div>
   </div>);
 
   return (<div>{head}{modeSwitch}
@@ -317,17 +311,15 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
       {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
+      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={goPrev}>← {t.back}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(1)}>▶ {t.timed.replay}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(.75)}>▶ {t.timed.slow} 0.75×</button>
-    </div>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(idx===0){ stopSpeak(); setStarted(false); } else goPrev(); }}>← {t.back}</button>
-      <button className="btn btn-primary btn-sm focusable" onClick={goNext}>{idx<list.length-1?`${t.timed.next} →`:`${t.timed.finishRound} ✓`}</button>
+      <button className="btn btn-primary btn-sm" onClick={goNext}>{idx<list.length-1?`${t.timed.next} →`:`${t.timed.finishRound} ✓`}</button>
     </div>
   </div>);
 }
 
-function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
+function RecallStep({lesson,onComplete,onContinue,onSkip}){
   const {t,uiLang}=useUI();
   const {lang,level,sents,focus}=lesson;
   // Recall focuses on the sentences carrying the most of the learner's own
@@ -394,13 +386,11 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
         <div style={{marginTop:10}}><Say text={cur} lang={lang} rate={1} voiceRole={voiceRoleForLine(cur,idx,list)}/></div>
       </div>}
     </div>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(idx===0){ onPrev&&onPrev(); } else move(idx-1); }}>← {idx===0?t.previous:t.back}</button>
-      {idx<list.length-1
-        ? <button className="btn btn-primary btn-sm focusable" onClick={()=>move(idx+1)}>{t.gram.next} →</button>
-        : <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{t.continue} →</button>}
+    <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
+      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>move(idx-1)}>← {t.back}</button>
+      <span className="tiny muted">{doneCount>=list.length?t.recall.done:t.recall.tryFirst}</span>
+      {idx<list.length-1 ? <button className="btn btn-outline btn-sm" onClick={()=>move(idx+1)}>{t.gram.next} →</button> : <button className="btn btn-primary btn-sm" onClick={onContinue}>{t.continue} →</button>}
     </div>
-    <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{doneCount>=list.length?t.recall.done:t.recall.tryFirst}</div>
   </div>);
 }
 
@@ -609,6 +599,12 @@ function Done({lesson,diag,onNew,onReview}){
     <div className="done-emoji">🎉</div>
     <h1 className="done-h1">{t.done.title(name)}</h1>
     <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+    <div className="done-words">
+      <div className="done-card-emoji">📚✨</div>
+      <div className="done-card-title">{t.celebrate.explored(wordList.length)}</div>
+      <div className="done-chips">{wordList.map(w=><span className="done-chip" key={w}>{w}</span>)}</div>
+      <p className="done-card-note">{t.done.more}</p>
+    </div>
     <div className="done-card survey-soft" style={{textAlign:"left"}}>
       <div className="done-card-title" style={{marginBottom:10}}>{t.survey.title}</div>
       <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.most}</div>
