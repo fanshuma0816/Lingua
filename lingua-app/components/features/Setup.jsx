@@ -70,21 +70,33 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     if(!lang) return;
     setGenerating(true);
     setMaterialError(false);
-    setMaterials([]);
+    setMaterials([]); setSelectedMaterial(0);
     const spec=durationSpec(selectedDuration);
-    // Anti-repeat: tell the server which topics/titles we just showed, plus a nonce.
-    const avoid=[...recentTitles.current,...topics].slice(0,12);
-    const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce},{timeoutMs:10000});
-    let generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
-    if(!generated.length) generated=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid).filter(safeDutchMaterial);
-    if(generated.length){
-      generated=generated.map(m=>({...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
+    // Generate one material at a time, streaming each card in as it arrives, with
+    // escalating per-request timeouts (10s / 20s / 30s) so the first appears fast.
+    const tiers=["comfortable","balanced","stretch"];
+    const timeouts=[10000,20000,30000];
+    const collected=[]; const gotTitles=[];
+    for(let i=0;i<3;i++){
+      const avoid=[...recentTitles.current,...topics,...gotTitles].slice(0,12);
+      const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+      const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:1,tier:tiers[i]},{timeoutMs:timeouts[i]});
+      let one=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial)[0]:null;
+      if(!one){
+        const samples=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid).filter(safeDutchMaterial);
+        one=samples.find(x=>x.title&&!gotTitles.includes(x.title))||samples[i]||samples[0]||null;
+      }
+      if(one){
+        one={...one,duration:one.duration||selectedDuration,targetMinutes:one.targetMinutes||spec.target,difficultyTier:one.difficultyTier||tiers[i]};
+        if(one.title) gotTitles.push(one.title);
+        collected.push(one);
+        setMaterials([...collected]);
+        if(collected.length===1) setSelectedMaterial(0);
+      }
     }
-    const items=generated.slice(0,3);
-    posthog.capture("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:items.length});
-    recentTitles.current=[...items.map(m=>m.title).filter(Boolean),...recentTitles.current].slice(0,12);
-    setMaterials(items); setSelectedMaterial(0); setMaterialError(!items.length); setGenerating(false);
+    posthog.capture("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:collected.length});
+    recentTitles.current=[...gotTitles,...recentTitles.current].slice(0,12);
+    setMaterialError(!collected.length); setGenerating(false);
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m) return;

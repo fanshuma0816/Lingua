@@ -96,7 +96,7 @@ function ArticleAudio({sents,lang,label,rate=1}){
     <button className="playbtn" onClick={toggle}>{playing?"❚❚":"▶"}</button>
     <div style={{flex:1}}>
       <div style={{fontWeight:600}}>{label||t.gram.playArticle}</div>
-      <div className="tiny muted">{TTS_OK?t.gram.playArticleHint:t.audioUnsupported}</div>
+      <div className="tiny muted">{TTS_OK?"":t.audioUnsupported}</div>
       <div className="audio-progress"><span style={{width:pct+"%"}}/></div>
       <div className="tiny muted">{idx>=0?`${idx+1} / ${list.length}`:`${list.length}`}</div>
     </div>

@@ -41,13 +41,12 @@ function App(){
   function setUiLang(next){ setUiLangState(next); DB.set("uiLang",next); }
   useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
   useEffect(()=>{
-    const email=DB.get("email","");
-    if(!email) return;
     const userId=DB.get("userId",crypto.randomUUID());
     DB.set("userId",userId);
-    posthog.identify(userId,{email});
+    const email=DB.get("email","");
+    posthog.identify(userId, email?{email}:undefined);
   },[]);
-  const [screen,setScreen]=useState(DB.get("email")?currentRoute.screen:"login");
+  const [screen,setScreen]=useState(currentRoute.screen);
   const [lesson,setLesson]=useState(()=>DB.get("currentLesson",null)); const [text,setText]=useState(()=>DB.get("currentText",""));
   const [theme,setTheme]=useState(DB.get("theme","light"));
   const [pinned,setPinned]=useState(false);
@@ -127,7 +126,7 @@ function App(){
         {screen==="input" && <InputScreen onNext={loadLesson} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
         {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip}/>}
         {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
-        {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip}/>}
+        {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
         {screen==="done" && lesson && <Done lesson={lesson} diag={{unknown:userWords}} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
       </main>
     </div>

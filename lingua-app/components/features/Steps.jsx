@@ -124,7 +124,7 @@ function GrammarStep({lesson,onComplete,onContinue}){
       if(cancel) return; setLoadingGrammar(false);
       const prior=new Set(Object.entries(grammar).filter(([k])=>Number(k)<gi).flatMap(([,items])=>(items||[]).map(g=>normalizePoint(g.point))));
       const raw=d&&Array.isArray(d.items)&&d.items.length?d.items:fallbackGrammarItems(sen,level,uiLang);
-      const items=raw.filter(g=>!prior.has(normalizePoint(g.point))).slice(0,2);
+      const items=raw.filter(g=>!prior.has(normalizePoint(g.point))).slice(0,1);
       setGrammar(prev=>({...prev,[gi]:items}));
     });
     return ()=>{cancel=true;};
@@ -175,7 +175,7 @@ function GrammarStep({lesson,onComplete,onContinue}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example">{ex.sentence}</span><Say text={ex.sentence} lang={lang}/>
+              <span className="grammar-example">{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -233,7 +233,7 @@ function GrammarStep({lesson,onComplete,onContinue}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example">{ex.sentence}</span><Say text={ex.sentence} lang={lang} rate={1}/>
+              <span className="grammar-example">{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -394,7 +394,7 @@ function RecallStep({lesson,onComplete,onContinue}){
 
 function PracticeAI({lesson,onComplete}){
   const {t}=useUI();
-  const [tab,setTab]=useState("write");
+  const [tab,setTab]=useState("chat");
   const [wrote,setWrote]=useState(false); const [talked,setTalked]=useState(false);
   useEffect(()=>{ if(wrote&&talked&&onComplete) onComplete(); },[wrote,talked]);
   return (<div>
@@ -402,15 +402,15 @@ function PracticeAI({lesson,onComplete}){
     <Teacher>{t.aiUse.teacher}</Teacher>
     <Purpose>{t.aiUse.purpose}</Purpose>
     <div className="tabs">
-      <button className={"tab"+(tab==="write"?" on":"")} onClick={()=>setTab("write")}>{t.aiUse.writeTab} {wrote?"✓":""}</button>
       <button className={"tab"+(tab==="chat"?" on":"")} onClick={()=>{stopSpeak();setTab("chat");}}>{t.aiUse.chatTab} {talked?"✓":""}</button>
+      <button className={"tab"+(tab==="write"?" on":"")} onClick={()=>{stopSpeak();setTab("write");}}>{t.aiUse.writeTab} {wrote?"✓":""}</button>
     </div>
-    {tab==="write" ? <AIWrite lesson={lesson} onNext={()=>setTab("chat")} onDone={()=>setWrote(true)}/> : <AIChat lesson={lesson} onDone={()=>setTalked(true)}/>}
+    {tab==="chat" ? <AIChat lesson={lesson} onNext={()=>{stopSpeak();setTab("write");}} onDone={()=>setTalked(true)}/> : <AIWrite lesson={lesson} onDone={()=>setWrote(true)}/>}
     <div className="tiny muted" style={{marginTop:12}}>{t.aiUse.unlock}</div>
   </div>);
 }
 
-function AIWrite({lesson,onNext,onDone}){
+function AIWrite({lesson,onDone}){
   const {t,uiLang}=useUI();
   const {lang,level,vocab,sents,focus}=lesson;
   const focusWords=(focus&&Array.isArray(focus.vocab)?focus.vocab.map(x=>x.word).filter(Boolean):[]);
@@ -456,12 +456,11 @@ function AIWrite({lesson,onNext,onDone}){
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.sentence}.</b> <span className="muted">{t.aiUse.mockSentence}</span></div>
         <div className="tiny muted" style={{marginTop:8}}>{t.aiUse.mockNote}</div>
       </>)}
-      <div style={{marginTop:14}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>
     </div>)}
   </div>);
 }
 
-function AIChat({lesson,onDone}){
+function AIChat({lesson,onNext,onDone}){
   const {t,uiLang}=useUI();
   const {lang,level,vocab,topics,grammarFocus,sents,focus}=lesson;
   const shownLang=langName(t,lang);
@@ -476,7 +475,7 @@ function AIChat({lesson,onDone}){
   const [busy,setBusy]=useState(false); const [turns,setTurns]=useState(0);
   const [speaking,setSpeaking]=useState(false);
   const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null); const [listening,setListening]=useState(false);
-  const mockRef=useRef(false); const recRef=useRef(null);
+  const mockRef=useRef(false); const recRef=useRef(null); const wantRef=useRef(false); const silenceRef=useRef(null);
   const MAX_TURNS=5;
 
   function sayAI(line){ setSpeaking(true); const u=speak(line,lang); if(u){ u.onend=()=>setSpeaking(false); } else setSpeaking(false); }
@@ -513,12 +512,15 @@ function AIChat({lesson,onDone}){
   function toHistory(list){ return list.map(m=>({role:m.who==="ai"?"assistant":"user",content:m.t})); }
 
   const SR = typeof window!=="undefined" && (window.SpeechRecognition||window.webkitSpeechRecognition);
-  function startMic(){ if(!SR) return; stopSpeak();
-    const r=new SR(); r.lang=LANG_CODE[lang]||"en-US"; r.interimResults=false; r.maxAlternatives=1;
-    r.onresult=(e)=>{ const t=e.results[0][0].transcript; setDraft(d=>(d?d+" ":"")+t); };
-    r.onend=()=>setListening(false); r.onerror=()=>setListening(false);
-    recRef.current=r; try{ r.start(); setListening(true); }catch(e){ setListening(false); } }
-  function stopMic(){ if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
+  function clearSilence(){ if(silenceRef.current){ clearTimeout(silenceRef.current); silenceRef.current=null; } }
+  function armSilence(){ clearSilence(); silenceRef.current=setTimeout(()=>{ stopMic(); },8000); }
+  function startMic(){ if(!SR) return; stopSpeak(); wantRef.current=true;
+    const r=new SR(); r.lang=LANG_CODE[lang]||"en-US"; r.continuous=true; r.interimResults=true; r.maxAlternatives=1;
+    r.onresult=(e)=>{ let fin=""; for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) fin+=e.results[i][0].transcript; } if(fin.trim()) setDraft(d=>(d?d+" ":"")+fin.trim()); armSilence(); };
+    r.onend=()=>{ if(wantRef.current){ try{ r.start(); }catch(e){ setListening(false); } } else setListening(false); };
+    r.onerror=(ev)=>{ if(ev&&ev.error==="no-speech") return; wantRef.current=false; clearSilence(); setListening(false); };
+    recRef.current=r; try{ r.start(); setListening(true); armSilence(); }catch(e){ setListening(false); } }
+  function stopMic(){ wantRef.current=false; clearSilence(); if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
   async function finish(list){ posthog.capture("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
     if(mockRef.current) return;
@@ -575,12 +577,20 @@ function AIChat({lesson,onDone}){
           <div style={{marginBottom:6}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{evalz.vocabulary}</span></div>
           <div>✅ <b>{t.chat.fluency}.</b> <span className="muted">{evalz.fluency}</span></div>
         </div>) : (<div className="muted">{t.chat.mockDone(shownLang)}</div>)}
+        {onNext && <div style={{marginTop:14,textAlign:"right"}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>}
       </div>)}
   </div>);
 }
 
 function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
+  const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
+  const [sent,setSent]=useState(false); const [skipped,setSkipped]=useState(false);
+  const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
+  function submitSurvey(){ if(!most&&!least) return;
+    try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:most||null,least_helpful:least||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
+    posthog.capture("lesson_feedback",{most_helpful:most,least_helpful:least,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
+    setSent(true); }
   const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
@@ -595,6 +605,18 @@ function Done({lesson,diag,onNew,onReview}){
       <div className="done-chips">{wordList.map(w=><span className="done-chip" key={w}>{w}</span>)}</div>
       <p className="done-card-note">{t.done.more}</p>
     </div>
+    {!sent && !skipped && <div className="done-card" style={{textAlign:"left"}}>
+      <div className="done-card-title" style={{marginBottom:10}}>{t.survey.title}</div>
+      <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.most}</div>
+      <div className="row wrap" style={{gap:7,marginBottom:12,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className={"badge"+(most===m?" badge-warm":"")} onClick={()=>setMost(m)} style={{cursor:"pointer",fontWeight:most===m?700:400}}>{t.nav.mods[m]}</button>)}</div>
+      <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.least}</div>
+      <div className="row wrap" style={{gap:7,marginBottom:14,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className={"badge"+(least===m?" badge-warm":"")} onClick={()=>setLeast(m)} style={{cursor:"pointer",fontWeight:least===m?700:400}}>{t.nav.mods[m]}</button>)}</div>
+      <div className="row" style={{justifyContent:"space-between"}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setSkipped(true)}>{t.survey.skip}</button>
+        <button className="btn btn-primary btn-sm" disabled={!most&&!least} onClick={submitSurvey}>{t.survey.submit}</button>
+      </div>
+    </div>}
+    {sent && <div className="tiny muted" style={{marginBottom:6}}>{t.survey.thanks}</div>}
     <div className="done-actions">
       <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
       <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>

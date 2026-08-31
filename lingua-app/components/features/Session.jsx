@@ -8,7 +8,7 @@ import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
 import { setLineTr } from "../../lib/trcache";
 
-function SessionView({lesson,text,step,onPrev,onContinue,onSkip}){
+function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
   const {t}=useUI();
   const S=STEPS[step]; const M=MODULES.find(m=>m.id===S.mod);
   const pct=Math.round(((step+1)/STEPS.length)*100);
@@ -24,7 +24,9 @@ function SessionView({lesson,text,step,onPrev,onContinue,onSkip}){
     </div>
     <div className="stage"><StepBody step={S} lesson={lesson} text={text} onContinue={onContinue}/></div>
     <div className="footnav">
-      <button className="btn btn-outline btn-sm focusable" disabled={step===0} onClick={onPrev}>← {t.previous}</button>
+      {step===0
+        ? <button className="btn btn-outline btn-sm focusable" onClick={onPreview}>← {t.backToPreview}</button>
+        : <button className="btn btn-outline btn-sm focusable" onClick={onPrev}>← {t.previous}</button>}
       <div className="row" style={{gap:8}}>
         <button className="btn btn-ghost btn-sm focusable" onClick={onSkip}>{t.skipStep}</button>
         {!internalContinue && <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{last?`${t.finish} ✓`:`${t.continue} →`}</button>}

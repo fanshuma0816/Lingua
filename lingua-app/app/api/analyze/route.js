@@ -41,6 +41,8 @@ export async function POST(req) {
       const spec = durationSpec(duration);
       const goal = b.goal || "General fluency";
       const topics = (Array.isArray(b.topics) && b.topics.length ? b.topics : ["daily life"]).slice(0, 3);
+      const n = Math.min(3, Math.max(1, Number(b.count) || 3));
+      const tier = ["comfortable", "balanced", "stretch"].includes(b.tier) ? b.tier : null;
       const levels = ["A1", "A2", "B1", "B2", "C1"];
       const cur = Math.max(0, levels.indexOf(String(level).slice(0, 2)));
       const targetLevel = levels[cur];
@@ -59,7 +61,21 @@ export async function POST(req) {
       };
       const lo = Math.round(wMin * 0.85), hi = Math.round(wMax * 1.15);
 
-      const buildPrompt = (nonce, extra = "") => `Create 3 different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
+      const tierPct = { comfortable: "about 10-15%", balanced: "about 15-22%", stretch: "about 22-30%" };
+      const buildPrompt = (nonce, extra = "") => (n === 1
+        ? `Create 1 short learning material in ${lang} for a CEFR ${targetLevel} learner.
+Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
+DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
+- Write on a ${targetLevel} base. You MAY introduce a small, controlled amount of ${capLevel} vocabulary, but NEVER anything above ${capLevel}.
+- It must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; do NOT return an easier text.
+- Difficulty tier "${tier || "balanced"}": ${tierPct[tier] || tierPct.balanced} of words above ${targetLevel}. Never jump to ${levels[Math.min(levels.length - 1, cur + 2)]}.
+LENGTH: the "text" must be ${lengthGuide}. Count the words.
+${avoidLine}
+For Dutch, the title and text MUST be Dutch only \u2014 never Chinese/English explanations or translations.
+Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":"${tier || "balanced"}","text":<original text in ${lang}>}]}.
+If source is "Dialogue", put each speaker turn on its own line with a short label (e.g. "Sanne: ..."). Otherwise no fake speaker labels; keep quoted speech intact.
+Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.${extra}`
+        : `Create 3 different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
 Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
 DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
 - Write on a ${targetLevel} base. You MAY introduce a small, controlled amount of ${capLevel} vocabulary, but NEVER anything above ${capLevel}.
@@ -73,11 +89,11 @@ ${avoidLine}
 For Dutch, the title and text MUST be Dutch only \u2014 never Chinese/English explanations or translations.
 Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":<"comfortable"|"balanced"|"stretch">,"text":<original text in ${lang}>}]}.
 If source is "Dialogue", put each speaker turn on its own line with a short label (e.g. "Sanne: ..."). Otherwise no fake speaker labels; keep quoted speech intact.
-Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.${extra}`;
+Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.${extra}`);
 
       const sys = "You are a careful language teacher writing short study texts calibrated to a learner's level. Reply ONLY with minified JSON, no prose.";
       const runOnce = async (nonce, extra) => {
-        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: buildPrompt(nonce, extra) }], { json: true, temp: 0.9, max: 2600 });
+        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: buildPrompt(nonce, extra) }], { json: true, temp: 0.9, max: n === 1 ? 1200 : 2600 });
         const p = parseJSON(out);
         return (Array.isArray(p.materials) ? p.materials : [])
           .filter(m => m && m.text && !hasCjk(m.title) && !hasCjk(m.text));
@@ -144,8 +160,8 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
       const tierNames = ["comfortable", "balanced", "stretch"];
       const final = [...accepted, ...usable]
         .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
-        .slice(0, 3)
-        .map((m, i) => ({ ...m, difficultyTier: tierNames[i] || m.difficultyTier }));
+        .slice(0, n)
+        .map((m, i) => ({ ...m, difficultyTier: n === 1 ? (tier || m.difficultyTier) : (tierNames[i] || m.difficultyTier) }));
 
       const debug = { requestId, requestedLevel: level, capLevel, materialIds: final.map(m => m.id), resultSource: final.length ? "ai" : "none", accepted: accepted.length, relaxed: usable.length, rejected };
       console.log("[analyze:materials]", JSON.stringify(debug));
@@ -267,16 +283,16 @@ Words:\n${JSON.stringify(items)}`;
 ${sentence}
 ${translation}
 ${covered}
-Explain 1-2 grammar points that are actually useful for this specific learner and this specific sentence.
+Explain EXACTLY ONE grammar point \u2014 the single most useful one for a ${level} learner in THIS sentence.
 Use ${feedbackLanguage} for "point" and "explain". Keep each explanation under 22 words.
 Give exactly 3 short new ${lang} example sentences for each grammar point, with natural ${feedbackLanguage} translations.
 If the sentence is very simple, return one useful review point rather than inventing advanced grammar.
 If ${lang} is Dutch and there is a clear Netherlands Dutch vs Belgian Dutch difference relevant to this sentence or examples, mention it briefly in ${feedbackLanguage}. If there is no relevant difference, do not mention Belgium.
 Do not repeat the original sentence as an example.
 Return JSON {"items":[{"point":<short label>,"explain":<level-specific explanation>,"examples":[{"sentence":<new sentence in ${lang}>,"translation":<translation in ${feedbackLanguage}>}]}]}.`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 1800 });
+      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 1000 });
       const p = parseJSON(out);
-      return Response.json({ items: Array.isArray(p.items) ? p.items.slice(0, 2) : [] });
+      return Response.json({ items: Array.isArray(p.items) ? p.items.slice(0, 1) : [] });
     }
 
     // --- a short comprehension quiz in the target language ---
