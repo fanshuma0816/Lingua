@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
 import { ArticleAudio } from "./Player";
-import { CheckIn, Purpose, Say, StepHead, Svg, Teacher } from "../ui/elements";
+import { CheckIn, Purpose, Say, Svg, Teacher } from "../ui/elements";
 import { LANG_CODE, PARTNER, POS, STEPS } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useElapsed } from "../../hooks/useElapsed";
@@ -21,7 +21,7 @@ import { cachedAiAnalyze, chatFallback } from "../../services/api";
 // Quick scan — the learner taps words they don't know straight in the text.
 // All words look the same (no difficulty hints, no CEFR badges); the marked
 // words are remembered and drive the Vocabulary & Grammar and Recall steps.
-function QuickScan({lesson,text,onDone,onSkip,onBack}){
+function QuickScan({lesson,text,onDone,onSkip}){
   const {t}=useUI();
   const src=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
   const parts=useMemo(()=>src.split(/([\p{L}][\p{L}'’-]*)/u),[src]);
@@ -30,13 +30,12 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   function toggle(w){ const k=w.toLowerCase(); setMarked(prev=>{ const n=new Set(prev); n.has(k)?n.delete(k):n.add(k); return n; }); }
   const count=marked.size;
   return (<div>
-    <div className="step-head"><div className="step-head-main"><div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2></div>
-      {onBack && <button className="btn btn-outline btn-sm step-skip focusable" onClick={onBack}>{t.scan.reselect}</button>}</div>
+    <div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2>
     <Teacher>{t.scan.teacher}</Teacher>
     <div className="card card-p" style={{marginBottom:14}}>
       <div style={{whiteSpace:"pre-wrap",lineHeight:2.05,fontSize:16,maxHeight:360,overflowY:"auto"}}>
         {parts.map((p,i)=> isWord(p)
-          ? <span key={i} className="scanw" onClick={()=>toggle(p)}
+          ? <span key={i} onClick={()=>toggle(p)}
               style={{cursor:"pointer",borderRadius:5,padding:"1px 2px",
                 background:marked.has(p.toLowerCase())?"hsl(var(--primary)/.35)":"transparent",
                 boxShadow:marked.has(p.toLowerCase())?"inset 0 -2px 0 hsl(var(--primary))":"none"}}>{p}</span>
@@ -54,7 +53,7 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   </div>);
 }
 
-function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
+function GrammarStep({lesson,onComplete,onContinue}){
   const {t,uiLang}=useUI();
   const {lang,sents,vocab,vlist,level,recommended}=lesson;
   const N=sents.length;
@@ -153,7 +152,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
 
   if(view==="summary") return (<div>
-    <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.summaryTitle} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.vocabulary}</div><h2>{t.gram.summaryTitle}</h2>
     <Teacher>{t.gram.summaryTeacher}</Teacher>
     <div className="summary-stack">
       <ArticleAudio sents={sents} lang={lang}/>
@@ -188,7 +187,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   </div>);
 
   return (<div>
-    <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.title} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.vocabulary}</div><h2>{t.gram.title}</h2>
     <Teacher>{t.gram.teacher}</Teacher>
     <Purpose>{t.gram.purpose}</Purpose>
 
@@ -242,11 +241,10 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       </div>):<div className="tiny muted">{t.gram.noWords}</div>}
     </div>
 
-    <div className="sent-nav">
-      <button className="btn btn-outline btn-sm focusable" onClick={()=>{ if(gi===0){ onPrev&&onPrev(); } else setGi(g=>g-1); }}>← {gi===0?t.previous:t.gram.previous}</button>
-      {gi<N-1
-        ? <button className="btn btn-primary btn-sm focusable" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
-        : <button className="btn btn-primary btn-sm focusable" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
+    <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
+      <button className="btn btn-ghost btn-sm" disabled={gi===0} onClick={()=>setGi(g=>g-1)}>← {t.gram.previous}</button>
+      {gi<N-1 ? <button className="btn btn-outline btn-sm" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
+        : <button className="btn btn-primary btn-sm" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
     </div>
     <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{t.gram.sentence(gi+1,N)}</div>
   </div>);
@@ -254,7 +252,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
 
 // Shadowing — one page, two modes the learner can switch between: read along
 // with the text, or hide the text for a challenge.
-function Shadowing({sents,lang,onSkip}){
+function Shadowing({sents,lang}){
   const {t}=useUI();
   const list=sents;
   const [withSubs,setWithSubs]=useState(true);
@@ -283,7 +281,7 @@ function Shadowing({sents,lang,onSkip}){
     <button className={"tab"+(withSubs?" on":"")} onClick={()=>setWithSubs(true)}>{t.timed.modeSubs}</button>
     <button className={"tab"+(!withSubs?" on":"")} onClick={()=>setWithSubs(false)}>{t.timed.modeNoSubs}</button>
   </div>);
-  const head=(<StepHead eyebrow={t.nav.mods.shadowing} title={t.timed.title(withSubs)} onSkip={onSkip} skipLabel={t.skipStep}/>);
+  const head=(<><div className="eyebrow">{t.nav.mods.shadowing}</div><h2>{t.timed.title(withSubs)}</h2></>);
 
   if(!started) return (<div>{head}{modeSwitch}
     <Teacher>{withSubs?t.timed.teacherSubs:t.timed.teacherNoSubs}</Teacher>
@@ -319,7 +317,7 @@ function Shadowing({sents,lang,onSkip}){
   </div>);
 }
 
-function RecallStep({lesson,onComplete,onContinue,onSkip}){
+function RecallStep({lesson,onComplete,onContinue}){
   const {t,uiLang}=useUI();
   const {lang,level,sents,focus}=lesson;
   // Recall focuses on the sentences carrying the most of the learner's own
@@ -364,7 +362,7 @@ function RecallStep({lesson,onComplete,onContinue,onSkip}){
   function check(){ if(!canCheck) return; setShown(s=>({...s,[idx]:true})); }
   function move(next){ stopMic(); setIdx(Math.max(0,Math.min(list.length-1,next))); }
   return (<div>
-    <StepHead eyebrow={t.nav.mods.recall} title={t.recall.title} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.recall}</div><h2>{t.recall.title}</h2>
     <Teacher>{t.recall.teacher}</Teacher>
     <Purpose>{t.recall.purpose}</Purpose>
     <div className="card card-p">
@@ -394,13 +392,13 @@ function RecallStep({lesson,onComplete,onContinue,onSkip}){
   </div>);
 }
 
-function PracticeAI({lesson,onComplete,onSkip}){
+function PracticeAI({lesson,onComplete}){
   const {t}=useUI();
   const [tab,setTab]=useState("chat");
   const [wrote,setWrote]=useState(false); const [talked,setTalked]=useState(false);
   useEffect(()=>{ if(wrote&&talked&&onComplete) onComplete(); },[wrote,talked]);
   return (<div>
-    <StepHead eyebrow={t.nav.mods.using} title={t.aiUse.title} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.using}</div><h2>{t.aiUse.title}</h2>
     <Teacher>{t.aiUse.teacher}</Teacher>
     <Purpose>{t.aiUse.purpose}</Purpose>
     <div className="tabs">
@@ -587,10 +585,12 @@ function AIChat({lesson,onNext,onDone}){
 function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
   const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
+  const [sent,setSent]=useState(false); const [skipped,setSkipped]=useState(false);
   const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
-  function captureSurvey(mostV,leastV){
-    try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:mostV||null,least_helpful:leastV||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
-    posthog.capture("lesson_feedback",{most_helpful:mostV,least_helpful:leastV,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
+  function submitSurvey(){ if(!most&&!least) return;
+    try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:most||null,least_helpful:least||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
+    posthog.capture("lesson_feedback",{most_helpful:most,least_helpful:least,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
+    setSent(true); }
   const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
@@ -599,19 +599,24 @@ function Done({lesson,diag,onNew,onReview}){
     <div className="done-emoji">🎉</div>
     <h1 className="done-h1">{t.done.title(name)}</h1>
     <p className="done-sub">{t.done.sub(STEPS.length)}</p>
-    <div className="done-words">
+    <div className="done-card">
       <div className="done-card-emoji">📚✨</div>
       <div className="done-card-title">{t.celebrate.explored(wordList.length)}</div>
       <div className="done-chips">{wordList.map(w=><span className="done-chip" key={w}>{w}</span>)}</div>
       <p className="done-card-note">{t.done.more}</p>
     </div>
-    <div className="done-card survey-soft" style={{textAlign:"left"}}>
+    {!sent && !skipped && <div className="done-card" style={{textAlign:"left"}}>
       <div className="done-card-title" style={{marginBottom:10}}>{t.survey.title}</div>
       <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.most}</div>
-      <div className="row wrap" style={{gap:7,marginBottom:12,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className="badge" onClick={()=>{setMost(m);captureSurvey(m,least);}} style={{cursor:"pointer",fontWeight:most===m?700:400,background:most===m?"hsl(var(--primary)/.35)":undefined,borderColor:most===m?"hsl(var(--primary))":undefined}}>{t.nav.mods[m]}</button>)}</div>
+      <div className="row wrap" style={{gap:7,marginBottom:12,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className={"badge"+(most===m?" badge-warm":"")} onClick={()=>setMost(m)} style={{cursor:"pointer",fontWeight:most===m?700:400}}>{t.nav.mods[m]}</button>)}</div>
       <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.least}</div>
-      <div className="row wrap" style={{gap:7,marginBottom:14,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className="badge" onClick={()=>{setLeast(m);captureSurvey(most,m);}} style={{cursor:"pointer",fontWeight:least===m?700:400,background:least===m?"hsl(var(--primary)/.35)":undefined,borderColor:least===m?"hsl(var(--primary))":undefined}}>{t.nav.mods[m]}</button>)}</div>
-    </div>
+      <div className="row wrap" style={{gap:7,marginBottom:14,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className={"badge"+(least===m?" badge-warm":"")} onClick={()=>setLeast(m)} style={{cursor:"pointer",fontWeight:least===m?700:400}}>{t.nav.mods[m]}</button>)}</div>
+      <div className="row" style={{justifyContent:"space-between"}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setSkipped(true)}>{t.survey.skip}</button>
+        <button className="btn btn-primary btn-sm" disabled={!most&&!least} onClick={submitSurvey}>{t.survey.submit}</button>
+      </div>
+    </div>}
+    {sent && <div className="tiny muted" style={{marginBottom:6}}>{t.survey.thanks}</div>}
     <div className="done-actions">
       <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
       <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>

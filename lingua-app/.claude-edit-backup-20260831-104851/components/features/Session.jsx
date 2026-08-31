@@ -2,7 +2,7 @@
 
 import { SyncReader } from "./Player";
 import { GrammarStep, PracticeAI, RecallStep, Shadowing } from "./Steps";
-import { Brand, CheckIn, Purpose, StepHead, Svg, Teacher } from "../ui/elements";
+import { Brand, CheckIn, Purpose, Svg, Teacher } from "../ui/elements";
 import { MODULES, STEPS, TOTAL_MIN, stepIndex } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
@@ -15,7 +15,6 @@ function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
   const stepMin=Math.max(1,Math.round(S.min*((lesson.estMin||TOTAL_MIN)/TOTAL_MIN)));
   const last=step===STEPS.length-1;
   const internalContinue=(S.kind==="grammar"||S.kind==="recall");
-  const hideFoot=(S.kind==="grammar");
   return (<div>
     <div className="learnbar">
       <div className="track"><span style={{width:pct+"%"}}/></div>
@@ -23,37 +22,38 @@ function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
         <span className="tiny muted">{t.nav.mods[M.id]} · {t.nav.steps[S.id]}</span>
         <span className="tiny muted">{t.min(stepMin)}</span></div>
     </div>
-    <div className="stage"><StepBody step={S} lesson={lesson} text={text} onContinue={onContinue} onSkip={onSkip} onPrev={step===0?onPreview:onPrev}/></div>
-    {!hideFoot && <div className="footnav">
+    <div className="stage"><StepBody step={S} lesson={lesson} text={text} onContinue={onContinue}/></div>
+    <div className="footnav">
       {step===0
         ? <button className="btn btn-outline btn-sm focusable" onClick={onPreview}>← {t.backToPreview}</button>
         : <button className="btn btn-outline btn-sm focusable" onClick={onPrev}>← {t.previous}</button>}
       <div className="row" style={{gap:8}}>
+        <button className="btn btn-ghost btn-sm focusable" onClick={onSkip}>{t.skipStep}</button>
         {!internalContinue && <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{last?`${t.finish} ✓`:`${t.continue} →`}</button>}
       </div>
-    </div>}
+    </div>
   </div>);
 }
 
-function StepBody({step,lesson,text,onContinue,onSkip,onPrev}){
+function StepBody({step,lesson,text,onContinue}){
   const {t,uiLang}=useUI();
   const {lang}=lesson; const sents=lesson.sents;
   switch(step.kind){
     case "understand": return (<div>
-      <StepHead eyebrow={t.nav.mods.understanding} title={t.nav.steps.understanding} onSkip={onSkip} skipLabel={t.skipStep}/>
+      <div className="eyebrow">{t.nav.mods.understanding}</div><h2>{t.nav.steps.understanding}</h2>
       <Teacher>{t.watch.teacher}</Teacher>
       <Purpose>{t.watch.purpose}</Purpose>
       <SyncReader key="understand-reader" items={sents.map((s)=>({s,tr:(lesson.watch||[]).find(x=>x.s===s)?.tr||null}))} lang={lang} level={lesson.level} translation={true} onTranslated={(sen,tr)=>setLineTr(uiLang,sen,tr)}/>
       <CheckIn>{t.watch.check}</CheckIn>
     </div>);
-    case "grammar": return <GrammarStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
-    case "shadow":  return <Shadowing key="shadow" sents={sents} lang={lang} onSkip={onSkip}/>;
-    case "recall":  return <RecallStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip}/>;
-    default:        return <PracticeAI lesson={lesson} onComplete={()=>{}} onSkip={onSkip}/>;
+    case "grammar": return <GrammarStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue}/>;
+    case "shadow":  return <Shadowing key="shadow" sents={sents} lang={lang}/>;
+    case "recall":  return <RecallStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue}/>;
+    default:        return <PracticeAI lesson={lesson} onComplete={()=>{}}/>;
   }
 }
 
-function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack}){
+function Sidebar({mode,lesson,step,doneSet,go,onBackHome}){
   const {t}=useUI();
   const progress=mode==="done"?100:Math.round(doneSet.size/STEPS.length*100);
   const ctx=mode==="home"||!lesson ? t.nav.ctx : t.nav.ctxSession(langName(t,lesson.lang),(lesson.level||"").split(" — ")[0]);
@@ -82,7 +82,7 @@ function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack}){
       })}
     </nav>
     <div className="side-foot">
-      {showBack
+      {mode!=="home"
         ? <button className="btn btn-outline btn-sm focusable" onClick={onBackHome} title={t.nav.backHome}><Svg n="home"/> {t.nav.backHome}</button>
         : <span className="tiny muted">{t.nav.previewHint}</span>}
     </div>

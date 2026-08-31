@@ -49,8 +49,8 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(DB.get("level",LEVELS[1])); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const [durationIdx,setDurationIdx]=useState(1);
   const [topicIdxs,setTopicIdxs]=useState([0]);
-  const [materials,setMaterials]=useState(()=>DB.get("genMaterials",[])||[]);
-  const [selectedMaterial,setSelectedMaterial]=useState(()=>DB.get("genSelected",0));
+  const [materials,setMaterials]=useState([]);
+  const [selectedMaterial,setSelectedMaterial]=useState(0);
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
   const fileRef=useRef(null);
@@ -64,8 +64,6 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
   useEffect(()=>{ setMode(initialMode); },[initialMode]);
   useEffect(()=>{ scrollToTop(); },[mode]);
-  useEffect(()=>{ DB.set("genMaterials",materials); },[materials]);
-  useEffect(()=>{ DB.set("genSelected",selectedMaterial); },[selectedMaterial]);
   function setModeRoute(nextMode,path){ setMode(nextMode); onRouteChange?.(path); }
   function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
   async function generateMaterials(){
@@ -162,25 +160,18 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     {materialError && !generating && <div className="card card-p" style={{marginTop:22}}>
       <div className="tiny muted" style={{fontWeight:600}}>{t.noSuitableMaterials(level.slice(0,2))}</div>
     </div>}
-    {(materials.length>0||generating) && <div className="material-results">
+    {materials.length>0 && <div className="material-results">
       <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
         <div><h2 style={{margin:0}}>{t.chooseMaterial}</h2><div className="tiny muted">{t.switchAnytime}</div></div>
-        <button className="btn btn-primary btn-sm" disabled={!materials.length} onClick={startGenerated}>{t.useThisText} →</button>
+        <button className="btn btn-primary btn-sm" onClick={startGenerated}>{t.useThisText} →</button>
       </div>
       <div className="generated-grid">
-        {[0,1,2].map(i=>{ const m=materials[i];
-          if(!m) return (<div key={i} className="generated-card gen-skel" aria-hidden="true">
-            <span className="row" style={{gap:6}}><span className="sk sk-badge"/><span className="sk sk-badge2"/></span>
-            <span className="sk sk-title"/>
-            <span className="sk sk-meta"/>
-            <span className="sk sk-line"/><span className="sk sk-line"/><span className="sk sk-line short"/>
-          </div>);
-          const stats=materialStats(m.text,level,m.duration||selectedDuration); return (<button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
+        {materials.map((m,i)=>{ const stats=materialStats(m.text,level,m.duration||selectedDuration); return <button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
           <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
           <span>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
-        </button>); })}
+        </button>; })}
       </div>
     </div>}
   </div>);

@@ -57,4 +57,14 @@ function SelfRate({value,onChange,prompt}){
       <span className="tiny muted">{t.selfLow}</span><span className="badge">{value}%</span><span className="tiny muted">{t.selfHigh}</span></div></div>);
 }
 
-export { Brand, CheckIn, LanguageSwitch, Loading, Purpose, Say, SelfRate, Stars, Stat, Svg, Teacher };
+function StepHead({eyebrow,title,onSkip,skipLabel}){
+  return (<div className="step-head">
+    <div className="step-head-main">
+      {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+      <h2>{title}</h2>
+    </div>
+    {onSkip && <button className="btn btn-outline btn-sm step-skip focusable" onClick={onSkip}>{skipLabel}</button>}
+  </div>);
+}
+
+export { Brand, CheckIn, LanguageSwitch, Loading, Purpose, Say, SelfRate, Stars, Stat, StepHead, Svg, Teacher };

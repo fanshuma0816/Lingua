@@ -141,6 +141,10 @@ function SyncReader({items,lang,level,translation,rate=1,gap=0,onTranslated}){
   function one(i){ stop.current=true; stopSpeak(); setActive(i); const role=voiceRoleForLine(items[i].s,i,items); const u=speak(role?spokenTextForLine(items[i].s):items[i].s,lang,rate,role); if(u)u.onend=()=>setActive(-1); }
   function changePage(next){ halt(); setPage(Math.max(0,Math.min(pageCount-1,next))); }
   return (<div>
+    <div className="row" style={{marginBottom:12}}>
+      <button className="btn btn-primary btn-sm" onClick={playing?halt:playAll}>{playing?`❚❚ ${t.stop}`:`▶ ${t.playAll}`}</button>
+      <span className="tiny muted">{t.syncHint}</span>
+    </div>
     {translation && loadingTr && <div className="status-strip" style={{marginBottom:12}}>
       <div className="row" style={{justifyContent:"space-between",alignItems:"baseline"}}>
         <b>{t.translatingTitle}</b><span className="tiny muted">{t.aboutRemaining(remaining)}</span>
@@ -155,7 +159,7 @@ function SyncReader({items,lang,level,translation,rate=1,gap=0,onTranslated}){
     <div className="card card-p">
       {pageItems.map((it,j)=>{ const i=start+j; const translated=(uiLang==="en"&&it.tr)||trs[i]; return (<div key={i} className={"sline"+(active===i?" on":"")} style={{marginBottom:translation?12:2}}>
         <div className="row" style={{gap:9,alignItems:"flex-start"}}>
-          <button className="sbtn saybtn" title={t.play} aria-label={t.play} onClick={(e)=>{e.stopPropagation();one(i);}}><span>▶</span><span>{t.play}</span></button>
+          <button className="sbtn saybtn" title={t.play} aria-label={t.play} onClick={(e)=>{e.stopPropagation();one(i);}}><span>▶</span></button>
           <div style={{flex:1}}>
             <div className="sentence-source">{it.s}</div>
             {translation && <div className={"translation-line"+(!translated&&loadingTr?" loading":"")}>{translated?("→ "+translated):(loadingTr?`→ ${t.lineTranslating(i+1,items.length)}`:`→ ${t.translationUnavailable}`)}</div>}
