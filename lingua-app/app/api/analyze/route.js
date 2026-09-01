@@ -5,6 +5,7 @@
 import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
 import { cleanText } from "../../../lib/text";
 import { cefrIdx, validateForLevel, validateMaterialFit, materialId } from "../../../lib/cefr.mjs";
+import { selectTextbookMaterials } from "../../../lib/material-corpus";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,32 +28,41 @@ function wordCount(text) {
 }
 
 export async function POST(req) {
-  // Text modes need Vertex AI; the translate mode needs the Cloud API key.
-  // Bail out early only if neither is configured.
-  if (!AI.textEnabled && !AI.gcpKey) return new Response(null, { status: 204 });
   try {
     const b = await req.json();
+    // Text modes need Vertex AI; the translate mode needs the Cloud API key.
+    // Materials can still use the local A1/A2 corpus when live AI is unavailable.
+    if (b.mode !== "materials" && !AI.textEnabled && !AI.gcpKey) return new Response(null, { status: 204 });
     const lang = b.lang || "the target language";
     const level = b.level || "A2";
 
     // --- recommend/generate a few learner-ready materials ---
     if (b.mode === "materials") {
-      const duration = b.duration || "45-60 min";
+      const duration = b.duration || "25-35 min";
       const spec = durationSpec(duration);
       const goal = b.goal || "General fluency";
-      const topics = (Array.isArray(b.topics) && b.topics.length ? b.topics : ["daily life"]).slice(0, 3);
+      const topics = (Array.isArray(b.topics) ? b.topics : []).filter(Boolean).slice(0, 1);
       const n = Math.min(3, Math.max(1, Number(b.count) || 3));
       const tier = ["comfortable", "balanced", "stretch"].includes(b.tier) ? b.tier : null;
       const levels = ["A1", "A2", "B1", "B2", "C1"];
       const cur = Math.max(0, levels.indexOf(String(level).slice(0, 2)));
       const targetLevel = levels[cur];
       const capLevel = levels[Math.min(levels.length - 1, cur + 1)]; // i+1 ceiling
+      const aboveCapLimit = cur <= 0 ? 2 : cur === 1 ? 3 : cur === 2 ? 4 : 0;
+      const mainRange = cur <= 0 ? "A1" : cur === 1 ? "A2/B1" : cur === 2 ? "B1/B2" : `${targetLevel}/${capLevel}`;
       const [wMin, wMax] = spec.words;
       const wMid = Math.round((wMin + wMax) / 2);
       const lengthGuide = `between ${wMin} and ${wMax} words (aim for about ${wMid})`;
       const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const avoid = (Array.isArray(b.avoid) ? b.avoid : []).filter(Boolean).slice(0, 12);
-      const avoidLine = avoid.length ? `Avoid these recently shown topics/titles \u2014 pick clearly different scenarios: ${avoid.join(" | ")}.` : "";
+      const avoidLine = avoid.length ? `Avoid these recently shown titles or texts \u2014 pick clearly different scenarios: ${avoid.join(" | ")}.` : "";
+      const topicLine = topics.length
+        ? `Light topic preference: ${topics.join(", ")}. Use it only as inspiration; level fit is more important.`
+        : "No topic preference. Choose one simple, concrete everyday scenario.";
+      const beginnerLine = cur <= 1 ? "Use short sentences, concrete situations, very common words, and little or no subordination." : "";
+      const overCapLine = aboveCapLimit
+        ? `The main vocabulary body should be ${mainRange}. At most ${aboveCapLimit} natural words may be above ${capLevel}, only when they are easy to infer from context.`
+        : `Keep the vocabulary within ${mainRange}.`;
       const hasCjk = s => /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/.test(String(s || ""));
       const minutesForWords = (wc) => {
         const t = wMax > wMin ? (wc - wMin) / (wMax - wMin) : 0.5;
@@ -64,28 +74,27 @@ export async function POST(req) {
       const tierPct = { comfortable: "about 10-15%", balanced: "about 15-22%", stretch: "about 22-30%" };
       const buildPrompt = (nonce, extra = "") => (n === 1
         ? `Create 1 short learning material in ${lang} for a CEFR ${targetLevel} learner.
-Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
+Goal: ${goal}. Full lesson time: ${duration}. ${topicLine}
 DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
-- Write on a ${targetLevel} base. You MAY introduce a small, controlled amount of ${capLevel} vocabulary, but NEVER anything above ${capLevel}.
+- ${overCapLine}
 - It must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; do NOT return an easier text.
-- Difficulty tier "${tier || "balanced"}": ${tierPct[tier] || tierPct.balanced} of words above ${targetLevel}. Never jump to ${levels[Math.min(levels.length - 1, cur + 2)]}.
+- Difficulty tier "${tier || "balanced"}": ${tierPct[tier] || tierPct.balanced} of words above ${targetLevel}.
 LENGTH: the "text" must be ${lengthGuide}. Count the words.
 ${avoidLine}
+${beginnerLine}
 For Dutch, the title and text MUST be Dutch only \u2014 never Chinese/English explanations or translations.
 Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":"${tier || "balanced"}","text":<original text in ${lang}>}]}.
 If source is "Dialogue", put each speaker turn on its own line with a short label (e.g. "Sanne: ..."). Otherwise no fake speaker labels; keep quoted speech intact.
 Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.${extra}`
-        : `Create 3 different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
-Goal: ${goal}. Full lesson time: ${duration}. Learner interests: ${topics.join(", ")}.
+        : `Create ${n} different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
+Goal: ${goal}. Full lesson time: ${duration}. ${topicLine}
 DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
-- Write on a ${targetLevel} base. You MAY introduce a small, controlled amount of ${capLevel} vocabulary, but NEVER anything above ${capLevel}.
+- ${overCapLine}
 - Every option must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; do NOT return easier texts.
-- Option 1 (Comfortable): about 10-15% of words above ${targetLevel}.
-- Option 2 (Balanced): about 15-22% above ${targetLevel}.
-- Option 3 (Stretch): about 22-30% above ${targetLevel}.
-- The three options must increase gradually in difficulty. Do NOT jump straight from ${targetLevel} to ${levels[Math.min(levels.length - 1, cur + 2)]}.
-LENGTH: each "text" must be ${lengthGuide}. Count the words. All three should be close in length (within ~20%).
+- Vary the options by scenario. Difficulty should stay gentle and close to ${targetLevel}; do not make later options much harder just to create variety.
+LENGTH: each "text" must be ${lengthGuide}. Count the words. The options should be close in length (within ~20%).
 ${avoidLine}
+${beginnerLine}
 For Dutch, the title and text MUST be Dutch only \u2014 never Chinese/English explanations or translations.
 Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":<"comfortable"|"balanced"|"stretch">,"text":<original text in ${lang}>}]}.
 If source is "Dialogue", put each speaker turn on its own line with a short label (e.g. "Sanne: ..."). Otherwise no fake speaker labels; keep quoted speech intact.
@@ -101,7 +110,8 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
 
       // Validate against the deterministic CEFR analyzer \u2014 never trust the model's
       // self-reported level.
-      const seen = new Set();
+      const textbook = selectTextbookMaterials({ lang, level, topics, avoid, wordRange: [lo, hi], count: n, duration: spec.label, targetMinutes: spec.target });
+      const seen = new Set(textbook.map(m => m.id));
       const accepted = [];
       const usable = [];
       let rejected = 0;
@@ -148,7 +158,9 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
         }
       };
 
-      try { consider(await runOnce(requestId, "")); } catch (e) { /* fall through to retry */ }
+      if (textbook.length < n && AI.textEnabled) {
+        try { consider(await runOnce(requestId, "")); } catch (e) { rejected++; }
+      }
 
       // Order by increasing difficulty and label the three tiers accordingly.
       accepted.sort((a, b2) => a.hardWordRatio - b2.hardWordRatio);
@@ -158,12 +170,12 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
         return aGap - bGap || a.hardWordRatio - b2.hardWordRatio;
       });
       const tierNames = ["comfortable", "balanced", "stretch"];
-      const final = [...accepted, ...usable]
+      const final = [...textbook, ...accepted, ...usable]
         .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
         .slice(0, n)
         .map((m, i) => ({ ...m, difficultyTier: n === 1 ? (tier || m.difficultyTier) : (tierNames[i] || m.difficultyTier) }));
 
-      const debug = { requestId, requestedLevel: level, capLevel, materialIds: final.map(m => m.id), resultSource: final.length ? "ai" : "none", accepted: accepted.length, relaxed: usable.length, rejected };
+      const debug = { requestId, requestedLevel: level, capLevel, aboveCapLimit, materialIds: final.map(m => m.id), resultSource: final.length ? "mixed" : "none", textbook: textbook.length, accepted: accepted.length, relaxed: usable.length, rejected, aiEnabled: !!AI.textEnabled };
       console.log("[analyze:materials]", JSON.stringify(debug));
       return Response.json({ materials: final, debug });
     }

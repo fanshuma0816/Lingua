@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import posthog from "posthog-js";
-import { materialId as cefrMaterialId } from "../../lib/cefr.mjs";
+import { materialId as cefrMaterialId, validateMaterialFit } from "../../lib/cefr.mjs";
 import { Stars, Stat, Teacher } from "../ui/elements";
 import { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
 import { langName } from "../../config/uiText";
@@ -13,6 +13,8 @@ import { materialStats, sourceIcon } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { cleanText } from "../../lib/text";
 import { aiAnalyze, sampleMaterials } from "../../services/api";
+
+const TOPIC_KEYS=["daily life","news","culture","travel","work & study","food","technology","society"];
 
 function SourceIdeas({tips,hint}){
   const {t}=useUI();
@@ -48,7 +50,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const savedLang=DB.get("lang","Dutch");
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(DB.get("level",LEVELS[1])); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const [durationIdx,setDurationIdx]=useState(1);
-  const [topicIdxs,setTopicIdxs]=useState([0]);
+  const [topicIdx,setTopicIdx]=useState(null);
   const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>!String(m?.duration||"").includes("45-60")));
   const [selectedMaterial,setSelectedMaterial]=useState(()=>DB.get("genSelected",0));
   const [materialError,setMaterialError]=useState(false);
@@ -61,19 +63,20 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const shouldSplit=liveStats&&(liveStats.mins>=60||count>1050||liveStats.words>240);
   const durationPlans=t.durationPlans||[];
   const selectedDuration=durationPlans[durationIdx]?.label||durationPlans[durationPlans.length-1]?.label||"25-35 min";
-  const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
+  const topics=topicIdx==null?[]:[TOPIC_KEYS[topicIdx]].filter(Boolean);
   useEffect(()=>{ setMode(initialMode); },[initialMode]);
   useEffect(()=>{ scrollToTop(); },[mode]);
   useEffect(()=>{ DB.set("genMaterials",materials); },[materials]);
   useEffect(()=>{ DB.set("genSelected",selectedMaterial); },[selectedMaterial]);
   useEffect(()=>{ if(materials.length&&selectedMaterial>=materials.length) setSelectedMaterial(0); },[materials,selectedMaterial]);
   function setModeRoute(nextMode,path){ setMode(nextMode); onRouteChange?.(path); }
-  function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
+  function toggleTopic(index){ setTopicIdx(prev=>prev===index?null:index); }
   function materialKey(m){
     const text=cleanText(m?.text||"");
     return m?.id||(!text?"":cefrMaterialId(text));
   }
   function sourceLabel(m){
+    if(m?.resultSource==="textbook") return t.materialSourceTextbook||"Textbook text";
     if(m?.resultSource==="ai-relaxed") return t.materialSourceAIRelaxed||"AI generated · relaxed check";
     if(m?.resultSource==="ai") return t.materialSourceAI||"AI generated";
     return t.materialSourceSample||"Sample text";
@@ -98,16 +101,24 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
         const text=cleanText(raw.text||"");
         const key=raw.id||cefrMaterialId(text);
         if(!text||gotKeys.includes(key)) continue;
+        const fit=raw.validatedTextLevel?null:validateMaterialFit(text,level);
+        if(fit&&!fit.ok) continue;
         const recentlyUsed=recentTitles.current.includes(key)||(raw.title&&recentTitles.current.includes(raw.title));
         if(recentlyUsed&&source!=="sample-fill") continue;
         const i=collected.length;
-        const one={...raw,text,id:key,resultSource:raw.resultSource||"sample",duration:raw.duration||selectedDuration,targetMinutes:raw.targetMinutes||spec.target,difficultyTier:raw.difficultyTier||tiers[i]};
+        const one={...raw,text,id:key,resultSource:raw.resultSource||"sample",duration:raw.duration||selectedDuration,targetMinutes:raw.targetMinutes||spec.target,
+          targetUserLevel:raw.targetUserLevel||fit?.analysis.targetUserLevel,
+          validatedTextLevel:raw.validatedTextLevel||fit?.analysis.validatedTextLevel,
+          level:raw.level||fit?.analysis.validatedTextLevel,
+          hardWordRatio:raw.hardWordRatio??fit?.analysis.hardWordRatio,
+          vocabularyAnnotations:Array.isArray(raw.vocabularyAnnotations)?raw.vocabularyAnnotations:(fit?.analysis.annotations||[]),
+          difficultyTier:raw.difficultyTier||fit?.analysis.difficultyTier||tiers[i]};
         if(one.title) gotTitles.push(one.title);
         gotKeys.push(key);
         collected.push(one);
       }
     };
-    const avoid=[...recentTitles.current,...topics].slice(0,12);
+    const avoid=[...recentTitles.current].slice(0,12);
     const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
     const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:3},{timeoutMs:25000});
     addMaterials(d&&Array.isArray(d.materials)?d.materials:[],"ai");
@@ -185,14 +196,14 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
           <span className="duration-icon">{plan.icon}</span>
           <span><b>{plan.label}</b><small>{plan.length} · {plan.vocab}</small></span>
         </button>)}</div></div>
-        <div><label className="fld">{t.interests}</label><div className="topic-pills">{t.interestOptions.map((topic,i)=><button key={topic} className={topicIdxs.includes(i)?"on":""} onClick={()=>toggleTopic(i)}>{topic}</button>)}</div></div>
+        <div><label className="fld">{t.interests}</label><div className="tiny muted" style={{marginBottom:8}}>{t.topicHint}</div><div className="topic-pills">{t.interestOptions.map((topic,i)=><button key={topic} className={topicIdx===i?"on":""} onClick={()=>toggleTopic(i)}>{topic}</button>)}</div></div>
       </div>
       <div className="row" style={{justifyContent:"space-between",marginTop:18}}>
         {!lang && <span className="tiny muted">{t.chooseTarget}</span>}
         <span/>
         <button className="btn btn-primary" disabled={!lang||generating} onClick={generateMaterials}>{generating?t.generatingMaterials:t.generateMaterials}</button>
       </div>
-      {generating && <div className="track" style={{marginTop:14,overflow:"hidden"}}><span className="indet"/></div>}
+      {generating && <><div className="track" style={{marginTop:14,overflow:"hidden"}}><span className="indet"/></div><div className="tiny muted" style={{marginTop:8}}>{t.materialWaitHint}</div></>}
     </div>
     {materialError && !generating && <div className="card card-p" style={{marginTop:22}}>
       <div className="tiny muted" style={{fontWeight:600}}>{t.noSuitableMaterials(level.slice(0,2))}</div>
