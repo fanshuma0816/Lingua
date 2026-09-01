@@ -49,55 +49,90 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(DB.get("level",LEVELS[1])); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const [durationIdx,setDurationIdx]=useState(1);
   const [topicIdxs,setTopicIdxs]=useState([0]);
-  const [materials,setMaterials]=useState(()=>DB.get("genMaterials",[])||[]);
+  const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>!String(m?.duration||"").includes("45-60")));
   const [selectedMaterial,setSelectedMaterial]=useState(()=>DB.get("genSelected",0));
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
   const fileRef=useRef(null);
-  const recentTitles=useRef([]);   // anti-repeat memory across regenerations
+  const recentTitles=useRef(DB.get("recentMaterials",[])||[]);   // anti-repeat memory across regenerations
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setRaw(String(r.result));r.readAsText(f);}
   const ready=count>40&&!over&&lang;
   const liveStats=count>40?materialStats(cleaned,level):null;
   const shouldSplit=liveStats&&(liveStats.mins>=60||count>1050||liveStats.words>240);
   const durationPlans=t.durationPlans||[];
-  const selectedDuration=durationPlans[durationIdx]?.label||"45-60 min";
+  const selectedDuration=durationPlans[durationIdx]?.label||durationPlans[durationPlans.length-1]?.label||"25-35 min";
   const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
   useEffect(()=>{ setMode(initialMode); },[initialMode]);
   useEffect(()=>{ scrollToTop(); },[mode]);
   useEffect(()=>{ DB.set("genMaterials",materials); },[materials]);
   useEffect(()=>{ DB.set("genSelected",selectedMaterial); },[selectedMaterial]);
+  useEffect(()=>{ if(materials.length&&selectedMaterial>=materials.length) setSelectedMaterial(0); },[materials,selectedMaterial]);
   function setModeRoute(nextMode,path){ setMode(nextMode); onRouteChange?.(path); }
   function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
+  function materialKey(m){
+    const text=cleanText(m?.text||"");
+    return m?.id||(!text?"":cefrMaterialId(text));
+  }
+  function sourceLabel(m){
+    if(m?.resultSource==="ai-relaxed") return t.materialSourceAIRelaxed||"AI generated · relaxed check";
+    if(m?.resultSource==="ai") return t.materialSourceAI||"AI generated";
+    return t.materialSourceSample||"Sample text";
+  }
+  function rememberMaterials(list){
+    const seen=list.flatMap(m=>[m?.title,materialKey(m)]).filter(Boolean);
+    recentTitles.current=[...seen,...recentTitles.current].slice(0,18);
+    DB.set("recentMaterials",recentTitles.current);
+  }
   async function generateMaterials(){
     if(!lang) return;
     setGenerating(true);
     setMaterialError(false);
     setMaterials([]); setSelectedMaterial(0);
     const spec=durationSpec(selectedDuration);
-    // Generate one material at a time, streaming each card in as it arrives, with
-    // escalating per-request timeouts (10s / 20s / 30s) so the first appears fast.
     const tiers=["comfortable","balanced","stretch"];
-    const timeouts=[10000,20000,30000];
-    const collected=[]; const gotTitles=[];
-    for(let i=0;i<3;i++){
-      const avoid=[...recentTitles.current,...topics,...gotTitles].slice(0,12);
-      const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-      const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:1,tier:tiers[i]},{timeoutMs:timeouts[i]});
-      let one=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial)[0]:null;
-      if(!one){
-        const samples=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid).filter(safeDutchMaterial);
-        one=samples.find(x=>x.title&&!gotTitles.includes(x.title))||samples[i]||samples[0]||null;
-      }
-      if(one){
-        one={...one,duration:one.duration||selectedDuration,targetMinutes:one.targetMinutes||spec.target,difficultyTier:one.difficultyTier||tiers[i]};
+    const collected=[]; const gotTitles=[]; const gotKeys=[];
+    const addMaterials=(items,source)=>{
+      for(const raw of items||[]){
+        if(collected.length>=3) break;
+        if(!raw||!safeDutchMaterial(raw)) continue;
+        const text=cleanText(raw.text||"");
+        const key=raw.id||cefrMaterialId(text);
+        if(!text||gotKeys.includes(key)) continue;
+        const recentlyUsed=recentTitles.current.includes(key)||(raw.title&&recentTitles.current.includes(raw.title));
+        if(recentlyUsed&&source!=="sample-fill") continue;
+        const i=collected.length;
+        const one={...raw,text,id:key,resultSource:raw.resultSource||"sample",duration:raw.duration||selectedDuration,targetMinutes:raw.targetMinutes||spec.target,difficultyTier:raw.difficultyTier||tiers[i]};
         if(one.title) gotTitles.push(one.title);
+        gotKeys.push(key);
         collected.push(one);
+      }
+    };
+    const avoid=[...recentTitles.current,...topics].slice(0,12);
+    const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:3},{timeoutMs:25000});
+    addMaterials(d&&Array.isArray(d.materials)?d.materials:[],"ai");
+    if(collected.length){
+      setMaterials([...collected]);
+      setSelectedMaterial(0);
+    }
+    if(collected.length<3){
+      const retryAvoid=[...avoid,...gotTitles].slice(0,12);
+      const retryNonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+      const retry=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid:retryAvoid,nonce:retryNonce,count:3-collected.length},{timeoutMs:15000});
+      addMaterials(retry&&Array.isArray(retry.materials)?retry.materials:[],"ai");
+      if(collected.length) setMaterials([...collected]);
+    }
+    if(collected.length<3){
+      const samples=sampleMaterials(lang,level,goal,selectedDuration,topics,[...avoid,...gotTitles]).filter(safeDutchMaterial);
+      addMaterials(samples.map(m=>({...m,resultSource:"sample"})),"sample");
+      if(collected.length<3) addMaterials(samples.map(m=>({...m,resultSource:"sample"})),"sample-fill");
+      if(collected.length){
         setMaterials([...collected]);
-        if(collected.length===1) setSelectedMaterial(0);
+        setSelectedMaterial(0);
       }
     }
     posthog.capture("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:collected.length});
-    recentTitles.current=[...gotTitles,...recentTitles.current].slice(0,12);
+    rememberMaterials(collected);
     setMaterialError(!collected.length); setGenerating(false);
   }
   function startGenerated(){
@@ -176,7 +211,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
             <span className="sk sk-line"/><span className="sk sk-line"/><span className="sk sk-line short"/>
           </div>);
           const stats=materialStats(m.text,level,m.duration||selectedDuration); return (<button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
-          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
+          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{sourceLabel(m)}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
           <span>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
