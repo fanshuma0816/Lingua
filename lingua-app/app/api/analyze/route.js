@@ -42,8 +42,8 @@ export async function POST(req) {
       const spec = durationSpec(duration);
       const goal = b.goal || "General fluency";
       const topics = (Array.isArray(b.topics) ? b.topics : []).filter(Boolean).slice(0, 1);
-      const n = Math.min(3, Math.max(1, Number(b.count) || 3));
-      const tier = ["comfortable", "balanced", "stretch"].includes(b.tier) ? b.tier : null;
+      const n = Math.min(2, Math.max(1, Number(b.count) || 2));
+      const tier = ["comfortable", "balanced"].includes(b.tier) ? b.tier : null;
       const levels = ["A1", "A2", "B1", "B2", "C1"];
       const cur = Math.max(0, levels.indexOf(String(level).slice(0, 2)));
       const targetLevel = levels[cur];
@@ -71,7 +71,7 @@ export async function POST(req) {
       };
       const lo = Math.round(wMin * 0.85), hi = Math.round(wMax * 1.15);
 
-      const tierPct = { comfortable: "about 10-15%", balanced: "about 15-22%", stretch: "about 22-30%" };
+      const tierPct = { comfortable: "about 10-15%", balanced: "about 15-22%" };
       const buildPrompt = (nonce, extra = "") => (n === 1
         ? `Create 1 short learning material in ${lang} for a CEFR ${targetLevel} learner.
 Goal: ${goal}. Full lesson time: ${duration}. ${topicLine}
@@ -91,12 +91,13 @@ Goal: ${goal}. Full lesson time: ${duration}. ${topicLine}
 DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
 - ${overCapLine}
 - Every option must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; do NOT return easier texts.
-- Vary the options by scenario. Difficulty should stay gentle and close to ${targetLevel}; do not make later options much harder just to create variety.
+- Option 1 should feel easier: direct, concrete, shorter sentences.
+- Option 2 should feel a bit richer: a different scenario, slightly more detail, still level-safe.
 LENGTH: each "text" must be ${lengthGuide}. Count the words. The options should be close in length (within ~20%).
 ${avoidLine}
 ${beginnerLine}
 For Dutch, the title and text MUST be Dutch only \u2014 never Chinese/English explanations or translations.
-Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":<"comfortable"|"balanced"|"stretch">,"text":<original text in ${lang}>}]}.
+Return JSON {"materials":[{"title":<short title in ${lang}>,"source":<one of: Daily story, Dialogue, News explainer, Culture note, Practical situation>,"tier":<"comfortable"|"balanced">,"text":<original text in ${lang}>}]}.
 If source is "Dialogue", put each speaker turn on its own line with a short label (e.g. "Sanne: ..."). Otherwise no fake speaker labels; keep quoted speech intact.
 Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.${extra}`);
 
@@ -162,14 +163,14 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
         try { consider(await runOnce(requestId, "")); } catch (e) { rejected++; }
       }
 
-      // Order by increasing difficulty and label the three tiers accordingly.
+      // Order by increasing difficulty and label the two choices accordingly.
       accepted.sort((a, b2) => a.hardWordRatio - b2.hardWordRatio);
       usable.sort((a, b2) => {
         const aGap = Math.abs(cefrIdx(a.validatedTextLevel) - cefrIdx(level));
         const bGap = Math.abs(cefrIdx(b2.validatedTextLevel) - cefrIdx(level));
         return aGap - bGap || a.hardWordRatio - b2.hardWordRatio;
       });
-      const tierNames = ["comfortable", "balanced", "stretch"];
+      const tierNames = ["comfortable", "balanced"];
       const final = [...textbook, ...accepted, ...usable]
         .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
         .slice(0, n)

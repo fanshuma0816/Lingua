@@ -21,7 +21,7 @@ const UI_TEXT={
     startFindTitle:"Help me find something to learn", startFindSub:"AI recommends learning materials based on my language, level and learning goals.", startFindAction:"Find material",
     findTitle:"Find something to learn", findSub:"Tell us what you are learning, and AI will recommend a few materials that fit your level and goal.",
     duration:"Full lesson time", interests:"Topics you like", topicHint:"Optional. Choose one if you have a preference.", generateMaterials:"Generate materials", generatingMaterials:"AI is writing new texts…", materialWaitHint:"This usually takes 15-30 seconds.", noSuitableMaterials:(level)=>`We couldn't find suitable ${level} materials just now. Try again, change the topic, or choose a shorter lesson time.`, chooseMaterial:"Choose one to study", useThisText:"Use this text", switchAnytime:"Pick any option below. You can switch before starting the lesson.",
-    materialSourceTextbook:"Textbook text", materialSourceAI:"AI generated", materialSourceAIRelaxed:"AI generated · relaxed check", materialSourceSample:"Sample text",
+    materialChoiceEasy:"Easier", materialChoiceRicher:"Richer", materialSourceTextbook:"Textbook text", materialSourceAI:"AI generated", materialSourceAIRelaxed:"AI generated · relaxed check", materialSourceSample:"Sample text",
     durationPlans:[
       {label:"10-15 min",icon:"🌱",length:"40-70 words",vocab:"~4-6 new words"},
       {label:"25-35 min",icon:"📗",length:"90-150 words",vocab:"~7-12 new words"},
@@ -141,7 +141,7 @@ const UI_TEXT={
     startFindTitle:"帮我找一段内容来学", startFindSub:"AI 会根据语言、水平和学习目标推荐材料。", startFindAction:"寻找材料",
     findTitle:"寻找学习材料", findSub:"告诉我们你在学什么，AI 会推荐适合你水平和目标的材料。",
     duration:"完整课程时长", interests:"感兴趣的话题", topicHint:"可选。如果你有偏好，可以选择一个。", generateMaterials:"生成学习材料", generatingMaterials:"AI 正在生成新文本…", materialWaitHint:"通常需要 15-30 秒。", noSuitableMaterials:(level)=>`暂时没有找到适合 ${level} 的材料。请重试，换一个主题，或选择更短的学习时长。`, chooseMaterial:"选择一段来学习", useThisText:"使用这段文本", switchAnytime:"在开始课程前，你可以在下面几段材料之间切换。",
-    materialSourceTextbook:"教材文本", materialSourceAI:"AI 生成", materialSourceAIRelaxed:"AI 生成 · 放宽校验", materialSourceSample:"示例文本",
+    materialChoiceEasy:"更轻松", materialChoiceRicher:"更丰富", materialSourceTextbook:"教材文本", materialSourceAI:"AI 生成", materialSourceAIRelaxed:"AI 生成 · 放宽校验", materialSourceSample:"示例文本",
     durationPlans:[
       {label:"10-15 分钟",icon:"🌱",length:"40-70 个词",vocab:"约 4-6 个生词"},
       {label:"25-35 分钟",icon:"📗",length:"90-150 个词",vocab:"约 7-12 个生词"},

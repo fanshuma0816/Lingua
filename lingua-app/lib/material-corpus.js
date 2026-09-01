@@ -26,23 +26,37 @@ function levelRank(item) {
 }
 
 function combinedCandidates(items) {
-  const out = [...items];
+  const out = items.map(item => ({ ...item, primaryTitle: item.title, pairKey: item.title }));
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       const a = items[i], b = items[j];
+      const pairKey = [a.title, b.title].map(x => String(x || "").toLowerCase()).sort().join("|");
       out.push({
         title: `${a.title} + ${b.title}`,
+        primaryTitle: a.title,
+        parts: [a.title, b.title],
+        pairKey,
         source: "Textbook adapted",
         level: cefrIdx(a.level) >= cefrIdx(b.level) ? a.level : b.level,
         tags: [...new Set([...(a.tags || []), ...(b.tags || [])])],
         text: `${a.text}\n\n${b.text}`,
+      });
+      out.push({
+        title: `${b.title} + ${a.title}`,
+        primaryTitle: b.title,
+        parts: [b.title, a.title],
+        pairKey,
+        source: "Textbook adapted",
+        level: cefrIdx(a.level) >= cefrIdx(b.level) ? a.level : b.level,
+        tags: [...new Set([...(a.tags || []), ...(b.tags || [])])],
+        text: `${b.text}\n\n${a.text}`,
       });
     }
   }
   return out;
 }
 
-function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRange = [0, Infinity], count = 3, duration, targetMinutes }) {
+function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRange = [0, Infinity], count = 2, duration, targetMinutes }) {
   if (lang !== "Dutch" || cefrIdx(level) > cefrIdx("A2")) return [];
   const topic = topics[0] || null;
   const [minWords, maxWords] = wordRange;
@@ -53,6 +67,8 @@ function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRan
   const candidates = combinedCandidates(base);
   const accepted = [];
   const seen = new Set();
+  const seenPrimary = new Set();
+  const seenPairs = new Set();
 
   for (const raw of candidates) {
     if (accepted.length >= count) break;
@@ -62,9 +78,15 @@ function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRan
     const id = materialId(text);
     const titleKey = String(raw.title || "").toLowerCase();
     if (seen.has(id) || avoidSet.has(id) || avoidSet.has(titleKey)) continue;
+    const primaryKey = String(raw.primaryTitle || raw.title || "").toLowerCase();
+    if (seenPrimary.has(primaryKey)) continue;
+    const pairKey = String(raw.pairKey || raw.title || "").toLowerCase();
+    if (seenPairs.has(pairKey)) continue;
     const fit = validateMaterialFit(text, level);
     if (!fit.ok) continue;
     seen.add(id);
+    seenPrimary.add(primaryKey);
+    seenPairs.add(pairKey);
     accepted.push({
       id,
       title: raw.title,

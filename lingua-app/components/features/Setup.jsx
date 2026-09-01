@@ -15,6 +15,7 @@ import { cleanText } from "../../lib/text";
 import { aiAnalyze, sampleMaterials } from "../../services/api";
 
 const TOPIC_KEYS=["daily life","news","culture","travel","work & study","food","technology","society"];
+const MATERIAL_COUNT=2;
 
 function SourceIdeas({tips,hint}){
   const {t}=useUI();
@@ -81,6 +82,9 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     if(m?.resultSource==="ai") return t.materialSourceAI||"AI generated";
     return t.materialSourceSample||"Sample text";
   }
+  function choiceLabel(i){
+    return i===0 ? (t.materialChoiceEasy||"Easier") : (t.materialChoiceRicher||"Richer");
+  }
   function rememberMaterials(list){
     const seen=list.flatMap(m=>[m?.title,materialKey(m)]).filter(Boolean);
     recentTitles.current=[...seen,...recentTitles.current].slice(0,18);
@@ -92,11 +96,11 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     setMaterialError(false);
     setMaterials([]); setSelectedMaterial(0);
     const spec=durationSpec(selectedDuration);
-    const tiers=["comfortable","balanced","stretch"];
+    const tiers=["comfortable","balanced"];
     const collected=[]; const gotTitles=[]; const gotKeys=[];
     const addMaterials=(items,source)=>{
       for(const raw of items||[]){
-        if(collected.length>=3) break;
+        if(collected.length>=MATERIAL_COUNT) break;
         if(!raw||!safeDutchMaterial(raw)) continue;
         const text=cleanText(raw.text||"");
         const key=raw.id||cefrMaterialId(text);
@@ -120,23 +124,23 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     };
     const avoid=[...recentTitles.current].slice(0,12);
     const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:3},{timeoutMs:25000});
+    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:MATERIAL_COUNT},{timeoutMs:22000});
     addMaterials(d&&Array.isArray(d.materials)?d.materials:[],"ai");
     if(collected.length){
       setMaterials([...collected]);
       setSelectedMaterial(0);
     }
-    if(collected.length<3){
+    if(collected.length<MATERIAL_COUNT){
       const retryAvoid=[...avoid,...gotTitles].slice(0,12);
       const retryNonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-      const retry=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid:retryAvoid,nonce:retryNonce,count:3-collected.length},{timeoutMs:15000});
+      const retry=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid:retryAvoid,nonce:retryNonce,count:MATERIAL_COUNT-collected.length},{timeoutMs:12000});
       addMaterials(retry&&Array.isArray(retry.materials)?retry.materials:[],"ai");
       if(collected.length) setMaterials([...collected]);
     }
-    if(collected.length<3){
+    if(collected.length<MATERIAL_COUNT){
       const samples=sampleMaterials(lang,level,goal,selectedDuration,topics,[...avoid,...gotTitles]).filter(safeDutchMaterial);
       addMaterials(samples.map(m=>({...m,resultSource:"sample"})),"sample");
-      if(collected.length<3) addMaterials(samples.map(m=>({...m,resultSource:"sample"})),"sample-fill");
+      if(collected.length<MATERIAL_COUNT) addMaterials(samples.map(m=>({...m,resultSource:"sample"})),"sample-fill");
       if(collected.length){
         setMaterials([...collected]);
         setSelectedMaterial(0);
@@ -214,7 +218,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
         <button className="btn btn-primary btn-sm" disabled={!materials.length} onClick={startGenerated}>{t.useThisText} →</button>
       </div>
       <div className="generated-grid">
-        {[0,1,2].map(i=>{ const m=materials[i];
+        {Array.from({length:MATERIAL_COUNT},(_,i)=>i).map(i=>{ const m=materials[i];
           if(!m) return (<div key={i} className="generated-card gen-skel" aria-hidden="true">
             <span className="row" style={{gap:6}}><span className="sk sk-badge"/><span className="sk sk-badge2"/></span>
             <span className="sk sk-title"/>
@@ -222,7 +226,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
             <span className="sk sk-line"/><span className="sk sk-line"/><span className="sk sk-line short"/>
           </div>);
           const stats=materialStats(m.text,level,m.duration||selectedDuration); return (<button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
-          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{sourceLabel(m)}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
+          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{choiceLabel(i)}</span><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{sourceLabel(m)}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
           <span>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
