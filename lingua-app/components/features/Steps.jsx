@@ -488,12 +488,22 @@ function AIChat({lesson,onNext,onDone}){
   const [speaking,setSpeaking]=useState(false);
   const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null); const [listening,setListening]=useState(false);
   const mockRef=useRef(false); const recRef=useRef(null); const wantRef=useRef(false); const silenceRef=useRef(null);
+  const mountedRef=useRef(false); const abortRef=useRef(null);
   const MAX_TURNS=5;
 
-  function sayAI(line){ setSpeaking(true); const u=speak(line,lang); if(u){ u.onend=()=>setSpeaking(false); } else setSpeaking(false); }
+  function sayAI(line){
+    if(!mountedRef.current) return;
+    setSpeaking(true);
+    const u=speak(line,lang);
+    if(u){ u.onend=()=>{ if(mountedRef.current) setSpeaking(false); }; }
+    else setSpeaking(false);
+  }
 
   async function aiReply(history,onChunk){
+    const controller=new AbortController();
+    abortRef.current=controller;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+        signal:controller.signal,
         body:JSON.stringify({mode:"chat",stream:true,lang,level,vocab:vwords,topic,grammar,sample,history})});
       if(!r.ok) throw new Error("no api");
       const ct=r.headers.get("content-type")||"";
@@ -501,24 +511,28 @@ function AIChat({lesson,onNext,onDone}){
         const reader=r.body.getReader(); const decoder=new TextDecoder(); let text="";
         while(true){
           const {value,done}=await reader.read();
+          if(controller.signal.aborted) return null;
           if(done) break;
           text+=decoder.decode(value,{stream:true});
-          onChunk&&onChunk(text);
+          if(!controller.signal.aborted) onChunk&&onChunk(text);
         }
         text+=decoder.decode();
-        if(text) onChunk&&onChunk(text);
+        if(text&&!controller.signal.aborted) onChunk&&onChunk(text);
         return text.trim()||null;
       }
       const d=await r.json(); return d.reply||null;
     }catch(e){ return null; }
+    finally{ if(abortRef.current===controller) abortRef.current=null; }
   }
   useEffect(()=>{ (async()=>{
+    mountedRef.current=true;
     setBusy(true);
-    const reply=await aiReply([],partial=>{ mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
+    const reply=await aiReply([],partial=>{ if(!mountedRef.current) return; mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
+    if(!mountedRef.current) return;
     if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); sayAI(reply); }
     else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
     setBusy(false);
-  })(); return ()=>{stopSpeak(); stopMic();}; },[]);
+  })(); return ()=>{ mountedRef.current=false; if(abortRef.current) abortRef.current.abort(); stopSpeak(); stopMic(); }; },[]);
 
   const full=draft.trim().split(/\s+/).filter(Boolean).length>=3;
   function toHistory(list){ return list.map(m=>({role:m.who==="ai"?"assistant":"user",content:m.t})); }
@@ -538,7 +552,7 @@ function AIChat({lesson,onNext,onDone}){
     if(mockRef.current) return;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
-      if(r.ok) setEvalz(await r.json()); }catch(e){} }
+      if(r.ok){ const d=await r.json(); if(mountedRef.current) setEvalz(d); } }catch(e){} }
 
   async function send(){ if(!full||busy) return; stopMic();
     const withMe=[...msgs,{who:"me",t:draft.trim()}]; const nx=turns+1;
@@ -547,7 +561,8 @@ function AIChat({lesson,onNext,onDone}){
     if(mockRef.current){ const line=fallback[nx]||fallback[fallback.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); sayAI(line); return; }
     setBusy(true);
     setMsgs([...withMe,{who:"ai",t:""}]);
-    const reply=await aiReply(toHistory(withMe),partial=>setMsgs([...withMe,{who:"ai",t:partial}]));
+    const reply=await aiReply(toHistory(withMe),partial=>{ if(mountedRef.current) setMsgs([...withMe,{who:"ai",t:partial}]); });
+    if(!mountedRef.current) return;
     const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) sayAI(line);
     setBusy(false);
   }
@@ -599,6 +614,7 @@ function Done({lesson,diag,onNew,onReview}){
   const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
   const [feedbackStep,setFeedbackStep]=useState("most");
   const [feedbackOpen,setFeedbackOpen]=useState(true);
+  const [devFeedback,setDevFeedback]=useState(()=>DB.get("developmentFeedbackDraft",""));
   const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
   function captureSurvey(mostV,leastV){
     try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:mostV||null,least_helpful:leastV||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
@@ -606,41 +622,60 @@ function Done({lesson,diag,onNew,onReview}){
   function chooseMost(m){ setMost(m); setFeedbackStep("least"); }
   function chooseLeast(m){ if(m!==most) setLeast(m); }
   function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); setFeedbackOpen(false); }
+  useEffect(()=>DB.set("developmentFeedbackDraft",devFeedback),[devFeedback]);
   const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
   const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
-  return (<div className="done-wrap">
-    <div className="done-emoji">🎉</div>
-    <h1 className="done-h1">{t.done.title(name)}</h1>
-    <p className="done-sub">{t.done.sub(STEPS.length)}</p>
-    <div className="done-card donation-card">
-      <div className="done-card-title">{t.donation.title}</div>
-      <p className="done-card-note">{t.donation.body}</p>
-      <button className="btn btn-outline" disabled>{t.donation.button}</button>
-      <div className="tiny muted">{t.donation.soon}</div>
+  const isLeastStep=feedbackStep==="least";
+  const feedbackNumber=isLeastStep?2:1;
+  return (<>
+    <div className="done-wrap">
+      <div className="done-emoji">🎉</div>
+      <h1 className="done-h1">{t.done.title(name)}</h1>
+      <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+      <div className="done-card donation-card">
+        <div className="done-card-title">{t.donation.title}</div>
+        <p className="done-card-note">{t.donation.body}</p>
+        <button className="btn btn-outline" disabled>{t.donation.button}</button>
+        <div className="tiny muted">{t.donation.soon}</div>
+        <div className="donation-feedback">
+          <label className="tiny muted" htmlFor="development-feedback">{t.donation.feedbackLabel}</label>
+          <textarea id="development-feedback" value={devFeedback} onChange={e=>setDevFeedback(e.target.value)} placeholder={t.donation.feedbackPlaceholder}/>
+        </div>
+      </div>
+      <div className="done-actions">
+        <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
+        <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
+      </div>
     </div>
     {feedbackOpen && <div className="feedback-pop" role="dialog" aria-label={t.survey.title}>
       <div className="feedback-pop-head">
-        <b>{t.survey.title}</b>
+        <div>
+          <b>{t.survey.title}</b>
+          <div className="tiny muted">{t.survey.progress(feedbackNumber,2)}</div>
+        </div>
         <button className="feedback-close" aria-label={t.survey.close} onClick={()=>setFeedbackOpen(false)}>×</button>
       </div>
-      <div className="tiny muted feedback-question">{feedbackStep==="most"?t.survey.most:t.survey.least}</div>
+      <div className="feedback-step-dots" aria-hidden="true"><span className={!isLeastStep?"on":""}/><span className={isLeastStep?"on":""}/></div>
+      <div className="feedback-question">
+        <span className="feedback-question-icon">{isLeastStep?t.survey.leastIcon:t.survey.mostIcon}</span>
+        <span>{isLeastStep?t.survey.least:t.survey.most}</span>
+      </div>
       <div className="feedback-options">{SURVEY_MODS.map(m=>{
-        const selected=feedbackStep==="most"?most===m:least===m;
-        const disabled=feedbackStep==="least"&&most===m;
-        return <button key={m} className={"badge badge-outline feedback-choice"+(selected?" on":"")} disabled={disabled} onClick={()=>feedbackStep==="most"?chooseMost(m):chooseLeast(m)}>{t.nav.mods[m]}</button>;
+        const selected=isLeastStep?least===m:most===m;
+        const disabled=isLeastStep&&most===m;
+        return <button key={m} className={"badge badge-outline feedback-choice"+(selected?" on":"")} disabled={disabled} onClick={()=>isLeastStep?chooseLeast(m):chooseMost(m)}>{t.nav.mods[m]}</button>;
       })}</div>
       <div className="feedback-actions">
         <button className="btn btn-ghost btn-sm" onClick={()=>setFeedbackOpen(false)}>{t.survey.skip}</button>
-        {feedbackStep==="least" && <button className="btn btn-primary btn-sm" disabled={!most||!least} onClick={submitSurvey}>{t.survey.submit}</button>}
+        <div className="row" style={{gap:8}}>
+          {isLeastStep && <button className="btn btn-outline btn-sm" onClick={()=>setFeedbackStep("most")}>{t.survey.back}</button>}
+          {isLeastStep && <button className="btn btn-primary btn-sm" disabled={!most||!least} onClick={submitSurvey}>{t.survey.submit}</button>}
+        </div>
       </div>
     </div>}
-    <div className="done-actions">
-      <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
-      <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
-    </div>
-  </div>);
+  </>);
 }
 
 export { AIChat, AIWrite, Done, GrammarStep, PracticeAI, QuickScan, RecallStep, Shadowing };
