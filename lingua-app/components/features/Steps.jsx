@@ -597,10 +597,15 @@ function AIChat({lesson,onNext,onDone}){
 function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
   const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
+  const [feedbackStep,setFeedbackStep]=useState("most");
+  const [feedbackOpen,setFeedbackOpen]=useState(true);
   const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
   function captureSurvey(mostV,leastV){
     try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:mostV||null,least_helpful:leastV||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
     posthog.capture("lesson_feedback",{most_helpful:mostV,least_helpful:leastV,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
+  function chooseMost(m){ setMost(m); setFeedbackStep("least"); }
+  function chooseLeast(m){ if(m!==most) setLeast(m); }
+  function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); setFeedbackOpen(false); }
   const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
@@ -609,13 +614,28 @@ function Done({lesson,diag,onNew,onReview}){
     <div className="done-emoji">🎉</div>
     <h1 className="done-h1">{t.done.title(name)}</h1>
     <p className="done-sub">{t.done.sub(STEPS.length)}</p>
-    <div className="done-card survey-soft" style={{textAlign:"left"}}>
-      <div className="done-card-title" style={{marginBottom:10}}>{t.survey.title}</div>
-      <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.most}</div>
-      <div className="row wrap" style={{gap:7,marginBottom:12,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className="badge" onClick={()=>{setMost(m);captureSurvey(m,least);}} style={{cursor:"pointer",fontWeight:most===m?700:400,background:most===m?"hsl(var(--primary)/.35)":undefined,borderColor:most===m?"hsl(var(--primary))":undefined}}>{t.nav.mods[m]}</button>)}</div>
-      <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.least}</div>
-      <div className="row wrap" style={{gap:7,marginBottom:14,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className="badge" onClick={()=>{setLeast(m);captureSurvey(most,m);}} style={{cursor:"pointer",fontWeight:least===m?700:400,background:least===m?"hsl(var(--primary)/.35)":undefined,borderColor:least===m?"hsl(var(--primary))":undefined}}>{t.nav.mods[m]}</button>)}</div>
+    <div className="done-card donation-card">
+      <div className="done-card-title">{t.donation.title}</div>
+      <p className="done-card-note">{t.donation.body}</p>
+      <button className="btn btn-outline" disabled>{t.donation.button}</button>
+      <div className="tiny muted">{t.donation.soon}</div>
     </div>
+    {feedbackOpen && <div className="feedback-pop" role="dialog" aria-label={t.survey.title}>
+      <div className="feedback-pop-head">
+        <b>{t.survey.title}</b>
+        <button className="feedback-close" aria-label={t.survey.close} onClick={()=>setFeedbackOpen(false)}>×</button>
+      </div>
+      <div className="tiny muted feedback-question">{feedbackStep==="most"?t.survey.most:t.survey.least}</div>
+      <div className="feedback-options">{SURVEY_MODS.map(m=>{
+        const selected=feedbackStep==="most"?most===m:least===m;
+        const disabled=feedbackStep==="least"&&most===m;
+        return <button key={m} className={"badge badge-outline feedback-choice"+(selected?" on":"")} disabled={disabled} onClick={()=>feedbackStep==="most"?chooseMost(m):chooseLeast(m)}>{t.nav.mods[m]}</button>;
+      })}</div>
+      <div className="feedback-actions">
+        <button className="btn btn-ghost btn-sm" onClick={()=>setFeedbackOpen(false)}>{t.survey.skip}</button>
+        {feedbackStep==="least" && <button className="btn btn-primary btn-sm" disabled={!most||!least} onClick={submitSurvey}>{t.survey.submit}</button>}
+      </div>
+    </div>}
     <div className="done-actions">
       <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
       <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>

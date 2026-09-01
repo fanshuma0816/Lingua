@@ -226,7 +226,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
             <span className="sk sk-line"/><span className="sk sk-line"/><span className="sk sk-line short"/>
           </div>);
           const stats=materialStats(m.text,level,m.duration||selectedDuration); return (<button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
-          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{choiceLabel(i)}</span><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{sourceLabel(m)}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
+          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{choiceLabel(i)}</span><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-outline">{sourceLabel(m)}</span><span className="badge badge-outline">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
           <span>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
