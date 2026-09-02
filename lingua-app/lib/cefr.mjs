@@ -147,11 +147,14 @@ export function isProperNoun(token) {
 // level it is being judged against.
 export function analyzeDifficulty(text, userLevel) {
   const userIdx = cefrIdx(userLevel);
+  const capIdx = Math.min(CEFR_LEVELS.length - 1, userIdx + 1);
   const tokens = tokenize(text);
   const counts = [0, 0, 0, 0, 0]; // scorable token counts per CEFR index
   let scorable = 0;
   let above = 0;
+  let aboveCap = 0;
   const annMap = new Map(); // lemma -> { surface, lemma, cefr, cefrIdx, spans: [[s,e]] }
+  const aboveCapMap = new Map();
   for (const tk of tokens) {
     if (isSkippable(tk.surface)) continue;
     if (isProperNoun(tk)) continue;           // proper nouns don't count as difficult
@@ -164,6 +167,12 @@ export function analyzeDifficulty(text, userLevel) {
       const key = tk.lower;
       if (!annMap.has(key)) annMap.set(key, { surface: tk.surface, lemma: tk.lower, cefr, cefrIdx: ci, spans: [] });
       annMap.get(key).spans.push([tk.start, tk.end]);
+    }
+    if (ci > capIdx) {
+      aboveCap++;
+      const key = tk.lower;
+      if (!aboveCapMap.has(key)) aboveCapMap.set(key, { surface: tk.surface, lemma: tk.lower, cefr, cefrIdx: ci, spans: [] });
+      aboveCapMap.get(key).spans.push([tk.start, tk.end]);
     }
   }
   const total = Math.max(1, scorable);
@@ -185,49 +194,63 @@ export function analyzeDifficulty(text, userLevel) {
     hardWordRatio <= 0.30 ? "stretch" : "over";
 
   const annotations = [...annMap.values()].sort((a, b) => b.cefrIdx - a.cefrIdx || a.spans[0][0] - b.spans[0][0]);
+  const aboveCapAnnotations = [...aboveCapMap.values()].sort((a, b) => b.cefrIdx - a.cefrIdx || a.spans[0][0] - b.spans[0][0]);
 
   return {
     targetUserLevel: idxToCefr(userIdx),
+    capLevel: idxToCefr(capIdx),
     validatedTextLevel: idxToCefr(validatedIdx),
     validatedTextLevelIdx: validatedIdx,
     hardWordRatio: Math.round(hardWordRatio * 1000) / 1000,
     difficultyTier,
     scorableTokens: scorable,
     aboveTokens: above,
+    aboveCapTokens: aboveCap,
+    aboveCapTypes: aboveCapAnnotations.length,
+    aboveCapAnnotations,
     annotations,
   };
 }
 
-// Enforce the level constraints. A text is acceptable for a learner when it does
-// not exceed userLevel+1 and no more than 30% of scorable tokens are above the
-// learner's level.
-export function validateForLevel(text, userLevel, { maxHardRatio = 0.30 } = {}) {
+function toleranceForLevel(userLevel) {
+  const userIdx = cefrIdx(userLevel);
+  if (userIdx <= 0) return { maxAboveCapTypes: 2, maxAboveCapTokens: 2 };
+  if (userIdx === 1) return { maxAboveCapTypes: 3, maxAboveCapTokens: 3 };
+  if (userIdx === 2) return { maxAboveCapTypes: 4, maxAboveCapTokens: 4 };
+  return { maxAboveCapTypes: 0, maxAboveCapTokens: 0 };
+}
+
+function validateBounds(text, userLevel, { maxHardRatio = 0.30, minLevel = false, maxAboveCapTypes, maxAboveCapTokens } = {}) {
   const userIdx = cefrIdx(userLevel);
   const capIdx = Math.min(CEFR_LEVELS.length - 1, userIdx + 1);
+  const tol = toleranceForLevel(userLevel);
+  const typeLimit = maxAboveCapTypes ?? tol.maxAboveCapTypes;
+  const tokenLimit = maxAboveCapTokens ?? tol.maxAboveCapTokens;
   const analysis = analyzeDifficulty(text, userLevel);
-  const levelOk = analysis.validatedTextLevelIdx <= capIdx;
+  const minOk = !minLevel || analysis.validatedTextLevelIdx >= userIdx;
+  const levelOk = analysis.validatedTextLevelIdx <= capIdx || (analysis.aboveCapTypes <= typeLimit && analysis.aboveCapTokens <= tokenLimit);
+  const aboveCapOk = analysis.aboveCapTypes <= typeLimit && analysis.aboveCapTokens <= tokenLimit;
   const ratioOk = analysis.hardWordRatio <= maxHardRatio;
   const reasons = [];
+  if (!minOk) reasons.push(`level ${analysis.validatedTextLevel} is below learner level ${idxToCefr(userIdx)}`);
   if (!levelOk) reasons.push(`level ${analysis.validatedTextLevel} exceeds cap ${idxToCefr(capIdx)}`);
+  if (!aboveCapOk) reasons.push(`${analysis.aboveCapTypes} word types / ${analysis.aboveCapTokens} tokens above ${idxToCefr(capIdx)} exceeds ${typeLimit}/${tokenLimit}`);
   if (!ratioOk) reasons.push(`hard-word ratio ${(analysis.hardWordRatio * 100).toFixed(0)}% exceeds ${(maxHardRatio * 100).toFixed(0)}%`);
-  return { ok: levelOk && ratioOk, reason: reasons.join("; ") || "ok", analysis };
+  return { ok: minOk && levelOk && aboveCapOk && ratioOk, reason: reasons.join("; ") || "ok", analysis };
+}
+
+// Enforce the level constraints. A text is acceptable for a learner when its main
+// body stays within userLevel+1, while allowing a tiny number of natural higher
+// words so short texts are not rejected for one or two realistic terms.
+export function validateForLevel(text, userLevel, options = {}) {
+  return validateBounds(text, userLevel, options);
 }
 
 // Strict fit for generated recommendations: material must be at the learner's
 // level or one level above. C1 has no C2 support in this app yet, so C1 learners
 // only receive C1 materials.
 export function validateMaterialFit(text, userLevel, { maxHardRatio = 0.30 } = {}) {
-  const userIdx = cefrIdx(userLevel);
-  const capIdx = Math.min(CEFR_LEVELS.length - 1, userIdx + 1);
-  const analysis = analyzeDifficulty(text, userLevel);
-  const minOk = analysis.validatedTextLevelIdx >= userIdx;
-  const maxOk = analysis.validatedTextLevelIdx <= capIdx;
-  const ratioOk = analysis.hardWordRatio <= maxHardRatio;
-  const reasons = [];
-  if (!minOk) reasons.push(`level ${analysis.validatedTextLevel} is below learner level ${idxToCefr(userIdx)}`);
-  if (!maxOk) reasons.push(`level ${analysis.validatedTextLevel} exceeds cap ${idxToCefr(capIdx)}`);
-  if (!ratioOk) reasons.push(`hard-word ratio ${(analysis.hardWordRatio * 100).toFixed(0)}% exceeds ${(maxHardRatio * 100).toFixed(0)}%`);
-  return { ok: minOk && maxOk && ratioOk, reason: reasons.join("; ") || "ok", analysis };
+  return validateBounds(text, userLevel, { maxHardRatio, minLevel: true });
 }
 
 // Which of the three graded options a hard-word ratio corresponds to.
