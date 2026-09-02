@@ -214,6 +214,11 @@
   .gbar>span{position:absolute;left:0;top:0;bottom:0;border-radius:8px;transition:width .8s ease}
   .gbar .before{background:hsl(240 5% 72%)} .gbar .after{background:hsl(var(--success))}
   .celebrate{text-align:center;padding:14px 0 4px}
+  .feedback-submit-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+  .feedback-submit-row>span{line-height:1.4;text-align:left}
+  .feedback-status{margin-top:8px;font-weight:600}
+  .feedback-status.ok{color:hsl(var(--success))}
+  .feedback-status.error{color:hsl(0 72% 45%)}
   @media(max-width:640px){.grid3,.grid4{grid-template-columns:1fr 1fr}.grid2,.entry-grid,.generated-grid,.idea-panel{grid-template-columns:1fr}.source-links{justify-content:flex-start}.start-screen{margin-top:28px}.start-head{text-align:left}.start-head h1{font-size:26px}.entry-card{min-height:150px}.generated-card{min-height:150px}}
 
 @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.6; transform:scale(1.09); } }

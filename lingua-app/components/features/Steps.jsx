@@ -615,6 +615,7 @@ function Done({lesson,diag,onNew,onReview}){
   const [feedbackStep,setFeedbackStep]=useState("most");
   const [feedbackOpen,setFeedbackOpen]=useState(true);
   const [devFeedback,setDevFeedback]=useState(()=>DB.get("developmentFeedbackDraft",""));
+  const [devFeedbackStatus,setDevFeedbackStatus]=useState("idle");
   const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
   function captureSurvey(mostV,leastV){
     try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:mostV||null,least_helpful:leastV||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
@@ -623,12 +624,43 @@ function Done({lesson,diag,onNew,onReview}){
   function chooseLeast(m){ if(m!==most) setLeast(m); }
   function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); setFeedbackOpen(false); }
   useEffect(()=>DB.set("developmentFeedbackDraft",devFeedback),[devFeedback]);
+  async function submitDevelopmentFeedback(){
+    const text=devFeedback.trim();
+    if(!text||devFeedbackStatus==="sending") return;
+    setDevFeedbackStatus("sending");
+    try{
+      const r=await fetch("/api/feedback",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          text,
+          language:lesson?.lang||null,
+          level:(lesson?.level||"").slice(0,2)||null,
+          lessonId:lesson?.id||null,
+          pagePath:typeof window!=="undefined"?window.location.pathname:null,
+        })});
+      if(!r.ok) throw new Error("feedback failed");
+      const d=await r.json();
+      try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","development_feedback_submitted",{
+        feedback_length:d?.feedback_length||text.length,
+        feedback_redacted:String(!!d?.feedback_redacted),
+        lesson_language:lesson?.lang||null,
+        lesson_level:(lesson?.level||"").slice(0,2)||null,
+      }); }catch(e){}
+      posthog.capture("development_feedback_submitted",{feedback_length:d?.feedback_length||text.length,feedback_redacted:!!d?.feedback_redacted,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
+      setDevFeedback("");
+      DB.set("developmentFeedbackDraft","");
+      setDevFeedbackStatus("sent");
+    }catch(e){
+      setDevFeedbackStatus("error");
+    }
+  }
   const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
   const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
   const isLeastStep=feedbackStep==="least";
   const feedbackNumber=isLeastStep?2:1;
+  const feedbackText=devFeedback.trim();
+  const feedbackSending=devFeedbackStatus==="sending";
   return (<>
     <div className="done-wrap">
       <div className="done-emoji">🎉</div>
@@ -641,7 +673,13 @@ function Done({lesson,diag,onNew,onReview}){
         <div className="tiny muted">{t.donation.soon}</div>
         <div className="donation-feedback">
           <label className="tiny muted" htmlFor="development-feedback">{t.donation.feedbackLabel}</label>
-          <textarea id="development-feedback" value={devFeedback} onChange={e=>setDevFeedback(e.target.value)} placeholder={t.donation.feedbackPlaceholder}/>
+          <textarea id="development-feedback" value={devFeedback} onChange={e=>{setDevFeedback(e.target.value); if(devFeedbackStatus!=="sending") setDevFeedbackStatus("idle");}} placeholder={t.donation.feedbackPlaceholder}/>
+          <div className="feedback-submit-row">
+            <span className="tiny muted">{t.donation.feedbackPrivacy}</span>
+            <button className="btn btn-primary btn-sm" disabled={!feedbackText||feedbackSending} onClick={submitDevelopmentFeedback}>{feedbackSending?t.donation.feedbackSending:t.donation.feedbackSend}</button>
+          </div>
+          {devFeedbackStatus==="sent" && <div className="tiny feedback-status ok">{t.donation.feedbackSent}</div>}
+          {devFeedbackStatus==="error" && <div className="tiny feedback-status error">{t.donation.feedbackError}</div>}
         </div>
       </div>
       <div className="done-actions">
