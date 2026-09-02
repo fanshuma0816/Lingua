@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
-import { analyzeDifficulty } from "../../lib/cefr.mjs";
-import { FullPlayer } from "./Player";
-import { CheckIn, Purpose, Say, Svg, Teacher } from "../ui/elements";
-import { LANG_CODE, LEVELS, PARTNER, POS, STEPS, levelIdx } from "../../config/constants";
+import { ArticleAudio } from "./Player";
+import { CheckIn, Purpose, Say, StepHead, Svg, Teacher } from "../ui/elements";
+import { LANG_CODE, PARTNER, POS, STEPS, SUPPORT_CHECKOUT_URL } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
@@ -15,105 +14,47 @@ import { normalizePoint, progressPct, scrollToTop } from "../../lib/format";
 import { fallbackGrammarItems, practiceQuestion } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { STOP, grammarExamples, meaningParts, words } from "../../lib/text";
+import { getLineTr, setLineTr } from "../../lib/trcache";
 import { spokenTextForLine, voiceRoleForLine } from "../../lib/voices";
 import { cachedAiAnalyze, chatFallback } from "../../services/api";
 
-function ReadingCheck({lesson,text,diag,setDiag}){
+// Quick scan — the learner taps words they don't know straight in the text.
+// All words look the same (no difficulty hints, no CEFR badges); the marked
+// words are remembered and drive the Vocabulary & Grammar and Recall steps.
+function QuickScan({lesson,text,onDone,onSkip,onBack}){
   const {t}=useUI();
-  const {level}=lesson;
   const src=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
-  // Candidate hard words come straight from the stored analysis (words above the
-  // learner's level). Fall back to a local, deterministic analysis if absent.
-  const annotations=useMemo(()=>{
-    const stored=lesson.material&&Array.isArray(lesson.material.vocabularyAnnotations)?lesson.material.vocabularyAnnotations:null;
-    const list=(stored&&stored.length)?stored:analyzeDifficulty(src,level).annotations;
-    return list.slice(0,20);
-  },[lesson.material,src,level]);
-  const totalTokens=Math.max(1,words(src).length);
-  const matLevel=(lesson.material&&lesson.material.validatedTextLevel)||LEVELS[levelIdx(level)].slice(0,2);
-  const [known,setKnown]=useState(()=>new Set());
-  const unknownWords=annotations.filter(g=>!known.has((g.lemma||g.surface||"").toLowerCase())).map(g=>g.surface||g.lemma);
-  const coverage=Math.max(40,Math.min(99,Math.round((1-unknownWords.length/totalTokens)*100)));
-  useEffect(()=>{ setDiag(d=>({...d,coverage,total:totalTokens,unknown:unknownWords}));
-    DB.set("unknownWords",unknownWords);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[coverage,annotations.length,known.size]);
-  function toggle(w){ const lc=w.toLowerCase(); const markedKnown=!known.has(lc); posthog.capture("reading_diagnosis_updated",{language:lesson.lang,level:level.slice(0,2),word_count:annotations.length,marked_known:markedKnown}); setKnown(prev=>{ const n=new Set(prev); n.has(lc)?n.delete(lc):n.add(lc); return n; }); }
+  const parts=useMemo(()=>src.split(/([\p{L}][\p{L}'’-]*)/u),[src]);
+  const isWord=(s)=>/^[\p{L}][\p{L}'’-]*$/u.test(s);
+  const [marked,setMarked]=useState(()=>new Set((DB.get("unknownWords",[])||[]).map(w=>String(w).toLowerCase())));
+  function toggle(w){ const k=w.toLowerCase(); setMarked(prev=>{ const n=new Set(prev); n.has(k)?n.delete(k):n.add(k); return n; }); }
+  const count=marked.size;
   return (<div>
-    <div className="eyebrow">{t.diagnosis.readEyebrow}</div><h2>{t.diagnosis.readTitle}</h2>
-    <Teacher>{t.diagnosis.readTeacher}</Teacher>
+    <div className="step-head"><div className="step-head-main"><div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2></div>
+      <button className="btn btn-outline btn-sm step-skip focusable" onClick={onSkip}>{t.scan.skip}</button></div>
+    <Teacher>{t.scan.teacher}</Teacher>
     <div className="card card-p" style={{marginBottom:14}}>
-      <h3 className="lbl">{t.diagnosis.readTextLbl(matLevel)}</h3>
-      <div style={{lineHeight:1.85,fontSize:15,whiteSpace:"pre-wrap",maxHeight:220,overflowY:"auto"}}>{src}</div>
-    </div>
-    <div className="card card-p">
-      <div className="row" style={{justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
-        <h3 className="lbl" style={{margin:0}}>{t.diagnosis.readWordsLbl}</h3>
-        <span className="tiny muted">{t.diagnosis.coverage}: <b>{coverage}%</b></span></div>
-      {annotations.length===0
-        ? <div className="tiny muted">{t.diagnosis.gradingWords}</div>
-        : <div className="row wrap" style={{gap:8}}>{annotations.map((g,i)=>{ const w=g.surface||g.lemma; const on=known.has((g.lemma||w).toLowerCase());
-            return <button key={(g.lemma||w)+i} className={"vchip focusable"+(on?" known":"")} onClick={()=>toggle(g.lemma||w)}>
-              <span className="box">✓</span>{w}<span className="badge badge-outline" style={{padding:"0 5px"}}>{g.cefr}</span></button>; })}</div>}
-      <div className="tiny muted" style={{marginTop:14}}>{t.diagnosis.readNote}</div>
-    </div>
-  </div>);
-}
-
-function BlindListen({lesson,text,diag,setDiag}){
-  const {t}=useUI();
-  const {lang}=lesson;
-  const tiers=t.diagnosis.tiers;
-  return (<div>
-    <div className="eyebrow">{t.diagnosis.listenEyebrow}</div><h2>{t.diagnosis.listenTitle}</h2>
-    <Teacher>{t.diagnosis.listenTeacher}</Teacher>
-    <Purpose>{t.diagnosis.listenPurpose}</Purpose>
-    <FullPlayer text={text} lang={lang} label={t.listen.player} sub={t.listen.sub}/>
-    <div className="card card-p" style={{marginTop:18}}>
-      <div style={{fontWeight:700,marginBottom:3}}>{t.diagnosis.catch}</div>
-      <div className="tiny muted" style={{marginBottom:13}}>{t.diagnosis.catchHint}</div>
-      <div className="tier-grid">
-        {tiers.map((tr,i)=>(<button key={i} className={"tier focusable"+(diag.tier===i?" on":"")} data-fill={i+1} onClick={()=>{posthog.capture("listening_diagnosis_selected",{language:lang,tier_number:i+1});setDiag(d=>({...d,tier:i}));}}>
-          <span className="tpct">{tr.pct}</span>
-          <div className="bars"><i/><i/><i/><i/></div>
-          <div className="tlabel">{tr.label}</div><div className="tdesc">{tr.desc}</div></button>))}
+      <div style={{whiteSpace:"pre-wrap",lineHeight:2.05,fontSize:16,maxHeight:360,overflowY:"auto"}}>
+        {parts.map((p,i)=> isWord(p)
+          ? <span key={i} className="scanw" onClick={()=>toggle(p)}
+              style={{cursor:"pointer",borderRadius:5,padding:"1px 2px",
+                background:marked.has(p.toLowerCase())?"hsl(var(--primary)/.35)":"transparent",
+                boxShadow:marked.has(p.toLowerCase())?"inset 0 -2px 0 hsl(var(--primary))":"none"}}>{p}</span>
+          : <span key={i}>{p}</span>)}
       </div>
+      <div className="tiny muted" style={{marginTop:12}}>{t.scan.hint}</div>
+    </div>
+    <div className="row" style={{justifyContent:"space-between",alignItems:"center"}}>
+      <div className="row" style={{gap:12}}>
+        {onBack && <button className="btn btn-ghost btn-sm focusable" onClick={onBack}>{t.scan.reselect}</button>}
+        <span className="tiny muted">{count?t.scan.marked(count):t.scan.none}</span>
+      </div>
+      <button className="btn btn-primary focusable" onClick={()=>onDone([...marked])}>{t.scan.done}</button>
     </div>
   </div>);
 }
 
-function diagnosisCase(coverage,tier){
-  if(coverage!=null&&coverage<75) return "overload";
-  if(tier!=null&&tier<=0) return "acoustic";
-  if(coverage!=null&&coverage>=95&&tier!=null&&tier>=3) return "comfort";
-  return "golden";
-}
-
-function DiagnosisMatrix({lesson,diag}){
-  const {t}=useUI();
-  const tiers=t.diagnosis.tiers;
-  const cov=diag.coverage; const tier=diag.tier;
-  const key=diagnosisCase(cov,tier);
-  const c=t.diagnosis.cases[key];
-  const cls=key==="overload"?"warn":(key==="acoustic"||key==="comfort")?"info":"";
-  const listenLabel=tier!=null?tiers[tier].label:"—";
-  return (<div>
-    <div className="eyebrow">{t.diagnosis.diagEyebrow}</div><h2>{t.diagnosis.diagTitle}</h2>
-    <div className="row wrap" style={{gap:12,margin:"6px 0 16px"}}>
-      <div className="mini-metric"><div className="k">{t.diagnosis.reading}</div><div className="v">{cov!=null?cov+"%":"—"}</div><div className="tiny muted" style={{marginTop:2}}>{t.diagnosis.ofWords}</div></div>
-      <div className="mini-metric"><div className="k">{t.diagnosis.listening}</div><div className="v">{listenLabel}</div><div className="tiny muted" style={{marginTop:2}}>{tier!=null?t.diagnosis.byEar(tiers[tier].pct):t.diagnosis.tapFirst}</div></div>
-    </div>
-    <div className={"diag-card "+cls}>
-      <div className="row" style={{gap:11}}><span style={{fontSize:26}}>{c.emoji}</span>
-        <span><div className="tiny muted" style={{fontWeight:700,textTransform:"uppercase",letterSpacing:".05em"}}>{c.kicker}</div>
-        <div className="diag-name">{c.name}</div></span></div>
-      <div style={{fontSize:14,lineHeight:1.55}}>{c.body}</div>
-      <div style={{background:"hsl(var(--background)/.6)",borderRadius:8,padding:"11px 13px",fontSize:14}}>{c.tip}</div>
-    </div>
-  </div>);
-}
-
-function GrammarStep({lesson,onComplete,onContinue}){
+function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   const {t,uiLang}=useUI();
   const {lang,sents,vocab,vlist,level,recommended}=lesson;
   const N=sents.length;
@@ -128,26 +69,35 @@ function GrammarStep({lesson,onComplete,onContinue}){
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
   useEffect(()=>{ setTrs({}); setGrammar({}); },[uiLang]);
   const vmap=Object.fromEntries((vocab||[]).map(v=>[v.word.toLowerCase(),v]));
-  // Salient words to unpack: vocab words first, then longer words.
+  // The learner's own marked words (from Quick scan) drive this step. If they
+  // skipped Quick scan, fall back to salient words from their level and the text.
+  const userWords=useMemo(()=>new Set(((lesson.userWords&&lesson.userWords.length?lesson.userWords:DB.get("unknownWords",[]))||[]).map(w=>String(w).toLowerCase())),[lesson.userWords]);
   function seenWordsBefore(index){ return new Set(sents.slice(0,index).flatMap(x=>words(x)).map(w=>w.toLowerCase())); }
-  function keyWordsIn(s,index=gi){ const seen=seenWordsBefore(index);
+  function keyWordsIn(s,index=gi){
+    if(userWords.size){ const seen=new Set(),out=[];
+      words(s).forEach(w=>{ const k=w.toLowerCase(); if(userWords.has(k)&&!seen.has(k)){seen.add(k); out.push(w);} });
+      return out.slice(0,8);
+    }
+    const seen=seenWordsBefore(index);
     const ws=[...new Set(words(s))].filter(w=>w.length>3&&!STOP.has(w.toLowerCase())&&!seen.has(w.toLowerCase()));
     ws.sort((a,b)=>{
       const av=vmap[a.toLowerCase()]?20:0, bv=vmap[b.toLowerCase()]?20:0;
       return (bv+b.length)-(av+a.length);
     });
-    return ws.slice(0,6); }
-  // Ask the AI to translate the current sentence when this step needs it.
+    return ws.slice(0,6);
+  }
+  // Translate the current sentence — reuse the cached translation from Understanding
+  // (Learn 1) or a previous visit before ever calling the API.
   useEffect(()=>{ let cancel=false;
     const sen=sents[gi]||"";
-    const existing=uiLang==="en" ? (lesson.watch||[]).find(x=>x.s===sen)?.tr : null;
-    if(existing){ setTrs(prev=>prev[gi]?prev:{...prev,[gi]:existing}); return; }
+    const cached=(uiLang==="en" ? (lesson.watch||[]).find(x=>x.s===sen)?.tr : null) || getLineTr(uiLang,sen);
+    if(cached){ setTrs(prev=>prev[gi]?prev:{...prev,[gi]:cached}); return; }
     if(trs[gi] || !sen){ setLoadingTr(false); return; }
     setLoadingTr(true);
     cachedAiAnalyze("translate",{sentences:[sen],lang,level,translationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
       if(cancel) return; setLoadingTr(false);
       const tr=d&&Array.isArray(d.translations)?d.translations[0]:null;
-      if(tr) setTrs(prev=>({...prev,[gi]:tr}));
+      if(tr){ setTrs(prev=>({...prev,[gi]:tr})); setLineTr(uiLang,sen,tr); }
     });
     return ()=>{cancel=true;};
   },[gi,uiLang,trs[gi]]);
@@ -175,7 +125,7 @@ function GrammarStep({lesson,onComplete,onContinue}){
       if(cancel) return; setLoadingGrammar(false);
       const prior=new Set(Object.entries(grammar).filter(([k])=>Number(k)<gi).flatMap(([,items])=>(items||[]).map(g=>normalizePoint(g.point))));
       const raw=d&&Array.isArray(d.items)&&d.items.length?d.items:fallbackGrammarItems(sen,level,uiLang);
-      const items=raw.filter(g=>!prior.has(normalizePoint(g.point))).slice(0,2);
+      const items=raw.filter(g=>!prior.has(normalizePoint(g.point))).slice(0,1);
       setGrammar(prev=>({...prev,[gi]:items}));
     });
     return ()=>{cancel=true;};
@@ -183,6 +133,10 @@ function GrammarStep({lesson,onComplete,onContinue}){
   function usageNote(w){ return loadingKw ? t.lookingUpWord : t.studyUsage; }
   const s=sents[gi]||""; const tr=trs[gi]; const kw=keyWordsIn(s,gi); const grammarItems=grammar[gi]||fallbackGrammarItems(s,level,uiLang);
   const studyWords=(()=>{ const seen=new Set(), out=[];
+    if(userWords.size){
+      sents.slice(0,N).forEach((sen,i)=>keyWordsIn(sen,i).forEach(w=>{ const k=w.toLowerCase(); if(!seen.has(k)&&expl[k]){seen.add(k); out.push(w);} }));
+      return out;
+    }
     const focusWords=(lesson.focus&&Array.isArray(lesson.focus.vocab)?lesson.focus.vocab.map(x=>x.word).filter(Boolean):[]);
     focusWords.forEach(w=>{ const k=String(w).toLowerCase(); if(!seen.has(k)){seen.add(k); out.push(w);} });
     sents.slice(0,N).forEach((sen,i)=>keyWordsIn(sen,i).forEach(w=>{ const k=w.toLowerCase(); if(!seen.has(k)&&expl[k]){seen.add(k); out.push(w);} }));
@@ -199,9 +153,10 @@ function GrammarStep({lesson,onComplete,onContinue}){
   const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
 
   if(view==="summary") return (<div>
-    <div className="eyebrow">{t.stepPhases[2]}</div><h2>{t.gram.summaryTitle}</h2>
+    <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.summaryTitle} onSkip={onSkip} skipLabel={t.skipStep}/>
     <Teacher>{t.gram.summaryTeacher}</Teacher>
     <div className="summary-stack">
+      <ArticleAudio sents={sents} lang={lang}/>
       <h3 className="lbl">{t.gram.allVocab}</h3>
       {studyWords.map((w,j)=>{ const base=vmap[w.toLowerCase()]||vocab.find(v=>v.word.toLowerCase()===w.toLowerCase()); const e=displayWordInfo(w,lang,uiLang,base,expl[w.toLowerCase()]); const parts=meaningParts(e); return (
         <details className="summary-card" key={w}>
@@ -221,7 +176,7 @@ function GrammarStep({lesson,onComplete,onContinue}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example">{ex.sentence}</span><Say text={ex.sentence} lang={lang}/>
+              <span className="grammar-example">{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -233,7 +188,7 @@ function GrammarStep({lesson,onComplete,onContinue}){
   </div>);
 
   return (<div>
-    <div className="eyebrow">{t.stepPhases[2]}</div><h2>{t.gram.title}</h2>
+    <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.title} onSkip={onSkip} skipLabel={t.skipStep}/>
     <Teacher>{t.gram.teacher}</Teacher>
     <Purpose>{t.gram.purpose}</Purpose>
 
@@ -279,7 +234,7 @@ function GrammarStep({lesson,onComplete,onContinue}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example">{ex.sentence}</span><Say text={ex.sentence} lang={lang} rate={1}/>
+              <span className="grammar-example">{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -287,34 +242,33 @@ function GrammarStep({lesson,onComplete,onContinue}){
       </div>):<div className="tiny muted">{t.gram.noWords}</div>}
     </div>
 
-    <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
-      <button className="btn btn-ghost btn-sm" disabled={gi===0} onClick={()=>setGi(g=>g-1)}>← {t.gram.previous}</button>
-      {gi<N-1 ? <button className="btn btn-outline btn-sm" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
-        : <button className="btn btn-primary btn-sm" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
+    <div className="sent-nav">
+      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(gi===0){ onPrev&&onPrev(); } else setGi(g=>g-1); }}>← {gi===0?t.previous:t.gram.previous}</button>
+      {gi<N-1
+        ? <button className="btn btn-primary btn-sm focusable" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
+        : <button className="btn btn-primary btn-sm focusable" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
     </div>
     <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{t.gram.sentence(gi+1,N)}</div>
   </div>);
 }
 
-function TimedPractice({sents,lang,withSubs}){
+// Shadowing — one page, two modes the learner can switch between: read along
+// with the text, or hide the text for a challenge.
+function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
   const {t}=useUI();
   const list=sents;
+  const [withSubs,setWithSubs]=useState(true);
   const [started,setStarted]=useState(false);
   const [idx,setIdx]=useState(0);
   const [done,setDone]=useState(false);
-  const [reveal,setReveal]=useState(withSubs);
+  const [reveal,setReveal]=useState(true);
   const cur=list[idx]||"";
-  const phaseIndex=withSubs?3:4;
   const lastPlayed=useRef(-1);
 
   useEffect(()=>{ setStarted(false); setIdx(0); setDone(false); setReveal(withSubs); lastPlayed.current=-1; stopSpeak(); },[withSubs,list.length]);
   useEffect(()=>()=>stopSpeak(),[]);
 
-  function playLine(rate=1){
-    const role=voiceRoleForLine(cur,idx,list);
-    speak(role?spokenTextForLine(cur):cur,lang,rate,role);
-  }
-  // Auto-play the current line whenever we land on a new sentence.
+  function playLine(rate=1){ const role=voiceRoleForLine(cur,idx,list); speak(role?spokenTextForLine(cur):cur,lang,rate,role); }
   useEffect(()=>{ if(!started||done) return; if(lastPlayed.current===idx) return;
     lastPlayed.current=idx; setReveal(withSubs);
     const role=voiceRoleForLine(cur,idx,list);
@@ -325,27 +279,37 @@ function TimedPractice({sents,lang,withSubs}){
   function goPrev(){ if(idx===0) return; stopSpeak(); setIdx(i=>Math.max(0,i-1)); scrollToTop(); }
   function goNext(){ stopSpeak(); if(idx<list.length-1){ setIdx(i=>i+1); scrollToTop(); } else setDone(true); }
 
-  const head=(<><div className="eyebrow">{t.stepPhases[phaseIndex]}</div><h2>{t.timed.title(withSubs)}</h2></>);
+  const modeSwitch=(<div className="tabs" style={{marginBottom:14}}>
+    <button className={"tab"+(withSubs?" on":"")} onClick={()=>setWithSubs(true)}>{t.timed.modeSubs}</button>
+    <button className={"tab"+(!withSubs?" on":"")} onClick={()=>setWithSubs(false)}>{t.timed.modeNoSubs}</button>
+  </div>);
+  const head=(<StepHead eyebrow={t.nav.mods.shadowing} title={t.timed.title(withSubs)} onSkip={onSkip} skipLabel={t.skipStep}/>);
 
-  if(!started) return (<div>{head}
+  if(!started) return (<div>{head}{modeSwitch}
     <Teacher>{withSubs?t.timed.teacherSubs:t.timed.teacherNoSubs}</Teacher>
     <Purpose>{t.timed.purpose}</Purpose>
     <div className="card card-p" style={{marginBottom:16}}>
       <div style={{fontWeight:500,marginBottom:6}}>{t.timed.how}</div>
       <ul className="clean tiny muted">{t.timed.tips.map((tip,i)=><li key={i}>{tip}</li>)}</ul>
     </div>
-    <button className="btn btn-primary" onClick={begin}>▶ {t.timed.ready}</button>
-    <div className="tiny muted" style={{marginTop:10}}>{t.timed.breath}</div>
+    <div className="tiny muted" style={{marginBottom:10}}>{t.timed.breath}</div>
+    <div className="sent-nav">
+      <button className="btn btn-ghost btn-sm focusable" onClick={()=>onPrev&&onPrev()}>← {t.previous}</button>
+      <button className="btn btn-primary btn-sm focusable" onClick={begin}>▶ {t.timed.ready}</button>
+    </div>
   </div>);
 
-  if(done) return (<div>{head}
+  if(done) return (<div>{head}{modeSwitch}
     <div className="card bigcard"><div style={{fontSize:34}}>✓</div>
-      <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div>
-      <button className="btn btn-outline btn-sm" onClick={begin}>↺ {t.timed.again}</button></div>
+      <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div></div>
     <CheckIn>{t.timed.doneCheck}</CheckIn>
+    <div className="sent-nav">
+      <button className="btn btn-ghost btn-sm focusable" onClick={begin}>↺ {t.timed.again}</button>
+      <button className="btn btn-primary btn-sm focusable" onClick={()=>onContinue&&onContinue()}>{t.continue} →</button>
+    </div>
   </div>);
 
-  return (<div>{head}
+  return (<div>{head}{modeSwitch}
     <div className="card bigcard">
       <div className="row" style={{gap:8}}><span className="badge badge-outline">{idx+1} / {list.length}</span>
         <span className="phaselab" style={{color:"hsl(var(--success))"}}>🗣️ {t.timed.shadow}</span></div>
@@ -353,19 +317,29 @@ function TimedPractice({sents,lang,withSubs}){
       {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
-      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={goPrev}>← {t.back}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(1)}>▶ {t.timed.replay}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(.75)}>▶ {t.timed.slow} 0.75×</button>
-      <button className="btn btn-primary btn-sm" onClick={goNext}>{idx<list.length-1?`${t.timed.next} →`:`${t.timed.finishRound} ✓`}</button>
+    </div>
+    <div className="sent-nav">
+      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(idx===0){ stopSpeak(); setStarted(false); } else goPrev(); }}>← {t.back}</button>
+      <button className="btn btn-primary btn-sm focusable" onClick={goNext}>{idx<list.length-1?`${t.timed.next} →`:`${t.timed.finishRound} ✓`}</button>
     </div>
   </div>);
 }
 
-function RecallStep({lesson,onComplete,onContinue}){
+function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   const {t,uiLang}=useUI();
   const {lang,level,sents,focus}=lesson;
-  const chosen=(focus&&Array.isArray(focus.recallSentences)&&focus.recallSentences.length?focus.recallSentences:sents.filter(s=>s.length<180)).slice(0,10);
-  const list=chosen.length?chosen:sents.slice(0,Math.min(10,sents.length));
+  // Recall focuses on the sentences carrying the most of the learner's own
+  // unknown words — at most three.
+  const userWords=new Set(((lesson.userWords&&lesson.userWords.length?lesson.userWords:DB.get("unknownWords",[]))||[]).map(w=>String(w).toLowerCase()));
+  function unknownCount(s){ let c=0; const seen=new Set(); words(s).forEach(w=>{ const k=w.toLowerCase(); if(userWords.has(k)&&!seen.has(k)){seen.add(k); c++;} }); return c; }
+  const ranked=userWords.size
+    ? sents.map((s,i)=>({s,i,c:unknownCount(s)})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c).map(x=>x.s)
+    : [];
+  const base=ranked.length?ranked
+    :(focus&&Array.isArray(focus.recallSentences)&&focus.recallSentences.length?focus.recallSentences:sents.filter(s=>s.length<180));
+  const list=(base.length?base:sents.slice(0,Math.min(3,sents.length))).slice(0,3);
   const [idx,setIdx]=useState(0);
   const [answers,setAnswers]=useState(()=>DB.get("recallAnswers",{}));
   const [shown,setShown]=useState(()=>DB.get("recallShown",{}));
@@ -398,7 +372,7 @@ function RecallStep({lesson,onComplete,onContinue}){
   function check(){ if(!canCheck) return; setShown(s=>({...s,[idx]:true})); }
   function move(next){ stopMic(); setIdx(Math.max(0,Math.min(list.length-1,next))); }
   return (<div>
-    <div className="eyebrow">{t.stepPhases[5]}</div><h2>{t.recall.title}</h2>
+    <StepHead eyebrow={t.nav.mods.recall} title={t.recall.title} onSkip={onSkip} skipLabel={t.skipStep}/>
     <Teacher>{t.recall.teacher}</Teacher>
     <Purpose>{t.recall.purpose}</Purpose>
     <div className="card card-p">
@@ -420,33 +394,35 @@ function RecallStep({lesson,onComplete,onContinue}){
         <div style={{marginTop:10}}><Say text={cur} lang={lang} rate={1} voiceRole={voiceRoleForLine(cur,idx,list)}/></div>
       </div>}
     </div>
-    <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
-      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>move(idx-1)}>← {t.back}</button>
-      <span className="tiny muted">{doneCount>=list.length?t.recall.done:t.recall.tryFirst}</span>
-      {idx<list.length-1 ? <button className="btn btn-outline btn-sm" onClick={()=>move(idx+1)}>{t.gram.next} →</button> : <button className="btn btn-primary btn-sm" onClick={onContinue}>{t.continue} →</button>}
+    <div className="sent-nav">
+      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(idx===0){ onPrev&&onPrev(); } else move(idx-1); }}>← {idx===0?t.previous:t.back}</button>
+      {idx<list.length-1
+        ? <button className="btn btn-primary btn-sm focusable" onClick={()=>move(idx+1)}>{t.gram.next} →</button>
+        : <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{t.continue} →</button>}
     </div>
+    <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{doneCount>=list.length?t.recall.done:t.recall.tryFirst}</div>
   </div>);
 }
 
-function PracticeAI({lesson,onComplete}){
+function PracticeAI({lesson,onComplete,onSkip}){
   const {t}=useUI();
-  const [tab,setTab]=useState("write");
+  const [tab,setTab]=useState("chat");
   const [wrote,setWrote]=useState(false); const [talked,setTalked]=useState(false);
   useEffect(()=>{ if(wrote&&talked&&onComplete) onComplete(); },[wrote,talked]);
   return (<div>
-    <div className="eyebrow">{t.stepPhases[6]}</div><h2>{t.aiUse.title}</h2>
+    <StepHead eyebrow={t.nav.mods.using} title={t.aiUse.title} onSkip={onSkip} skipLabel={t.skipStep}/>
     <Teacher>{t.aiUse.teacher}</Teacher>
     <Purpose>{t.aiUse.purpose}</Purpose>
     <div className="tabs">
-      <button className={"tab"+(tab==="write"?" on":"")} onClick={()=>setTab("write")}>{t.aiUse.writeTab} {wrote?"✓":""}</button>
       <button className={"tab"+(tab==="chat"?" on":"")} onClick={()=>{stopSpeak();setTab("chat");}}>{t.aiUse.chatTab} {talked?"✓":""}</button>
+      <button className={"tab"+(tab==="write"?" on":"")} onClick={()=>{stopSpeak();setTab("write");}}>{t.aiUse.writeTab} {wrote?"✓":""}</button>
     </div>
-    {tab==="write" ? <AIWrite lesson={lesson} onNext={()=>setTab("chat")} onDone={()=>setWrote(true)}/> : <AIChat lesson={lesson} onDone={()=>setTalked(true)}/>}
+    {tab==="chat" ? <AIChat lesson={lesson} onNext={()=>{stopSpeak();setTab("write");}} onDone={()=>setTalked(true)}/> : <AIWrite lesson={lesson} onDone={()=>setWrote(true)}/>}
     <div className="tiny muted" style={{marginTop:12}}>{t.aiUse.unlock}</div>
   </div>);
 }
 
-function AIWrite({lesson,onNext,onDone}){
+function AIWrite({lesson,onDone}){
   const {t,uiLang}=useUI();
   const {lang,level,vocab,sents,focus}=lesson;
   const focusWords=(focus&&Array.isArray(focus.vocab)?focus.vocab.map(x=>x.word).filter(Boolean):[]);
@@ -492,12 +468,11 @@ function AIWrite({lesson,onNext,onDone}){
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.sentence}.</b> <span className="muted">{t.aiUse.mockSentence}</span></div>
         <div className="tiny muted" style={{marginTop:8}}>{t.aiUse.mockNote}</div>
       </>)}
-      <div style={{marginTop:14}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>
     </div>)}
   </div>);
 }
 
-function AIChat({lesson,onDone}){
+function AIChat({lesson,onNext,onDone}){
   const {t,uiLang}=useUI();
   const {lang,level,vocab,topics,grammarFocus,sents,focus}=lesson;
   const shownLang=langName(t,lang);
@@ -512,14 +487,23 @@ function AIChat({lesson,onDone}){
   const [busy,setBusy]=useState(false); const [turns,setTurns]=useState(0);
   const [speaking,setSpeaking]=useState(false);
   const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null); const [listening,setListening]=useState(false);
-  const mockRef=useRef(false); const recRef=useRef(null);
+  const mockRef=useRef(false); const recRef=useRef(null); const wantRef=useRef(false); const silenceRef=useRef(null);
+  const mountedRef=useRef(false); const abortRef=useRef(null);
   const MAX_TURNS=5;
 
-  // Speak an AI line and reflect the "talking / your turn" state so it feels live.
-  function sayAI(line){ setSpeaking(true); const u=speak(line,lang); if(u){ u.onend=()=>setSpeaking(false); } else setSpeaking(false); }
+  function sayAI(line){
+    if(!mountedRef.current) return;
+    setSpeaking(true);
+    const u=speak(line,lang);
+    if(u){ u.onend=()=>{ if(mountedRef.current) setSpeaking(false); }; }
+    else setSpeaking(false);
+  }
 
   async function aiReply(history,onChunk){
+    const controller=new AbortController();
+    abortRef.current=controller;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+        signal:controller.signal,
         body:JSON.stringify({mode:"chat",stream:true,lang,level,vocab:vwords,topic,grammar,sample,history})});
       if(!r.ok) throw new Error("no api");
       const ct=r.headers.get("content-type")||"";
@@ -527,42 +511,48 @@ function AIChat({lesson,onDone}){
         const reader=r.body.getReader(); const decoder=new TextDecoder(); let text="";
         while(true){
           const {value,done}=await reader.read();
+          if(controller.signal.aborted) return null;
           if(done) break;
           text+=decoder.decode(value,{stream:true});
-          onChunk&&onChunk(text);
+          if(!controller.signal.aborted) onChunk&&onChunk(text);
         }
         text+=decoder.decode();
-        if(text) onChunk&&onChunk(text);
+        if(text&&!controller.signal.aborted) onChunk&&onChunk(text);
         return text.trim()||null;
       }
       const d=await r.json(); return d.reply||null;
     }catch(e){ return null; }
+    finally{ if(abortRef.current===controller) abortRef.current=null; }
   }
   useEffect(()=>{ (async()=>{
+    mountedRef.current=true;
     setBusy(true);
-    const reply=await aiReply([],partial=>{ mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
+    const reply=await aiReply([],partial=>{ if(!mountedRef.current) return; mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
+    if(!mountedRef.current) return;
     if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); sayAI(reply); }
     else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
     setBusy(false);
-  })(); return ()=>{stopSpeak(); stopMic();}; },[]);
+  })(); return ()=>{ mountedRef.current=false; if(abortRef.current) abortRef.current.abort(); stopSpeak(); stopMic(); }; },[]);
 
   const full=draft.trim().split(/\s+/).filter(Boolean).length>=3;
   function toHistory(list){ return list.map(m=>({role:m.who==="ai"?"assistant":"user",content:m.t})); }
 
-  // voice input (speech-to-text) in the target language — Chrome/Edge support this
   const SR = typeof window!=="undefined" && (window.SpeechRecognition||window.webkitSpeechRecognition);
-  function startMic(){ if(!SR) return; stopSpeak();
-    const r=new SR(); r.lang=LANG_CODE[lang]||"en-US"; r.interimResults=false; r.maxAlternatives=1;
-    r.onresult=(e)=>{ const t=e.results[0][0].transcript; setDraft(d=>(d?d+" ":"")+t); };
-    r.onend=()=>setListening(false); r.onerror=()=>setListening(false);
-    recRef.current=r; try{ r.start(); setListening(true); }catch(e){ setListening(false); } }
-  function stopMic(){ if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
+  function clearSilence(){ if(silenceRef.current){ clearTimeout(silenceRef.current); silenceRef.current=null; } }
+  function armSilence(){ clearSilence(); silenceRef.current=setTimeout(()=>{ stopMic(); },8000); }
+  function startMic(){ if(!SR) return; stopSpeak(); wantRef.current=true;
+    const r=new SR(); r.lang=LANG_CODE[lang]||"en-US"; r.continuous=true; r.interimResults=true; r.maxAlternatives=1;
+    r.onresult=(e)=>{ let fin=""; for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) fin+=e.results[i][0].transcript; } if(fin.trim()) setDraft(d=>(d?d+" ":"")+fin.trim()); armSilence(); };
+    r.onend=()=>{ if(wantRef.current){ try{ r.start(); }catch(e){ setListening(false); } } else setListening(false); };
+    r.onerror=(ev)=>{ if(ev&&ev.error==="no-speech") return; wantRef.current=false; clearSilence(); setListening(false); };
+    recRef.current=r; try{ r.start(); setListening(true); armSilence(); }catch(e){ setListening(false); } }
+  function stopMic(){ wantRef.current=false; clearSilence(); if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
   async function finish(list){ posthog.capture("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
     if(mockRef.current) return;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
-      if(r.ok) setEvalz(await r.json()); }catch(e){} }
+      if(r.ok){ const d=await r.json(); if(mountedRef.current) setEvalz(d); } }catch(e){} }
 
   async function send(){ if(!full||busy) return; stopMic();
     const withMe=[...msgs,{who:"me",t:draft.trim()}]; const nx=turns+1;
@@ -571,7 +561,8 @@ function AIChat({lesson,onDone}){
     if(mockRef.current){ const line=fallback[nx]||fallback[fallback.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); sayAI(line); return; }
     setBusy(true);
     setMsgs([...withMe,{who:"ai",t:""}]);
-    const reply=await aiReply(toHistory(withMe),partial=>setMsgs([...withMe,{who:"ai",t:partial}]));
+    const reply=await aiReply(toHistory(withMe),partial=>{ if(mountedRef.current) setMsgs([...withMe,{who:"ai",t:partial}]); });
+    if(!mountedRef.current) return;
     const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) sayAI(line);
     setBusy(false);
   }
@@ -581,7 +572,6 @@ function AIChat({lesson,onDone}){
     <div className="notice" style={{marginBottom:14}}><span>🗣️</span>
       <span>{t.chat.notice(partner.name,shownLang,MAX_TURNS)}</span></div>
 
-    {/* the person you're talking with */}
     <div className="card card-p" style={{textAlign:"center",background:"hsl(var(--secondary))"}}>
       <div style={{fontSize:60,lineHeight:1,filter:speaking?"none":"grayscale(.15)"}}>{partner.face}</div>
       <div style={{fontWeight:700,marginTop:6}}>{partner.name}</div>
@@ -594,7 +584,6 @@ function AIChat({lesson,onDone}){
     </div>
 
     {!done ? (<div style={{marginTop:16}}>
-      {/* voice-first reply */}
       {SR ? (<div style={{textAlign:"center"}}>
         <button className={"btn "+(listening?"btn-primary":"btn-outline")} style={{fontSize:17,padding:"14px 26px",borderRadius:999}}
           onClick={listening?stopMic:startMic}>{listening?"● "+t.chat.listening:"🎤 "+t.chat.speakAnswer}</button>
@@ -605,7 +594,6 @@ function AIChat({lesson,onDone}){
         <span className="tiny muted">{full?t.chat.looksGood+" ✓":t.chat.shortSentence}</span>
         <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>{t.chat.replyTo(partner.name)} →</button></div>
 
-      {/* transcript, tucked below so it feels like a conversation, not a chat log */}
       {msgs.length>1 && <details style={{marginTop:14}}><summary className="tiny muted" style={{cursor:"pointer"}}>{t.chat.showTranscript}</summary>
         <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}</div>))}</div></details>}
     </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
@@ -616,31 +604,78 @@ function AIChat({lesson,onDone}){
           <div style={{marginBottom:6}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{evalz.vocabulary}</span></div>
           <div>✅ <b>{t.chat.fluency}.</b> <span className="muted">{evalz.fluency}</span></div>
         </div>) : (<div className="muted">{t.chat.mockDone(shownLang)}</div>)}
+        {onNext && <div style={{marginTop:14,textAlign:"right"}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>}
       </div>)}
   </div>);
 }
 
 function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
+  const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
+  const [feedbackStep,setFeedbackStep]=useState("most");
+  const [feedbackOpen,setFeedbackOpen]=useState(true);
+  const [devFeedback,setDevFeedback]=useState(()=>DB.get("developmentFeedbackDraft",""));
+  const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
+  function captureSurvey(mostV,leastV){
+    try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:mostV||null,least_helpful:leastV||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
+    posthog.capture("lesson_feedback",{most_helpful:mostV,least_helpful:leastV,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
+  function chooseMost(m){ setMost(m); setFeedbackStep("least"); }
+  function chooseLeast(m){ if(m!==most) setLeast(m); }
+  function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); setFeedbackOpen(false); }
+  useEffect(()=>DB.set("developmentFeedbackDraft",devFeedback),[devFeedback]);
   const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
   const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
-  return (<div className="done-wrap">
-    <div className="done-emoji">🎉</div>
-    <h1 className="done-h1">{t.done.title(name)}</h1>
-    <p className="done-sub">{t.done.sub(STEPS.length)}</p>
-    <div className="done-card">
-      <div className="done-card-emoji">📚✨</div>
-      <div className="done-card-title">{t.celebrate.explored(wordList.length)}</div>
-      <div className="done-chips">{wordList.map(w=><span className="done-chip" key={w}>{w}</span>)}</div>
-      <p className="done-card-note">{t.done.more}</p>
+  const isLeastStep=feedbackStep==="least";
+  const feedbackNumber=isLeastStep?2:1;
+  return (<>
+    <div className="done-wrap">
+      <div className="done-emoji">🎉</div>
+      <h1 className="done-h1">{t.done.title(name)}</h1>
+      <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+      <div className="done-card donation-card">
+        <div className="done-card-title">{t.donation.title}</div>
+        <p className="done-card-note">{t.donation.body}</p>
+        <button className="btn btn-outline" onClick={()=>window.location.assign(SUPPORT_CHECKOUT_URL)}>{t.donation.button}</button>
+        <div className="tiny muted">{t.donation.soon}</div>
+        <div className="donation-feedback">
+          <label className="tiny muted" htmlFor="development-feedback">{t.donation.feedbackLabel}</label>
+          <textarea id="development-feedback" value={devFeedback} onChange={e=>setDevFeedback(e.target.value)} placeholder={t.donation.feedbackPlaceholder}/>
+        </div>
+      </div>
+      <div className="done-actions">
+        <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
+        <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
+      </div>
     </div>
-    <div className="done-actions">
-      <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
-      <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
-    </div>
-  </div>);
+    {feedbackOpen && <div className="feedback-pop" role="dialog" aria-label={t.survey.title}>
+      <div className="feedback-pop-head">
+        <div>
+          <b>{t.survey.title}</b>
+          <div className="tiny muted">{t.survey.progress(feedbackNumber,2)}</div>
+        </div>
+        <button className="feedback-close" aria-label={t.survey.close} onClick={()=>setFeedbackOpen(false)}>×</button>
+      </div>
+      <div className="feedback-step-dots" aria-hidden="true"><span className={!isLeastStep?"on":""}/><span className={isLeastStep?"on":""}/></div>
+      <div className="feedback-question">
+        <span className="feedback-question-icon">{isLeastStep?t.survey.leastIcon:t.survey.mostIcon}</span>
+        <span>{isLeastStep?t.survey.least:t.survey.most}</span>
+      </div>
+      <div className="feedback-options">{SURVEY_MODS.map(m=>{
+        const selected=isLeastStep?least===m:most===m;
+        const disabled=isLeastStep&&most===m;
+        return <button key={m} className={"badge badge-outline feedback-choice"+(selected?" on":"")} disabled={disabled} onClick={()=>isLeastStep?chooseLeast(m):chooseMost(m)}>{t.nav.mods[m]}</button>;
+      })}</div>
+      <div className="feedback-actions">
+        <button className="btn btn-ghost btn-sm" onClick={()=>setFeedbackOpen(false)}>{t.survey.skip}</button>
+        <div className="row" style={{gap:8}}>
+          {isLeastStep && <button className="btn btn-outline btn-sm" onClick={()=>setFeedbackStep("most")}>{t.survey.back}</button>}
+          {isLeastStep && <button className="btn btn-primary btn-sm" disabled={!most||!least} onClick={submitSurvey}>{t.survey.submit}</button>}
+        </div>
+      </div>
+    </div>}
+  </>);
 }
 
-export { AIChat, AIWrite, BlindListen, DiagnosisMatrix, Done, GrammarStep, PracticeAI, ReadingCheck, RecallStep, TimedPractice, diagnosisCase };
+export { AIChat, AIWrite, Done, GrammarStep, PracticeAI, QuickScan, RecallStep, Shadowing };

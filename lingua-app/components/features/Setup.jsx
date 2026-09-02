@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import posthog from "posthog-js";
-import { materialId as cefrMaterialId } from "../../lib/cefr.mjs";
+import { materialId as cefrMaterialId, validateMaterialFit } from "../../lib/cefr.mjs";
 import { Stars, Stat, Teacher } from "../ui/elements";
-import { GOALS, LANGS, LANG_CODE, LEVELS, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
+import { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
 import { safeDutchMaterial } from "../../lib/dutch";
@@ -13,6 +13,9 @@ import { materialStats, sourceIcon } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { cleanText } from "../../lib/text";
 import { aiAnalyze, sampleMaterials } from "../../services/api";
+
+const TOPIC_KEYS=["daily life","news","culture","travel","work & study","food","technology","society"];
+const MATERIAL_COUNT=2;
 
 function SourceIdeas({tips,hint}){
   const {t}=useUI();
@@ -48,43 +51,104 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const savedLang=DB.get("lang","Dutch");
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(DB.get("level",LEVELS[1])); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const [durationIdx,setDurationIdx]=useState(1);
-  const [topicIdxs,setTopicIdxs]=useState([0]);
-  const [materials,setMaterials]=useState([]);
-  const [selectedMaterial,setSelectedMaterial]=useState(0);
+  const [topicIdx,setTopicIdx]=useState(null);
+  const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>!String(m?.duration||"").includes("45-60")));
+  const [selectedMaterial,setSelectedMaterial]=useState(()=>DB.get("genSelected",0));
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
   const fileRef=useRef(null);
-  const recentTitles=useRef([]);   // anti-repeat memory across regenerations
+  const recentTitles=useRef(DB.get("recentMaterials",[])||[]);   // anti-repeat memory across regenerations
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setRaw(String(r.result));r.readAsText(f);}
   const ready=count>40&&!over&&lang;
   const liveStats=count>40?materialStats(cleaned,level):null;
   const shouldSplit=liveStats&&(liveStats.mins>=60||count>1050||liveStats.words>240);
   const durationPlans=t.durationPlans||[];
-  const selectedDuration=durationPlans[durationIdx]?.label||"45-60 min";
-  const topics=topicIdxs.map(i=>t.interestOptions[i]).filter(Boolean);
+  const selectedDuration=durationPlans[durationIdx]?.label||durationPlans[durationPlans.length-1]?.label||"25-35 min";
+  const topics=topicIdx==null?[]:[TOPIC_KEYS[topicIdx]].filter(Boolean);
   useEffect(()=>{ setMode(initialMode); },[initialMode]);
   useEffect(()=>{ scrollToTop(); },[mode]);
+  useEffect(()=>{ DB.set("genMaterials",materials); },[materials]);
+  useEffect(()=>{ DB.set("genSelected",selectedMaterial); },[selectedMaterial]);
+  useEffect(()=>{ if(materials.length&&selectedMaterial>=materials.length) setSelectedMaterial(0); },[materials,selectedMaterial]);
   function setModeRoute(nextMode,path){ setMode(nextMode); onRouteChange?.(path); }
-  function toggleTopic(index){ setTopicIdxs(prev=>prev.includes(index)?prev.filter(x=>x!==index):[...prev,index].slice(0,3)); }
+  function toggleTopic(index){ setTopicIdx(prev=>prev===index?null:index); }
+  function materialKey(m){
+    const text=cleanText(m?.text||"");
+    return m?.id||(!text?"":cefrMaterialId(text));
+  }
+  function sourceLabel(m){
+    if(m?.resultSource==="textbook") return t.materialSourceTextbook||"Textbook text";
+    if(m?.resultSource==="ai-relaxed") return t.materialSourceAIRelaxed||"AI generated · relaxed check";
+    if(m?.resultSource==="ai") return t.materialSourceAI||"AI generated";
+    return t.materialSourceSample||"Sample text";
+  }
+  function choiceLabel(i){
+    return i===0 ? (t.materialChoiceEasy||"Easier") : (t.materialChoiceRicher||"Richer");
+  }
+  function rememberMaterials(list){
+    const seen=list.flatMap(m=>[m?.title,materialKey(m)]).filter(Boolean);
+    recentTitles.current=[...seen,...recentTitles.current].slice(0,18);
+    DB.set("recentMaterials",recentTitles.current);
+  }
   async function generateMaterials(){
     if(!lang) return;
     setGenerating(true);
     setMaterialError(false);
-    setMaterials([]);
+    setMaterials([]); setSelectedMaterial(0);
     const spec=durationSpec(selectedDuration);
-    // Anti-repeat: tell the server which topics/titles we just showed, plus a nonce.
-    const avoid=[...recentTitles.current,...topics].slice(0,12);
+    const tiers=["comfortable","balanced"];
+    const collected=[]; const gotTitles=[]; const gotKeys=[];
+    const addMaterials=(items,source)=>{
+      for(const raw of items||[]){
+        if(collected.length>=MATERIAL_COUNT) break;
+        if(!raw||!safeDutchMaterial(raw)) continue;
+        const text=cleanText(raw.text||"");
+        const key=raw.id||cefrMaterialId(text);
+        if(!text||gotKeys.includes(key)) continue;
+        const fit=raw.validatedTextLevel?null:validateMaterialFit(text,level);
+        if(fit&&!fit.ok) continue;
+        const recentlyUsed=recentTitles.current.includes(key)||(raw.title&&recentTitles.current.includes(raw.title));
+        if(recentlyUsed&&source!=="sample-fill") continue;
+        const i=collected.length;
+        const one={...raw,text,id:key,resultSource:raw.resultSource||"sample",duration:raw.duration||selectedDuration,targetMinutes:raw.targetMinutes||spec.target,
+          targetUserLevel:raw.targetUserLevel||fit?.analysis.targetUserLevel,
+          validatedTextLevel:raw.validatedTextLevel||fit?.analysis.validatedTextLevel,
+          level:raw.level||fit?.analysis.validatedTextLevel,
+          hardWordRatio:raw.hardWordRatio??fit?.analysis.hardWordRatio,
+          vocabularyAnnotations:Array.isArray(raw.vocabularyAnnotations)?raw.vocabularyAnnotations:(fit?.analysis.annotations||[]),
+          difficultyTier:raw.difficultyTier||fit?.analysis.difficultyTier||tiers[i]};
+        if(one.title) gotTitles.push(one.title);
+        gotKeys.push(key);
+        collected.push(one);
+      }
+    };
+    const avoid=[...recentTitles.current].slice(0,12);
     const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce},{timeoutMs:10000});
-    let generated=d&&Array.isArray(d.materials)?d.materials.filter(safeDutchMaterial):[];
-    if(!generated.length) generated=sampleMaterials(lang,level,goal,selectedDuration,topics,avoid).filter(safeDutchMaterial);
-    if(generated.length){
-      generated=generated.map(m=>({...m,duration:m.duration||selectedDuration,targetMinutes:m.targetMinutes||spec.target}));
+    const d=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:MATERIAL_COUNT},{timeoutMs:22000});
+    addMaterials(d&&Array.isArray(d.materials)?d.materials:[],"ai");
+    if(collected.length){
+      setMaterials([...collected]);
+      setSelectedMaterial(0);
     }
-    const items=generated.slice(0,3);
-    posthog.capture("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:items.length});
-    recentTitles.current=[...items.map(m=>m.title).filter(Boolean),...recentTitles.current].slice(0,12);
-    setMaterials(items); setSelectedMaterial(0); setMaterialError(!items.length); setGenerating(false);
+    if(collected.length<MATERIAL_COUNT){
+      const retryAvoid=[...avoid,...gotTitles].slice(0,12);
+      const retryNonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
+      const retry=await aiAnalyze("materials",{lang,level,goal,duration:selectedDuration,topics,avoid:retryAvoid,nonce:retryNonce,count:MATERIAL_COUNT-collected.length},{timeoutMs:12000});
+      addMaterials(retry&&Array.isArray(retry.materials)?retry.materials:[],"ai");
+      if(collected.length) setMaterials([...collected]);
+    }
+    if(collected.length<MATERIAL_COUNT){
+      const samples=sampleMaterials(lang,level,goal,selectedDuration,topics,[...avoid,...gotTitles]).filter(safeDutchMaterial);
+      addMaterials(samples.map(m=>({...m,resultSource:"sample"})),"sample");
+      if(collected.length<MATERIAL_COUNT) addMaterials(samples.map(m=>({...m,resultSource:"sample"})),"sample-fill");
+      if(collected.length){
+        setMaterials([...collected]);
+        setSelectedMaterial(0);
+      }
+    }
+    posthog.capture("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:collected.length});
+    rememberMaterials(collected);
+    setMaterialError(!collected.length); setGenerating(false);
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m) return;
@@ -136,30 +200,37 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
           <span className="duration-icon">{plan.icon}</span>
           <span><b>{plan.label}</b><small>{plan.length} · {plan.vocab}</small></span>
         </button>)}</div></div>
-        <div><label className="fld">{t.interests}</label><div className="topic-pills">{t.interestOptions.map((topic,i)=><button key={topic} className={topicIdxs.includes(i)?"on":""} onClick={()=>toggleTopic(i)}>{topic}</button>)}</div></div>
+        <div><label className="fld">{t.interests}</label><div className="tiny muted" style={{marginBottom:8}}>{t.topicHint}</div><div className="topic-pills">{t.interestOptions.map((topic,i)=><button key={topic} className={topicIdx===i?"on":""} onClick={()=>toggleTopic(i)}>{topic}</button>)}</div></div>
       </div>
       <div className="row" style={{justifyContent:"space-between",marginTop:18}}>
         {!lang && <span className="tiny muted">{t.chooseTarget}</span>}
         <span/>
         <button className="btn btn-primary" disabled={!lang||generating} onClick={generateMaterials}>{generating?t.generatingMaterials:t.generateMaterials}</button>
       </div>
-      {generating && <div className="track" style={{marginTop:14,overflow:"hidden"}}><span className="indet"/></div>}
+      {generating && <><div className="track" style={{marginTop:14,overflow:"hidden"}}><span className="indet"/></div><div className="tiny muted" style={{marginTop:8}}>{t.materialWaitHint}</div></>}
     </div>
     {materialError && !generating && <div className="card card-p" style={{marginTop:22}}>
       <div className="tiny muted" style={{fontWeight:600}}>{t.noSuitableMaterials(level.slice(0,2))}</div>
     </div>}
-    {materials.length>0 && <div className="material-results">
+    {(materials.length>0||generating) && <div className="material-results">
       <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
         <div><h2 style={{margin:0}}>{t.chooseMaterial}</h2><div className="tiny muted">{t.switchAnytime}</div></div>
-        <button className="btn btn-primary btn-sm" onClick={startGenerated}>{t.useThisText} →</button>
+        <button className="btn btn-primary btn-sm" disabled={!materials.length} onClick={startGenerated}>{t.useThisText} →</button>
       </div>
       <div className="generated-grid">
-        {materials.map((m,i)=>{ const stats=materialStats(m.text,level,m.duration||selectedDuration); return <button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
-          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-warm">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
+        {Array.from({length:MATERIAL_COUNT},(_,i)=>i).map(i=>{ const m=materials[i];
+          if(!m) return (<div key={i} className="generated-card gen-skel" aria-hidden="true">
+            <span className="row" style={{gap:6}}><span className="sk sk-badge"/><span className="sk sk-badge2"/></span>
+            <span className="sk sk-title"/>
+            <span className="sk sk-meta"/>
+            <span className="sk sk-line"/><span className="sk sk-line"/><span className="sk sk-line short"/>
+          </div>);
+          const stats=materialStats(m.text,level,m.duration||selectedDuration); return (<button key={i} className={"generated-card"+(selectedMaterial===i?" on":"")} onClick={()=>setSelectedMaterial(i)}>
+          <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{choiceLabel(i)}</span><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-outline">{sourceLabel(m)}</span><span className="badge badge-outline">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
           <span>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
-        </button>; })}
+        </button>); })}
       </div>
     </div>}
   </div>);
@@ -195,9 +266,11 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   </div>);
 }
 
-function Preview({lesson,text,onStart,onBack}){
+function Preview({lesson,text,userWords,onStart,onBack}){
   const {t}=useUI();
-  const heavy=lesson.vocabCount>12;
+  const marked=Array.isArray(userWords)?userWords.filter(Boolean):[];
+  const vocabCount=marked.length||lesson.vocabCount;
+  const heavy=vocabCount>12;
   const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
   const diffLabel=t.diffLabels[lesson.diff];
   const fullText=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
@@ -220,7 +293,7 @@ function Preview({lesson,text,onStart,onBack}){
     <div className="grid4" style={{marginBottom:14}}>
       <Stat k={t.recommendedLevel} v={matLevel}/>
       <Stat k={t.estimatedTime} v={t.min(total)}/>
-      <Stat k={t.vocabulary} v={t.wordCount(lesson.vocabCount)}/>
+      <Stat k={t.vocabulary} v={t.wordCount(vocabCount)}/>
       <Stat k={t.characters} v={lesson.charCount.toLocaleString()}/>
     </div>
     {(lesson.charCount>1050||lesson.vocabCount>18) && <div className="split-warning" style={{marginBottom:14}}>
@@ -235,7 +308,18 @@ function Preview({lesson,text,onStart,onBack}){
       </div>
     </div>
     {heavy && <div className="checkin" style={{marginTop:16,background:"hsl(var(--warm)/.08)",borderColor:"hsl(var(--warm)/.3)"}}><span>💡</span>
-      <span>{t.heavy(lesson.vocabCount)}</span></div>}
+      <span>{t.heavy(vocabCount)}</span></div>}
+    <div className="card card-p" style={{marginBottom:16}}>
+      <h3 className="lbl">{t.previewPathTitle}</h3>
+      <div className="row wrap" style={{gap:8,marginTop:2}}>
+        {MODULES.map((m,i)=><span key={m.id} className="badge badge-outline">{i+1}. {t.nav.mods[m.id]}</span>)}
+      </div>
+      <div className="tiny muted" style={{marginTop:12}}>{t.previewSkipNote}</div>
+    </div>
+    {marked.length>0 && <div className="card card-p" style={{marginBottom:16}}>
+      <h3 className="lbl">{t.vocabulary}</h3>
+      <div className="row wrap" style={{gap:7}}>{marked.slice(0,40).map((w,i)=><span key={w+i} className="badge">{w}</span>)}</div>
+    </div>}
     <div className="row" style={{justifyContent:"space-between",marginTop:22}}>
       <button className="btn btn-ghost" onClick={onBack}>← {t.back}</button>
       <button className="btn btn-primary" onClick={onStart}>{t.start(total)} →</button></div>

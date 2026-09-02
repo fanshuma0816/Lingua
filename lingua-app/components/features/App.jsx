@@ -6,34 +6,30 @@ import posthog from "posthog-js";
 import { Login } from "./Login";
 import { SessionView, Sidebar } from "./Session";
 import { InputScreen, Preview } from "./Setup";
-import { Done } from "./Steps";
+import { Done, QuickScan } from "./Steps";
 import { Loading, Svg } from "../ui/elements";
-import { STEPS, stepIndex } from "../../config/constants";
+import { STEPS, STEP_SLUG, stepIndex } from "../../config/constants";
 import { UI_TEXT } from "../../config/uiText";
 import { UIContext } from "../../hooks/useUI";
 import { stopSpeak } from "../../lib/audio";
 import { scrollToTop } from "../../lib/format";
 import { generateLesson } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
+import { clearLineTr } from "../../lib/trcache";
 import { cachedAiAnalyze } from "../../services/api";
 
-const ROUTES={
-  home:{screen:"input",inputMode:null,path:"/"},
-  find:{screen:"input",inputMode:"find",path:"/find"},
-  import:{screen:"input",inputMode:"material",path:"/import"},
-  preview:{screen:"preview",inputMode:null,path:"/preview"},
-  lesson:{screen:"lesson",inputMode:null,path:"/lesson"},
-  done:{screen:"done",inputMode:null,path:"/done"}
-};
+function stepPath(index){ const s=STEPS[Math.max(0,Math.min(STEPS.length-1,index))]; return "/learn/"+STEP_SLUG[s.mod]; }
 
 function routeState(pathname){
   const path=(pathname||"/").replace(/\/+$/,"")||"/";
-  if(path==="/find") return ROUTES.find;
-  if(path==="/import") return ROUTES.import;
-  if(path==="/preview") return ROUTES.preview;
-  if(path==="/lesson") return ROUTES.lesson;
-  if(path==="/done") return ROUTES.done;
-  return ROUTES.home;
+  if(path==="/find") return {screen:"input",inputMode:"find",path:"/find"};
+  if(path==="/import") return {screen:"input",inputMode:"material",path:"/import"};
+  if(path==="/scan") return {screen:"scan",inputMode:null,path:"/scan"};
+  if(path==="/preview") return {screen:"preview",inputMode:null,path:"/preview"};
+  if(path==="/done") return {screen:"done",inputMode:null,path:"/done"};
+  if(path==="/learn") return {screen:"lesson",inputMode:null,path:stepPath(0),stepIndex:0};
+  if(path.startsWith("/learn/")){ const slug=path.slice(7); const i=STEPS.findIndex(s=>STEP_SLUG[s.mod]===slug); return {screen:"lesson",inputMode:null,path,stepIndex:i>=0?i:0}; }
+  return {screen:"input",inputMode:null,path:"/"};
 }
 
 function App(){
@@ -45,65 +41,68 @@ function App(){
   function setUiLang(next){ setUiLangState(next); DB.set("uiLang",next); }
   useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
   useEffect(()=>{
-    const email=DB.get("email","");
-    if(!email) return;
     const userId=DB.get("userId",crypto.randomUUID());
     DB.set("userId",userId);
-    posthog.identify(userId,{email});
+    const email=DB.get("email","");
+    posthog.identify(userId, email?{email}:undefined);
   },[]);
-  const [screen,setScreen]=useState(DB.get("email")?currentRoute.screen:"login");
+  const [screen,setScreen]=useState(currentRoute.screen);
   const [lesson,setLesson]=useState(()=>DB.get("currentLesson",null)); const [text,setText]=useState(()=>DB.get("currentText",""));
   const [theme,setTheme]=useState(DB.get("theme","light"));
   const [pinned,setPinned]=useState(false);
-  const [openMod,setOpenMod]=useState("diag");
-  const [step,setStep]=useState(0);
+  const [step,setStep]=useState(()=>currentRoute.stepIndex||0);
   const [doneSet,setDoneSet]=useState(()=>new Set());
-  const [diag,setDiag]=useState({coverage:null,tier:null,total:0,unknown:[]});
+  const [userWords,setUserWords]=useState(()=>DB.get("unknownWords",[])||[]);
   const [narrow,setNarrow]=useState(false);
-  const autoReveal=useRef(false); const revealTimer=useRef(null);
   const mode=screen==="lesson"?"session":screen==="done"?"done":"home";
+  const showSideBack=mode!=="home"||screen==="scan"||screen==="preview"||(screen==="input"&&pathname!=="/");
 
   useEffect(()=>{ document.documentElement.classList.toggle("dark",theme==="dark"); },[theme]);
-  useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen]);
+  useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen,step]);
   useEffect(()=>{ const on=()=>setNarrow(window.innerWidth<1200); on(); window.addEventListener("resize",on); return ()=>window.removeEventListener("resize",on); },[]);
+  // The learning path (sidebar) stays open by default on desktop; the learner
+  // can still collapse it with the toggle. On narrow screens it starts closed.
+  useEffect(()=>{ if(typeof window!=="undefined") setPinned(window.innerWidth>=1200); },[]);
   useEffect(()=>{
     if(screen==="login") return;
-    if((currentRoute.screen==="preview"||currentRoute.screen==="lesson"||currentRoute.screen==="done")&&!lesson){ setScreen("input"); if(pathname!=="/") router.replace("/"); return; }
-    setScreen(currentRoute.screen);
+    const r=routeState(pathname);
+    if((r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"||r.screen==="done")&&!lesson){ setScreen("input"); if(pathname!=="/") router.replace("/"); return; }
+    if(r.screen==="lesson") setStep(r.stepIndex||0);
+    setScreen(r.screen);
   },[pathname]);
 
   function navigateTo(nextScreen,path){ setScreen(nextScreen); if(pathname!==path) router.push(path); }
   function replaceWith(path){ if(pathname!==path) router.replace(path); }
   function continueAfterLogin(){
-    if(currentRoute.screen==="input"){ navigateTo("input",currentRoute.path); return; }
-    if(lesson){ navigateTo(currentRoute.screen,currentRoute.path); return; }
+    const r=routeState(pathname);
+    if((r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"||r.screen==="done")&&!lesson){ navigateTo("input","/"); return; }
+    if(r.screen==="input"){ navigateTo("input",r.path); return; }
     navigateTo("input","/");
   }
   function toggleTheme(){ setTheme(v=>{ const n=v==="dark"?"light":"dark"; DB.set("theme",n); return n; }); }
-  function toggleSide(){ autoReveal.current=false; setPinned(p=>!p); }
+  function toggleSide(){ setPinned(p=>!p); }
   function clearAll(){ if(confirm(t.clearConfirm)){posthog.reset();DB.clearAll();location.reload();} }
 
-  // Briefly reveal the path panel on entering a session, then auto-collapse
-  // unless the learner reached for it or pinned it.
-  function revealThenCollapse(){
-    clearTimeout(revealTimer.current);
-    if(typeof window!=="undefined"&&window.innerWidth<1200){ setPinned(false); return; }
-    autoReveal.current=true; setPinned(true);
-    revealTimer.current=setTimeout(()=>{ if(autoReveal.current){ setPinned(false); autoReveal.current=false; } },2400);
-  }
-  function resetSession(){ setStep(0); setDoneSet(new Set()); setOpenMod("diag"); setDiag({coverage:null,tier:null,total:0,unknown:[]}); }
-  function startSession(){ resetSession(); posthog.capture("learning_session_started",{session_type:"new",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); navigateTo("lesson","/lesson"); revealThenCollapse(); }
-  function reviewSession(){ resetSession(); posthog.capture("learning_session_started",{session_type:"review",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); navigateTo("lesson","/lesson"); revealThenCollapse(); }
-  function go(id){ const idx=stepIndex(id); if(idx<0) return; if(screen==="done") navigateTo("lesson","/lesson"); setStep(idx); setOpenMod(STEPS[idx].mod); if(window.innerWidth<1200) setPinned(false); scrollToTop(); }
+  function resetSession(){ setStep(0); setDoneSet(new Set()); }
+  function goStep(index){ const n=Math.max(0,Math.min(STEPS.length-1,index)); setStep(n); navigateTo("lesson",stepPath(n)); if(typeof window!=="undefined"&&window.innerWidth<1200) setPinned(false); scrollToTop(); }
+  function startSession(){ resetSession(); posthog.capture("learning_session_started",{session_type:"new",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
+  function reviewSession(){ resetSession(); posthog.capture("learning_session_started",{session_type:"review",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
+  function go(id){ const idx=stepIndex(id); if(idx<0) return; goStep(idx); }
   function onContinue(){ const cur=STEPS[step]; posthog.capture("learning_step_completed",{step_id:cur.id,module_id:cur.mod,step_number:step+1}); setDoneSet(prev=>new Set(prev).add(cur.id));
-    if(step===STEPS.length-1){ posthog.capture("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { const n=step+1; setStep(n); setOpenMod(STEPS[n].mod); scrollToTop(); } }
-  function onPrev(){ const n=Math.max(0,step-1); setStep(n); setOpenMod(STEPS[n].mod); scrollToTop(); }
+    if(step===STEPS.length-1){ posthog.capture("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { goStep(step+1); } }
+  function onSkip(){ const cur=STEPS[step]; posthog.capture("learning_step_skipped",{step_id:cur.id,module_id:cur.mod,step_number:step+1});
+    if(step===STEPS.length-1){ navigateTo("done","/done"); } else { goStep(step+1); } }
+  function onPrev(){ goStep(Math.max(0,step-1)); }
 
-  async function loadLesson(d){ posthog.capture("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); setScreen("loading");
-    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); navigateTo("preview","/preview");
+  // Quick scan → Preview
+  function scanDone(list){ const arr=Array.isArray(list)?list:[]; setUserWords(arr); DB.set("unknownWords",arr); setLesson(cur=>cur?{...cur,userWords:arr}:cur); posthog.capture("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
+  function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); posthog.capture("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
+
+  async function loadLesson(d){ posthog.capture("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); setUserWords([]); clearLineTr(); setScreen("loading");
+    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }
-    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null); setLesson(L); DB.set("currentLesson",L); navigateTo("preview","/preview");
+    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null); setLesson(L); DB.set("currentLesson",L); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     } }
 
@@ -121,14 +120,15 @@ function App(){
           <button className="chrome-btn focusable" onClick={toggleTheme} title="Toggle light / dark" aria-label="Toggle light / dark">{theme==="dark"?"☀️":"🌙"}</button>
           <button className="chrome-btn focusable" onClick={clearAll} title={t.clearLocalData} aria-label={t.clearLocalData}><Svg n="trash"/></button>
         </div>
-        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} openMod={openMod} setOpenMod={setOpenMod} go={go} onBackHome={()=>navigateTo("input","/")}/>
+        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} go={go} onBackHome={()=>navigateTo("input","/")} showBack={showSideBack}/>
       </div>
       <main className="main">
         {screen==="loading" && <Loading/>}
         {screen==="input" && <InputScreen onNext={loadLesson} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
-        {screen==="preview" && lesson && <Preview lesson={lesson} text={text} onBack={()=>navigateTo("input","/")} onStart={startSession}/>}
-        {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} diag={diag} setDiag={setDiag}/>}
-        {screen==="done" && lesson && <Done lesson={lesson} diag={diag} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
+        {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}
+        {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
+        {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
+        {screen==="done" && lesson && <Done lesson={lesson} diag={{unknown:userWords}} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
       </main>
     </div>
     <div className={"scrim"+((pinned&&narrow)?" on":"")} onClick={()=>setPinned(false)}/>

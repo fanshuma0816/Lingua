@@ -71,7 +71,39 @@ function FullPlayer({text,lang,label,sub}){
   </div>);
 }
 
-function SyncReader({items,lang,level,translation,rate=1,gap=0}){
+// A compact player that reads a list of sentences one after another, reusing the
+// exact per-sentence audio the learner already heard elsewhere (same speak()
+// arguments → same cache key → no new TTS calls / no extra token cost).
+function ArticleAudio({sents,lang,label,rate=1}){
+  const {t}=useUI();
+  const list=(sents||[]).filter(Boolean);
+  const [playing,setPlaying]=useState(false);
+  const [idx,setIdx]=useState(-1);
+  const stop=useRef(false);
+  useEffect(()=>()=>{stop.current=true;stopSpeak();},[]);
+  function playFrom(i){
+    if(stop.current||i>=list.length){ setPlaying(false); setIdx(-1); return; }
+    setIdx(i);
+    const s=list[i]; const role=voiceRoleForLine(s,i,list);
+    const u=speak(role?spokenTextForLine(s):s,lang,rate,role);
+    if(!u){ setPlaying(false); return; }
+    u.onend=()=>{ if(!stop.current) setTimeout(()=>{ if(!stop.current) playFrom(i+1); },160); };
+  }
+  function toggle(){ if(playing){ stop.current=true; stopSpeak(); setPlaying(false); setIdx(-1); return; } stop.current=false; setPlaying(true); playFrom(0); }
+  if(!list.length) return null;
+  const pct=idx>=0?Math.round((idx+1)/list.length*100):0;
+  return (<div className="player" style={{marginBottom:14}}>
+    <button className="playbtn" onClick={toggle}>{playing?"❚❚":"▶"}</button>
+    <div style={{flex:1}}>
+      <div style={{fontWeight:600}}>{label||t.gram.playArticle}</div>
+      <div className="tiny muted">{TTS_OK?"":t.audioUnsupported}</div>
+      <div className="audio-progress"><span style={{width:pct+"%"}}/></div>
+      <div className="tiny muted">{idx>=0?`${idx+1} / ${list.length}`:`${list.length}`}</div>
+    </div>
+  </div>);
+}
+
+function SyncReader({items,lang,level,translation,rate=1,gap=0,onTranslated}){
   const {t,uiLang}=useUI();
   const [active,setActive]=useState(-1); const [playing,setPlaying]=useState(false); const stop=useRef(false);
   const [trs,setTrs]=useState(()=>items.map(it=>uiLang==="en" ? (it.tr||null) : null));
@@ -93,7 +125,7 @@ function SyncReader({items,lang,level,translation,rate=1,gap=0}){
     setLoadingTr(true);
     cachedAiAnalyze("translate",{sentences:missing.map(x=>x.it.s),lang,level,translationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
       if(cancel) return; setLoadingTr(false);
-      if(d&&Array.isArray(d.translations)) setTrs(prev=>{ const next=[...prev]; missing.forEach((m,i)=>{next[m.i]=(uiLang==="en"&&m.it.tr)||d.translations[i]||null;}); return next; });
+      if(d&&Array.isArray(d.translations)) setTrs(prev=>{ const next=[...prev]; missing.forEach((m,i)=>{ const tr=(uiLang==="en"&&m.it.tr)||d.translations[i]||null; next[m.i]=tr; if(tr&&onTranslated) onTranslated(m.it.s,tr); }); return next; });
     });
     return ()=>{cancel=true;};
   },[translation,uiLang,page,items.length]);
@@ -109,10 +141,6 @@ function SyncReader({items,lang,level,translation,rate=1,gap=0}){
   function one(i){ stop.current=true; stopSpeak(); setActive(i); const role=voiceRoleForLine(items[i].s,i,items); const u=speak(role?spokenTextForLine(items[i].s):items[i].s,lang,rate,role); if(u)u.onend=()=>setActive(-1); }
   function changePage(next){ halt(); setPage(Math.max(0,Math.min(pageCount-1,next))); }
   return (<div>
-    <div className="row" style={{marginBottom:12}}>
-      <button className="btn btn-primary btn-sm" onClick={playing?halt:playAll}>{playing?`❚❚ ${t.stop}`:`▶ ${t.playAll}`}</button>
-      <span className="tiny muted">{t.syncHint}</span>
-    </div>
     {translation && loadingTr && <div className="status-strip" style={{marginBottom:12}}>
       <div className="row" style={{justifyContent:"space-between",alignItems:"baseline"}}>
         <b>{t.translatingTitle}</b><span className="tiny muted">{t.aboutRemaining(remaining)}</span>
@@ -125,12 +153,17 @@ function SyncReader({items,lang,level,translation,rate=1,gap=0}){
       <button className="btn btn-outline btn-sm" disabled={page>=pageCount-1} onClick={()=>changePage(page+1)}>{t.nextPage} →</button>
     </div>
     <div className="card card-p">
-      {pageItems.map((it,j)=>{ const i=start+j; const translated=(uiLang==="en"&&it.tr)||trs[i]; return (<div key={i} className={"sline"+(active===i?" on":"")} onClick={()=>one(i)} style={{marginBottom:translation?10:2}}>
-        <div className="sentence-source">{it.s}</div>
-        {translation && <div className={"translation-line"+(!translated&&loadingTr?" loading":"")}>{translated?("→ "+translated):(loadingTr?`→ ${t.lineTranslating(i+1,items.length)}`:`→ ${t.translationUnavailable}`)}</div>}
+      {pageItems.map((it,j)=>{ const i=start+j; const translated=(uiLang==="en"&&it.tr)||trs[i]; return (<div key={i} className={"sline"+(active===i?" on":"")} style={{marginBottom:translation?12:2}}>
+        <div className="row" style={{gap:9,alignItems:"flex-start"}}>
+          <button className="sbtn saybtn" title={t.play} aria-label={t.play} onClick={(e)=>{e.stopPropagation();one(i);}}><span>▶</span><span>{t.play}</span></button>
+          <div style={{flex:1}}>
+            <div className="sentence-source">{it.s}</div>
+            {translation && <div className={"translation-line"+(!translated&&loadingTr?" loading":"")}>{translated?("→ "+translated):(loadingTr?`→ ${t.lineTranslating(i+1,items.length)}`:`→ ${t.translationUnavailable}`)}</div>}
+          </div>
+        </div>
       </div>); })}
     </div>
   </div>);
 }
 
-export { FullPlayer, SyncReader };
+export { ArticleAudio, FullPlayer, SyncReader };
