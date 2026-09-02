@@ -36,6 +36,14 @@ const HARD_TEXT =
   "Onderzoekers beweren dat de ontwikkeling desalniettemin cruciaal blijft voor de samenleving, " +
   "hoewel de consequenties nauwelijks te voorspellen zijn en het fenomeen problematisch genuanceerd wordt.";
 
+const A1_WITH_TWO_HIGHER_WORDS =
+  "Ik ben thuis. Ik eet brood en kaas. Ik drink thee. Mijn vriend komt ook. " +
+  "Wij lezen samen. Ik wil proeven. Dit is cruciaal. Het is een goede dag.";
+
+const A1_WITH_TOO_MANY_HIGHER_WORDS =
+  "Ik ben thuis. Ik eet brood en kaas. Ik drink thee. Mijn vriend komt ook. " +
+  "Wij lezen samen. Ik wil proeven. Daarna zit ik ergens. De regering benadrukt beleid.";
+
 const C1_TEXT =
   "De institutionalisering van het beleid roept fundamentele vragen op over legitimiteit en ondermijning. " +
   "Critici beschouwen de veronderstelling achter deze paradigmaverschuiving als onverenigbaar met lokale autonomie.";
@@ -75,6 +83,15 @@ const C1_TEXT =
   ok("B2 learner rejects A2 generated material as too easy", tooEasy.ok === false, tooEasy.reason);
   const c1Fit = validateMaterialFit(C1_TEXT, "C1 — Advanced");
   ok("C1 learner accepts C1 generated material", c1Fit.ok === true, c1Fit.reason);
+}
+
+// ---- 3c. tiny over-cap tolerance: realistic texts may contain 1-2 higher words ----
+{
+  const okTiny = validateForLevel(A1_WITH_TWO_HIGHER_WORDS, "A1 — Beginner");
+  ok("A1 tolerates two B1+ words", okTiny.ok === true, okTiny.reason);
+  ok("A1 tiny tolerance records two above-cap word types", okTiny.analysis.aboveCapTypes === 2, `${okTiny.analysis.aboveCapTypes}`);
+  const tooMany = validateForLevel(A1_WITH_TOO_MANY_HIGHER_WORDS, "A1 — Beginner");
+  ok("A1 rejects more than two B1+ words", tooMany.ok === false, tooMany.reason);
 }
 
 // ---- 4. same material id => same metadata everywhere (card = preview = diagnosis) ----
