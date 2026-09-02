@@ -49,6 +49,6 @@ const LANGS=Object.keys(LANG_CODE).sort();
 
 const GOALS=["General fluency","Conversation & speaking","Reading comprehension","Vocabulary building","Exam preparation"];
 
-const SUPPORT_CHECKOUT_URL="https://buy.stripe.com/aFa0010Hh3zU2Xh1bl18c00";
+const SUPPORT_CHECKOUT_URL="https://buy.stripe.com/aFa00l0Hh3zU2Xh1bl18c00";
 
 export { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PARTNER, PLAN_BLOCKS, POS, STEPS, STEP_SLUG, SUPPORT_CHECKOUT_URL, TOTAL_MIN, levelIdx, stepIndex };
