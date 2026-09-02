@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
 import { ArticleAudio } from "./Player";
 import { CheckIn, Purpose, Say, StepHead, Svg, Teacher } from "../ui/elements";
-import { LANG_CODE, PARTNER, POS, STEPS } from "../../config/constants";
+import { LANG_CODE, PARTNER, POS, STEPS, SUPPORT_CHECKOUT_URL } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
@@ -637,7 +637,7 @@ function Done({lesson,diag,onNew,onReview}){
       <div className="done-card donation-card">
         <div className="done-card-title">{t.donation.title}</div>
         <p className="done-card-note">{t.donation.body}</p>
-        <button className="btn btn-outline" disabled>{t.donation.button}</button>
+        <button className="btn btn-outline" onClick={()=>window.location.assign(SUPPORT_CHECKOUT_URL)}>{t.donation.button}</button>
         <div className="tiny muted">{t.donation.soon}</div>
         <div className="donation-feedback">
           <label className="tiny muted" htmlFor="development-feedback">{t.donation.feedbackLabel}</label>
