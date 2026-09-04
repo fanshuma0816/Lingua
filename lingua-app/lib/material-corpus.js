@@ -25,6 +25,20 @@ function levelRank(item) {
   return cefrIdx(item.level || "A1");
 }
 
+function seededRandom(seed) {
+  let h = 2166136261;
+  for (const ch of String(seed || Date.now())) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h += h << 13; h ^= h >>> 7;
+    h += h << 3; h ^= h >>> 17;
+    h += h << 5;
+    return ((h >>> 0) % 1000000) / 1000000;
+  };
+}
+
 function combinedCandidates(items) {
   const out = items.map(item => ({ ...item, primaryTitle: item.title, pairKey: item.title }));
   for (let i = 0; i < items.length; i++) {
@@ -39,6 +53,7 @@ function combinedCandidates(items) {
         source: "Textbook adapted",
         level: cefrIdx(a.level) >= cefrIdx(b.level) ? a.level : b.level,
         tags: [...new Set([...(a.tags || []), ...(b.tags || [])])],
+        topicScore: Math.max(a.topicScore || 0, b.topicScore || 0),
         text: `${a.text}\n\n${b.text}`,
       });
       out.push({
@@ -49,6 +64,7 @@ function combinedCandidates(items) {
         source: "Textbook adapted",
         level: cefrIdx(a.level) >= cefrIdx(b.level) ? a.level : b.level,
         tags: [...new Set([...(a.tags || []), ...(b.tags || [])])],
+        topicScore: Math.max(a.topicScore || 0, b.topicScore || 0),
         text: `${b.text}\n\n${a.text}`,
       });
     }
@@ -56,15 +72,18 @@ function combinedCandidates(items) {
   return out;
 }
 
-function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRange = [0, Infinity], count = 2, duration, targetMinutes }) {
+function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRange = [0, Infinity], count = 2, duration, targetMinutes, seed }) {
   if (lang !== "Dutch" || cefrIdx(level) > cefrIdx("A2")) return [];
   const topic = topics[0] || null;
   const [minWords, maxWords] = wordRange;
   const avoidSet = new Set((avoid || []).map(x => String(x || "").toLowerCase()).filter(Boolean));
+  const rand = seededRandom(seed);
   const base = loadCorpus()
     .filter(item => levelRank(item) <= Math.min(cefrIdx(level) + 1, cefrIdx("B1")))
-    .sort((a, b) => Number(hasTopic(b, topic)) - Number(hasTopic(a, topic)) || levelRank(a) - levelRank(b));
-  const candidates = combinedCandidates(base);
+    .map(item => ({ ...item, topicScore: Number(hasTopic(item, topic)), rand: rand() }))
+    .sort((a, b) => b.topicScore - a.topicScore || levelRank(a) - levelRank(b) || a.rand - b.rand);
+  const candidates = combinedCandidates(base).map(item => ({ ...item, rand: rand() }))
+    .sort((a, b) => b.topicScore - a.topicScore || levelRank(a) - levelRank(b) || a.rand - b.rand);
   const accepted = [];
   const seen = new Set();
   const seenPrimary = new Set();
@@ -79,6 +98,8 @@ function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRan
     const titleKey = String(raw.title || "").toLowerCase();
     if (seen.has(id) || avoidSet.has(id) || avoidSet.has(titleKey)) continue;
     const primaryKey = String(raw.primaryTitle || raw.title || "").toLowerCase();
+    if (avoidSet.has(primaryKey)) continue;
+    if ((raw.parts || []).some(part => avoidSet.has(String(part || "").toLowerCase()))) continue;
     if (seenPrimary.has(primaryKey)) continue;
     const pairKey = String(raw.pairKey || raw.title || "").toLowerCase();
     if (seenPairs.has(pairKey)) continue;
@@ -90,6 +111,7 @@ function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRan
     accepted.push({
       id,
       title: raw.title,
+      parts: raw.parts || [raw.title].filter(Boolean),
       source: raw.source || "Textbook adapted",
       text,
       duration,

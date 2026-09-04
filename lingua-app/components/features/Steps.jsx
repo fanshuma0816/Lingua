@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import posthog from "posthog-js";
 import { ArticleAudio } from "./Player";
 import { CheckIn, Purpose, Say, StepHead, Svg, Teacher } from "../ui/elements";
 import { LANG_CODE, PARTNER, POS, STEPS, SUPPORT_CHECKOUT_URL } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
+import { trackEvent } from "../../lib/analytics";
 import { speak, stopSpeak } from "../../lib/audio";
 import { displayWordInfo } from "../../lib/dutch";
 import { normalizePoint, progressPct, scrollToTop } from "../../lib/format";
@@ -36,7 +36,7 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
     <div className="card card-p" style={{marginBottom:14}}>
       <div style={{whiteSpace:"pre-wrap",lineHeight:2.05,fontSize:16,maxHeight:360,overflowY:"auto"}}>
         {parts.map((p,i)=> isWord(p)
-          ? <span key={i} className="scanw" onClick={()=>toggle(p)}
+          ? <span key={i} className="scanw notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined} onClick={()=>toggle(p)}
               style={{cursor:"pointer",borderRadius:5,padding:"1px 2px",
                 background:marked.has(p.toLowerCase())?"hsl(var(--primary)/.35)":"transparent",
                 boxShadow:marked.has(p.toLowerCase())?"inset 0 -2px 0 hsl(var(--primary))":"none"}}>{p}</span>
@@ -67,7 +67,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   const [loadingGrammar,setLoadingGrammar]=useState(false);
   const lookupElapsed=useElapsed(loadingKw);
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
-  useEffect(()=>{ setTrs({}); setGrammar({}); },[uiLang]);
+  useEffect(()=>{ setGrammar({}); setExpl({}); },[uiLang]);
   const vmap=Object.fromEntries((vocab||[]).map(v=>[v.word.toLowerCase(),v]));
   // The learner's own marked words (from Quick scan) drive this step. If they
   // skipped Quick scan, fall back to salient words from their level and the text.
@@ -90,17 +90,17 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   // (Learn 1) or a previous visit before ever calling the API.
   useEffect(()=>{ let cancel=false;
     const sen=sents[gi]||"";
-    const cached=(uiLang==="en" ? (lesson.watch||[]).find(x=>x.s===sen)?.tr : null) || getLineTr(uiLang,sen);
+    const cached=(lesson.watch||[]).find(x=>x.s===sen)?.tr || getLineTr("en",sen);
     if(cached){ setTrs(prev=>prev[gi]?prev:{...prev,[gi]:cached}); return; }
     if(trs[gi] || !sen){ setLoadingTr(false); return; }
     setLoadingTr(true);
-    cachedAiAnalyze("translate",{sentences:[sen],lang,level,translationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
+    cachedAiAnalyze("translate",{sentences:[sen],lang,level,translationLanguage:"English"}).then(d=>{
       if(cancel) return; setLoadingTr(false);
       const tr=d&&Array.isArray(d.translations)?d.translations[0]:null;
-      if(tr){ setTrs(prev=>({...prev,[gi]:tr})); setLineTr(uiLang,sen,tr); }
+      if(tr){ setTrs(prev=>({...prev,[gi]:tr})); setLineTr("en",sen,tr); }
     });
     return ()=>{cancel=true;};
-  },[gi,uiLang,trs[gi]]);
+  },[gi,trs[gi]]);
   // Ask the AI to explain this sentence's key words in context (meaning + example).
   useEffect(()=>{ let cancel=false;
     const sen=sents[gi]||""; const kws=keyWordsIn(sen,gi).filter(w=>!expl[w.toLowerCase()]);
@@ -109,13 +109,13 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
     cachedAiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen})),explanationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
       if(cancel) return; setLoadingKw(false);
       if(d&&Array.isArray(d.items)){ setExpl(prev=>{ const n={...prev};
-        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,exampleTranslation:it.exampleTranslation||null,pos:it.pos||null}; });
-        kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null}; });
+        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,exampleTranslation:it.exampleTranslation||null,pos:it.pos||null,lemma:it.lemma||null,formLabel:it.formLabel||null,formExplanation:it.formExplanation||null}; });
+        kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null,lemma:null,formLabel:null,formExplanation:null}; });
         return n; }); }
-      else setExpl(prev=>{ const n={...prev}; kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null}; }); return n; });
+      else setExpl(prev=>{ const n={...prev}; kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null,lemma:null,formLabel:null,formExplanation:null}; }); return n; });
     });
     return ()=>{cancel=true;};
-  },[gi,view]);
+  },[gi,view,uiLang]);
   useEffect(()=>{ let cancel=false;
     const sen=sents[gi]||"";
     if(grammar[gi] || !sen){ setLoadingGrammar(false); return; }
@@ -165,7 +165,11 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
             <span className="row" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><Say text={w} lang={lang}/></span>
           </summary>
           {parts.detail && <div className="summary-detail">{parts.detail}</div>}
-          {e&&e.example && <div className="word-example">“{e.example}”</div>}
+          {(e&&e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase()) || e?.formLabel || e?.formExplanation ? <div className="word-form">
+            {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
+            {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
+          </div> : null}
+          {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
           {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
         </details>
       ); })}
@@ -176,7 +180,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example">{ex.sentence}</span>
+              <span className="grammar-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -199,7 +203,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
 
     <div className="card card-p">
       <div className="row" style={{justifyContent:"space-between",marginBottom:12}}>
-        <span style={{fontWeight:600,fontSize:16}}>{s}</span><Say text={s} lang={lang} rate={1} voiceRole={voiceRoleForLine(s,gi,sents)}/></div>
+        <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontWeight:600,fontSize:16}}>{s}</span><Say text={s} lang={lang} rate={1} voiceRole={voiceRoleForLine(s,gi,sents)}/></div>
       <div className={"translation-line grammar-translation"+(!tr&&loadingTr?" loading":"")}>
         {tr?("→ "+tr):(loadingTr?`→ ${t.lineTranslating(gi+1,N)}`:`→ ${t.translationUnavailable}`)}
       </div>
@@ -213,7 +217,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       </div>}
       {kw.length?kw.map((w,j)=>{ const e=displayWordInfo(w,lang,uiLang,vmap[w.toLowerCase()],expl[w.toLowerCase()]); const parts=meaningParts(e); return (<div className="wcard" key={j}>
         <div className="row" style={{justifyContent:"space-between"}}>
-          <span className="row" style={{gap:9}}><b style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
+          <span className="row" style={{gap:9}}><b className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
           <Say text={w} lang={lang} rate={1}/></div>
         {parts.simple ? (<div className="meaning-block">
           <div className="meaning-simple">{parts.simple}</div>
@@ -221,7 +225,11 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
           <div className="skeleton short"/><div className="skeleton"/>
           <div className="tiny muted" style={{marginTop:7}}>💡 {usageNote(w)}</div>
         </div>)}
-        {e&&e.example && <div className="word-example">“{e.example}”</div>}
+        {(e&&e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase()) || e?.formLabel || e?.formExplanation ? <div className="word-form">
+          {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
+          {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
+        </div> : null}
+        {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
         {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
       </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}
 
@@ -234,7 +242,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example">{ex.sentence}</span>
+              <span className="grammar-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -313,7 +321,7 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
     <div className="card bigcard">
       <div className="row" style={{gap:8}}><span className="badge badge-outline">{idx+1} / {list.length}</span>
         <span className="phaselab" style={{color:"hsl(var(--success))"}}>🗣️ {t.timed.shadow}</span></div>
-      {(withSubs||reveal) ? <div className="bigsent">{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
+      {(withSubs||reveal) ? <div className="bigsent notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
       {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
@@ -390,7 +398,7 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       </div>
       {shown[idx] && <div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
         <h3 className="lbl">{t.recall.original}</h3>
-        <div style={{fontWeight:600}}>{cur}</div>
+        <div className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontWeight:600}}>{cur}</div>
         <div style={{marginTop:10}}><Say text={cur} lang={lang} rate={1} voiceRole={voiceRoleForLine(cur,idx,list)}/></div>
       </div>}
     </div>
@@ -431,7 +439,7 @@ function AIWrite({lesson,onDone}){
   const [textv,setTextv]=useState(DB.get("aiPractice","")); const [fb,setFb]=useState(null); // null | "loading" | {real} | "mock"
   useEffect(()=>DB.set("aiPractice",textv),[textv]);
   async function getFeedback(){
-    posthog.capture("writing_feedback_requested",{language:lang,level:level.slice(0,2),word_count:textv.trim().split(/\s+/).filter(Boolean).length});
+    trackEvent("writing_feedback_requested",{language:lang,level:level.slice(0,2),word_count:textv.trim().split(/\s+/).filter(Boolean).length});
     setFb("loading"); onDone&&onDone();
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -442,7 +450,7 @@ function AIWrite({lesson,onDone}){
   }
   const real=fb && fb!=="loading" && fb!=="mock";
   return (<div>
-    <div className="row wrap" style={{gap:7,marginBottom:14}}>{(focusWords.length?focusWords:vocab.slice(0,8).map(v=>v.word)).slice(0,8).map(w=><span key={w} className="badge">{w}</span>)}</div>
+    <div className="row wrap" style={{gap:7,marginBottom:14}}>{(focusWords.length?focusWords:vocab.slice(0,8).map(v=>v.word)).slice(0,8).map(w=><span key={w} className="badge notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{w}</span>)}</div>
     <div className="card card-p" style={{marginBottom:14}}><div className="row" style={{gap:10}}>
       <div className="tface">👩‍🏫</div><div style={{fontWeight:500}}>{question}</div></div></div>
     <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={t.aiUse.writePlaceholder(shownLang)}/>
@@ -461,7 +469,7 @@ function AIWrite({lesson,onDone}){
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{fb.grammar}</span></div>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{fb.vocabulary}</span></div>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.sentence}.</b> <span className="muted">{fb.sentence}</span></div>
-        {fb.revision && <div style={{marginTop:10}}><b>{t.aiUse.revision}:</b><div className="card card-p" style={{marginTop:6,background:"hsl(var(--secondary))"}}>{fb.revision}</div></div>}
+        {fb.revision && <div style={{marginTop:10}}><b>{t.aiUse.revision}:</b><div className="card card-p notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{marginTop:6,background:"hsl(var(--secondary))"}}>{fb.revision}</div></div>}
       </>) : (<>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{t.aiUse.mockGrammar}</span></div>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{t.aiUse.mockVocab}</span></div>
@@ -548,7 +556,7 @@ function AIChat({lesson,onNext,onDone}){
     recRef.current=r; try{ r.start(); setListening(true); armSilence(); }catch(e){ setListening(false); } }
   function stopMic(){ wantRef.current=false; clearSilence(); if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
-  async function finish(list){ posthog.capture("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
+  async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
     if(mockRef.current) return;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
@@ -576,7 +584,7 @@ function AIChat({lesson,onNext,onDone}){
       <div style={{fontSize:60,lineHeight:1,filter:speaking?"none":"grayscale(.15)"}}>{partner.face}</div>
       <div style={{fontWeight:700,marginTop:6}}>{partner.name}</div>
       <div className="tiny muted">{busy?"…"+t.chat.thinking:speaking?"🔊 "+t.chat.speaking+"…":t.chat.yourTurn}</div>
-      {lastAi && <div style={{fontWeight:500,fontSize:17,margin:"12px auto 0",maxWidth:520}}>{lastAi.t}</div>}
+      {lastAi && <div className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontWeight:500,fontSize:17,margin:"12px auto 0",maxWidth:520}}>{lastAi.t}</div>}
       <div className="row" style={{gap:8,justifyContent:"center",marginTop:10}}>
         {lastAi && <button className="btn btn-outline btn-sm" onClick={()=>sayAI(lastAi.t)}>🔊 {t.chat.sayAgain}</button>}
         <span className="tiny muted">{t.chat.exchange(Math.min(turns+1,MAX_TURNS),MAX_TURNS)}</span>
@@ -595,7 +603,7 @@ function AIChat({lesson,onNext,onDone}){
         <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>{t.chat.replyTo(partner.name)} →</button></div>
 
       {msgs.length>1 && <details style={{marginTop:14}}><summary className="tiny muted" style={{cursor:"pointer"}}>{t.chat.showTranscript}</summary>
-        <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}</div>))}</div></details>}
+        <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who+" notranslate"} translate="no" lang={lang==="Dutch"?"nl":undefined}>{m.t}</div>))}</div></details>}
     </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
         <h3 className="lbl">{t.chat.feedbackTitle(!evalz)}</h3>
         {evalz ? (<div>
@@ -617,12 +625,13 @@ function Done({lesson,diag,onNew,onReview}){
   const [devFeedback,setDevFeedback]=useState(()=>DB.get("developmentFeedbackDraft",""));
   const [devFeedbackStatus,setDevFeedbackStatus]=useState("idle");
   const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
+  useEffect(()=>{ trackEvent("lesson_feedback_opened",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); },[]);
   function captureSurvey(mostV,leastV){
-    try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:mostV||null,least_helpful:leastV||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
-    posthog.capture("lesson_feedback",{most_helpful:mostV,least_helpful:leastV,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
-  function chooseMost(m){ setMost(m); setFeedbackStep("least"); }
-  function chooseLeast(m){ if(m!==most) setLeast(m); }
+    trackEvent("lesson_feedback",{most_helpful:mostV,least_helpful:leastV,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
+  function chooseMost(m){ setMost(m); setFeedbackStep("least"); trackEvent("lesson_feedback_choice_selected",{question:"most_helpful",choice:m,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
+  function chooseLeast(m){ if(m!==most){ setLeast(m); trackEvent("lesson_feedback_choice_selected",{question:"least_helpful",choice:m,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); } }
   function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); setFeedbackOpen(false); }
+  function closeSurvey(reason){ trackEvent(reason==="skip"?"lesson_feedback_skipped":"lesson_feedback_closed",{step:feedbackStep,most_helpful:most||null,least_helpful:least||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); setFeedbackOpen(false); }
   useEffect(()=>DB.set("developmentFeedbackDraft",devFeedback),[devFeedback]);
   async function submitDevelopmentFeedback(){
     const text=devFeedback.trim();
@@ -639,13 +648,7 @@ function Done({lesson,diag,onNew,onReview}){
         })});
       if(!r.ok) throw new Error("feedback failed");
       const d=await r.json();
-      try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","development_feedback_submitted",{
-        feedback_length:d?.feedback_length||text.length,
-        feedback_redacted:String(!!d?.feedback_redacted),
-        lesson_language:lesson?.lang||null,
-        lesson_level:(lesson?.level||"").slice(0,2)||null,
-      }); }catch(e){}
-      posthog.capture("development_feedback_submitted",{feedback_length:d?.feedback_length||text.length,feedback_redacted:!!d?.feedback_redacted,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
+      trackEvent("development_feedback_submitted",{feedback_length:d?.feedback_length||text.length,feedback_redacted:!!d?.feedback_redacted,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
       setDevFeedback("");
       DB.set("developmentFeedbackDraft","");
       setDevFeedbackStatus("sent");
@@ -653,7 +656,6 @@ function Done({lesson,diag,onNew,onReview}){
       setDevFeedbackStatus("error");
     }
   }
-  const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
   const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
@@ -664,7 +666,7 @@ function Done({lesson,diag,onNew,onReview}){
   return (<>
     <div className="done-wrap">
       <div className="done-emoji">🎉</div>
-      <h1 className="done-h1">{t.done.title(name)}</h1>
+      <h1 className="done-h1">{t.done.title()}</h1>
       <p className="done-sub">{t.done.sub(STEPS.length)}</p>
       <div className="done-card donation-card">
         <div className="done-card-title">{t.donation.title}</div>
@@ -693,7 +695,7 @@ function Done({lesson,diag,onNew,onReview}){
           <b>{t.survey.title}</b>
           <div className="tiny muted">{t.survey.progress(feedbackNumber,2)}</div>
         </div>
-        <button className="feedback-close" aria-label={t.survey.close} onClick={()=>setFeedbackOpen(false)}>×</button>
+        <button className="feedback-close" aria-label={t.survey.close} onClick={()=>closeSurvey("close")}>×</button>
       </div>
       <div className="feedback-step-dots" aria-hidden="true"><span className={!isLeastStep?"on":""}/><span className={isLeastStep?"on":""}/></div>
       <div className="feedback-question">
@@ -706,7 +708,7 @@ function Done({lesson,diag,onNew,onReview}){
         return <button key={m} className={"badge badge-outline feedback-choice"+(selected?" on":"")} disabled={disabled} onClick={()=>isLeastStep?chooseLeast(m):chooseMost(m)}>{t.nav.mods[m]}</button>;
       })}</div>
       <div className="feedback-actions">
-        <button className="btn btn-ghost btn-sm" onClick={()=>setFeedbackOpen(false)}>{t.survey.skip}</button>
+        <button className="btn btn-ghost btn-sm" onClick={()=>closeSurvey("skip")}>{t.survey.skip}</button>
         <div className="row" style={{gap:8}}>
           {isLeastStep && <button className="btn btn-outline btn-sm" onClick={()=>setFeedbackStep("most")}>{t.survey.back}</button>}
           {isLeastStep && <button className="btn btn-primary btn-sm" disabled={!most||!least} onClick={submitSurvey}>{t.survey.submit}</button>}

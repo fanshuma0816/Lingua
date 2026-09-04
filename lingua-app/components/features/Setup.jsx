@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import posthog from "posthog-js";
 import { materialId as cefrMaterialId, validateMaterialFit } from "../../lib/cefr.mjs";
 import { Stars, Stat, Teacher } from "../ui/elements";
-import { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PLAN_BLOCKS, STEPS, TOTAL_MIN } from "../../config/constants";
+import { GOALS, LANGS, LANG_CODE, LEVELS, TOTAL_MIN } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
+import { trackEvent } from "../../lib/analytics";
 import { safeDutchMaterial } from "../../lib/dutch";
 import { durationSpec, scrollToTop } from "../../lib/format";
 import { materialStats, sourceIcon } from "../../lib/lesson-client";
@@ -49,7 +49,8 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const [mode,setMode]=useState(initialMode);
   const [raw,setRaw]=useState(DB.get("draft","")); const cleaned=cleanText(raw); const count=cleaned.length; const LIMIT=1200; const over=count>LIMIT;
   const savedLang=DB.get("lang","Dutch");
-  const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(DB.get("level",LEVELS[1])); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
+  const savedLevel=DB.get("level",LEVELS[1]);
+  const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(LEVELS.includes(savedLevel)?savedLevel:LEVELS[LEVELS.length-1]); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const [durationIdx,setDurationIdx]=useState(1);
   const [topicIdx,setTopicIdx]=useState(null);
   const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>!String(m?.duration||"").includes("45-60")));
@@ -86,7 +87,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     return i===0 ? (t.materialChoiceEasy||"Easier") : (t.materialChoiceRicher||"Richer");
   }
   function rememberMaterials(list){
-    const seen=list.flatMap(m=>[m?.title,materialKey(m)]).filter(Boolean);
+    const seen=list.flatMap(m=>[m?.title,materialKey(m),...(Array.isArray(m?.parts)?m.parts:[])]).filter(Boolean);
     recentTitles.current=[...seen,...recentTitles.current].slice(0,18);
     DB.set("recentMaterials",recentTitles.current);
   }
@@ -146,7 +147,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
         setSelectedMaterial(0);
       }
     }
-    posthog.capture("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:collected.length});
+    trackEvent("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:collected.length});
     rememberMaterials(collected);
     setMaterialError(!collected.length); setGenerating(false);
   }
@@ -156,6 +157,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     const targetMin=m.targetMinutes||durationSpec(selectedDuration).target;
     // Pass the stored material analysis forward so card = preview = diagnosis.
     const material={ id:m.id||cefrMaterialId(text), title:m.title||null, source:m.source||null,
+      parts:Array.isArray(m.parts)?m.parts:[],
       targetUserLevel:m.targetUserLevel||level.slice(0,2), validatedTextLevel:m.validatedTextLevel||m.level||level.slice(0,2),
       difficultyTier:m.difficultyTier||null, hardWordRatio:m.hardWordRatio??null,
       vocabularyAnnotations:Array.isArray(m.vocabularyAnnotations)?m.vocabularyAnnotations:[], estimatedLessonTime:targetMin };
@@ -229,7 +231,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
           <span className="row wrap" style={{gap:6}}><span className="badge badge-outline">{choiceLabel(i)}</span><span className="badge badge-outline">{sourceIcon(m.source)} {m.source||"AI text"}</span><span className="badge badge-outline">{sourceLabel(m)}</span><span className="badge badge-outline">{m.validatedTextLevel||m.level||level.slice(0,2)}</span></span>
           <b>{m.title}</b>
           <span className="generated-meta">{t.materialMeta(stats.mins,stats.words,stats.vocab)}</span>
-          <span>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
+          <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{(m.text||"").slice(0,190)}{(m.text||"").length>190?"…":""}</span>
         </button>); })}
       </div>
     </div>}
@@ -268,10 +270,11 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
 
 function Preview({lesson,text,userWords,onStart,onBack}){
   const {t}=useUI();
+  const [textOpen,setTextOpen]=useState(false);
   const marked=Array.isArray(userWords)?userWords.filter(Boolean):[];
   const vocabCount=marked.length||lesson.vocabCount;
   const heavy=vocabCount>12;
-  const total=lesson.estMin||TOTAL_MIN; const scale=total/TOTAL_MIN;
+  const total=lesson.estMin||TOTAL_MIN;
   const diffLabel=t.diffLabels[lesson.diff];
   const fullText=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
   // The material's CEFR comes from the ONE stored analysis — not a recompute.
@@ -285,44 +288,29 @@ function Preview({lesson,text,userWords,onStart,onBack}){
     <div className="card card-p" style={{marginBottom:16}}>
       <div className="row" style={{justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
         <h3 className="lbl" style={{margin:0}}>{t.previewTextTitle}</h3>
-        <span className="tiny muted">{lesson.charCount.toLocaleString()} {t.chars}</span>
       </div>
       <div className="tiny muted" style={{marginBottom:10}}>{t.previewTextHint}</div>
-      <div style={{maxHeight:280,overflowY:"auto",whiteSpace:"pre-wrap",lineHeight:1.7,fontSize:15,padding:"2px 2px"}}>{fullText}</div>
+      <div className={"preview-source notranslate"+(textOpen?" open":"")} translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>{fullText}</div>
+      <button className="btn btn-ghost btn-sm preview-toggle" onClick={()=>setTextOpen(v=>!v)}>{textOpen?t.previewTextCollapse:t.previewTextExpand}</button>
     </div>
-    <div className="grid4" style={{marginBottom:14}}>
+    <div className="grid3" style={{marginBottom:14}}>
       <Stat k={t.recommendedLevel} v={matLevel}/>
-      <Stat k={t.estimatedTime} v={t.min(total)}/>
       <Stat k={t.vocabulary} v={t.wordCount(vocabCount)}/>
-      <Stat k={t.characters} v={lesson.charCount.toLocaleString()}/>
+      <Stat k={t.difficultyForYou} v={<span><Stars n={lesson.diff}/> <span style={{marginLeft:6}}>{diffLabel}</span></span>}/>
     </div>
     {(lesson.charCount>1050||lesson.vocabCount>18) && <div className="split-warning" style={{marginBottom:14}}>
       <b>{t.splitTitle}</b>
       <span>{t.splitText(total)}</span>
     </div>}
-    <div className="card card-p" style={{marginBottom:16}}>
-      <div className="row" style={{justifyContent:"space-between"}}>
-        <div><div className="stat-k" style={{fontSize:11,fontWeight:600,color:"hsl(var(--muted-foreground))",textTransform:"uppercase",letterSpacing:".05em"}}>{t.difficultyForYou}</div>
-          <div style={{marginTop:5}}><Stars n={lesson.diff}/> <span style={{fontWeight:600,marginLeft:6}}>{diffLabel}</span></div></div>
-        <div className="tiny muted" style={{textAlign:"right",maxWidth:230}}>{t.basedOnLevel(lesson.level.split(" — ")[0],matLevel)}</div>
-      </div>
-    </div>
     {heavy && <div className="checkin" style={{marginTop:16,background:"hsl(var(--warm)/.08)",borderColor:"hsl(var(--warm)/.3)"}}><span>💡</span>
       <span>{t.heavy(vocabCount)}</span></div>}
-    <div className="card card-p" style={{marginBottom:16}}>
-      <h3 className="lbl">{t.previewPathTitle}</h3>
-      <div className="row wrap" style={{gap:8,marginTop:2}}>
-        {MODULES.map((m,i)=><span key={m.id} className="badge badge-outline">{i+1}. {t.nav.mods[m.id]}</span>)}
-      </div>
-      <div className="tiny muted" style={{marginTop:12}}>{t.previewSkipNote}</div>
-    </div>
     {marked.length>0 && <div className="card card-p" style={{marginBottom:16}}>
       <h3 className="lbl">{t.vocabulary}</h3>
-      <div className="row wrap" style={{gap:7}}>{marked.slice(0,40).map((w,i)=><span key={w+i} className="badge">{w}</span>)}</div>
+      <div className="row wrap" style={{gap:7}}>{marked.slice(0,40).map((w,i)=><span key={w+i} className="badge notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>{w}</span>)}</div>
     </div>}
     <div className="row" style={{justifyContent:"space-between",marginTop:22}}>
       <button className="btn btn-ghost" onClick={onBack}>← {t.back}</button>
-      <button className="btn btn-primary" onClick={onStart}>{t.start(total)} →</button></div>
+      <button className="btn btn-primary" onClick={onStart}>{t.startLearning} →</button></div>
   </div>);
 }
 
@@ -340,7 +328,7 @@ function DailyFocus({lesson}){
     <Teacher>{t.focus.teacher}</Teacher>
     {!!vocab.length && <div style={{marginBottom:12}}>
       <div className="tiny muted" style={{fontWeight:700,marginBottom:7}}>{t.focus.vocab}</div>
-      <div className="row wrap" style={{gap:7}}>{vocab.map((v,i)=><span key={(v.word||"")+i} className="badge">{v.word}<span className="muted">{v.level||""}</span></span>)}</div>
+      <div className="row wrap" style={{gap:7}}>{vocab.map((v,i)=><span key={(v.word||"")+i} className="badge notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>{v.word}<span className="muted">{v.level||""}</span></span>)}</div>
     </div>}
     {!!grammar.length && <div>
       <div className="tiny muted" style={{fontWeight:700,marginBottom:7}}>{t.focus.grammar}</div>

@@ -7,7 +7,7 @@ const PARTNER={Spanish:{name:"Lucía",face:"👩🏻"},French:{name:"Camille",fa
 
 const POS=["noun","verb","adjective","adverb","phrase"];
 
-const LEVELS=["A1 — Beginner","A2 — Elementary","B1 — Intermediate","B2 — Upper-intermediate","C1 — Advanced"];
+const LEVELS=["A1 — Beginner","A2 — Elementary","B1 — Intermediate","B2 — Upper-intermediate"];
 
 function levelIdx(l){ const p=(l||"").slice(0,2); return Math.max(0,LEVELS.findIndex(x=>x.startsWith(p))); }
 

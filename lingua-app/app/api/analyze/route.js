@@ -111,7 +111,7 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
 
       // Validate against the deterministic CEFR analyzer \u2014 never trust the model's
       // self-reported level.
-      const textbook = selectTextbookMaterials({ lang, level, topics, avoid, wordRange: [lo, hi], count: n, duration: spec.label, targetMinutes: spec.target });
+      const textbook = selectTextbookMaterials({ lang, level, topics, avoid, wordRange: [lo, hi], count: n, duration: spec.label, targetMinutes: spec.target, seed: b.nonce || requestId });
       const seen = new Set(textbook.map(m => m.id));
       const accepted = [];
       const usable = [];
@@ -234,7 +234,8 @@ Words: ${JSON.stringify(words)}`;
         try {
           const sys = "You are a warm, precise language teacher. Reply ONLY with minified JSON, no prose.";
           const user = `A ${level} learner of ${lang} is studying these words, each shown with the sentence it appears in.
-Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
+Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"lemma":<base dictionary form in ${lang}, or null>,"formLabel":<short English form label, e.g. "third-person singular present", or null>,"formExplanation":<one short ${explanationLanguage} explanation of the form, or null>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
+For Dutch verbs, always include lemma, formLabel, and formExplanation. For non-verbs, use null unless there is a very obvious beginner-level form.
 Words:\n${JSON.stringify(items)}`;
           const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 1800 });
           const p = parseJSON(out);
@@ -271,15 +272,18 @@ Words:\n${JSON.stringify(items)}`;
         const modelMeaning = String(it.simpleMeaning || it.meaning || "").trim();
         const usableModelMeaning = modelMeaning && modelMeaning.toLowerCase() !== w.toLowerCase() ? modelMeaning : "";
         const simpleMeaning = usableModelMeaning || wordTr[w.toLowerCase()] || null;
-        return {
-          word: w,
-          pos: it.pos || null,
-          simpleMeaning,
-          detail: it.detail || null,
-          meaning: it.meaning || simpleMeaning || null,
-          example: it.example || null,
-          exampleTranslation: it.exampleTranslation || null,
-        };
+          return {
+            word: w,
+            pos: it.pos || null,
+            simpleMeaning,
+            detail: it.detail || null,
+            meaning: it.meaning || simpleMeaning || null,
+            lemma: it.lemma || null,
+            formLabel: it.formLabel || null,
+            formExplanation: it.formExplanation || null,
+            example: it.example || null,
+            exampleTranslation: it.exampleTranslation || null,
+          };
       });
       return Response.json({ items: outItems });
     }
