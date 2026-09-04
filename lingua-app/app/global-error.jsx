@@ -2,11 +2,11 @@
 
 import { useEffect } from 'react';
 import '../components/PostHogInit';
-import posthog from 'posthog-js';
+import { trackEvent } from '../lib/analytics';
 
 export default function GlobalError({ error, reset }) {
   useEffect(() => {
-    posthog.captureException(error);
+    trackEvent('$exception', { error: error?.message });
   }, [error]);
 
   return (

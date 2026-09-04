@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { TTS_OK, speak, stopSpeak } from "../../lib/audio";
@@ -103,10 +103,10 @@ function ArticleAudio({sents,lang,label,rate=1}){
   </div>);
 }
 
-const SyncReader=forwardRef(function SyncReader({items,lang,level,translation,rate=1,gap=0,onTranslated,controls="internal",onPageStateChange},ref){
-  const {t}=useUI();
+function SyncReader({items,lang,level,translation,rate=1,gap=0,onTranslated}){
+  const {t,uiLang}=useUI();
   const [active,setActive]=useState(-1); const [playing,setPlaying]=useState(false); const stop=useRef(false);
-  const [trs,setTrs]=useState(()=>items.map(it=>it.tr||null));
+  const [trs,setTrs]=useState(()=>items.map(it=>uiLang==="en" ? (it.tr||null) : null));
   const [loadingTr,setLoadingTr]=useState(false);
   const [page,setPage]=useState(0);
   const pageSize=5;
@@ -117,18 +117,18 @@ const SyncReader=forwardRef(function SyncReader({items,lang,level,translation,ra
   const elapsed=useElapsed(loadingTr);
   const remaining=Math.max(1,estimateSec-elapsed);
   useEffect(()=>{ setPage(0); setActive(-1); stopSpeak(); },[items.length]);
-  useEffect(()=>{ if(translation) setTrs(items.map(it=>it.tr||null)); },[translation,items.length]);
+  useEffect(()=>{ if(translation) setTrs(items.map(()=>null)); },[uiLang,translation,items.length]);
   useEffect(()=>{ let cancel=false;
     if(!translation) return;
-    const missing=pageItems.map((it,i)=>({it,i:start+i})).filter(({it,i})=>!(it.tr||trs[i]));
+    const missing=pageItems.map((it,i)=>({it,i:start+i})).filter(({it,i})=>!((uiLang==="en"&&it.tr)||trs[i]));
     if(!missing.length) return;
     setLoadingTr(true);
-    cachedAiAnalyze("translate",{sentences:missing.map(x=>x.it.s),lang,level,translationLanguage:"English"}).then(d=>{
+    cachedAiAnalyze("translate",{sentences:missing.map(x=>x.it.s),lang,level,translationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
       if(cancel) return; setLoadingTr(false);
-      if(d&&Array.isArray(d.translations)) setTrs(prev=>{ const next=[...prev]; missing.forEach((m,i)=>{ const tr=m.it.tr||d.translations[i]||null; next[m.i]=tr; if(tr&&onTranslated) onTranslated(m.it.s,tr); }); return next; });
+      if(d&&Array.isArray(d.translations)) setTrs(prev=>{ const next=[...prev]; missing.forEach((m,i)=>{ const tr=(uiLang==="en"&&m.it.tr)||d.translations[i]||null; next[m.i]=tr; if(tr&&onTranslated) onTranslated(m.it.s,tr); }); return next; });
     });
     return ()=>{cancel=true;};
-  },[translation,page,items.length]);
+  },[translation,uiLang,page,items.length]);
   useEffect(()=>()=>{stop.current=true;stopSpeak();},[]);
   function playFrom(i){ if(stop.current||i>=items.length){setPlaying(false);setActive(-1);return;}
     const nextPage=Math.floor(i/pageSize);
@@ -140,45 +140,34 @@ const SyncReader=forwardRef(function SyncReader({items,lang,level,translation,ra
   function halt(){ stop.current=true; stopSpeak(); setPlaying(false); setActive(-1); }
   function one(i){ stop.current=true; stopSpeak(); setActive(i); const role=voiceRoleForLine(items[i].s,i,items); const u=speak(role?spokenTextForLine(items[i].s):items[i].s,lang,rate,role); if(u)u.onend=()=>setActive(-1); }
   function changePage(next){ halt(); setPage(Math.max(0,Math.min(pageCount-1,next))); }
-  useImperativeHandle(ref,()=>({
-    nextPage:()=>changePage(page+1),
-    prevPage:()=>changePage(page-1),
-    page,
-    pageCount
-  }),[page,pageCount]);
-  useEffect(()=>{ if(onPageStateChange) onPageStateChange({
-    page,
-    pageCount,
-    canPrevPage:page>0,
-    canNextPage:page<pageCount-1,
-    start:start+1,
-    end:Math.min(items.length,start+pageItems.length),
-    total:items.length
-  }); },[page,pageCount,start,pageItems.length,items.length,onPageStateChange]);
   return (<div>
+    <div className="row" style={{marginBottom:12}}>
+      <button className="btn btn-primary btn-sm" onClick={playing?halt:playAll}>{playing?`❚❚ ${t.stop}`:`▶ ${t.playAll}`}</button>
+      <span className="tiny muted">{t.syncHint}</span>
+    </div>
     {translation && loadingTr && <div className="status-strip" style={{marginBottom:12}}>
       <div className="row" style={{justifyContent:"space-between",alignItems:"baseline"}}>
         <b>{t.translatingTitle}</b><span className="tiny muted">{t.aboutRemaining(remaining)}</span>
       </div>
       <div className="mini-track"><span style={{width:progressPct(elapsed,estimateSec)+"%"}}/></div>
     </div>}
-    {controls!=="external" && <div className="reader-pager">
+    <div className="reader-pager">
       <button className="btn btn-outline btn-sm" disabled={page===0} onClick={()=>changePage(page-1)}>← {t.previousPage}</button>
       <span className="tiny muted">{t.pageOf(page+1,pageCount)} · {start+1}-{Math.min(items.length,start+pageItems.length)} / {items.length}</span>
       <button className="btn btn-outline btn-sm" disabled={page>=pageCount-1} onClick={()=>changePage(page+1)}>{t.nextPage} →</button>
-    </div>}
+    </div>
     <div className="card card-p">
-      {pageItems.map((it,j)=>{ const i=start+j; const translated=it.tr||trs[i]; return (<div key={i} className={"sline"+(active===i?" on":"")} style={{marginBottom:translation?12:2}}>
+      {pageItems.map((it,j)=>{ const i=start+j; const translated=(uiLang==="en"&&it.tr)||trs[i]; return (<div key={i} className={"sline"+(active===i?" on":"")} style={{marginBottom:translation?12:2}}>
         <div className="row" style={{gap:9,alignItems:"flex-start"}}>
-          <button className="sbtn saybtn" title={t.play} aria-label={t.play} onClick={(e)=>{e.stopPropagation();one(i);}}><span>▶</span><span>{t.play}</span></button>
+          <button className="sbtn saybtn" title={t.play} aria-label={t.play} onClick={(e)=>{e.stopPropagation();one(i);}}><span>▶</span></button>
           <div style={{flex:1}}>
-            <div className="sentence-source notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{it.s}</div>
+            <div className="sentence-source">{it.s}</div>
             {translation && <div className={"translation-line"+(!translated&&loadingTr?" loading":"")}>{translated?("→ "+translated):(loadingTr?`→ ${t.lineTranslating(i+1,items.length)}`:`→ ${t.translationUnavailable}`)}</div>}
           </div>
         </div>
       </div>); })}
     </div>
   </div>);
-});
+}
 
 export { ArticleAudio, FullPlayer, SyncReader };

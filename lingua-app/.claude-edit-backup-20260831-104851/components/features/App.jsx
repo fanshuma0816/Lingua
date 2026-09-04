@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import posthog from "posthog-js";
 import { Login } from "./Login";
 import { SessionView, Sidebar } from "./Session";
 import { InputScreen, Preview } from "./Setup";
@@ -10,7 +11,6 @@ import { Loading, Svg } from "../ui/elements";
 import { STEPS, STEP_SLUG, stepIndex } from "../../config/constants";
 import { UI_TEXT } from "../../config/uiText";
 import { UIContext } from "../../hooks/useUI";
-import { identifyUser, resetAnalytics, trackEvent } from "../../lib/analytics";
 import { stopSpeak } from "../../lib/audio";
 import { scrollToTop } from "../../lib/format";
 import { generateLesson } from "../../lib/lesson-client";
@@ -44,7 +44,7 @@ function App(){
     const userId=DB.get("userId",crypto.randomUUID());
     DB.set("userId",userId);
     const email=DB.get("email","");
-    identifyUser(userId, email?{email}:undefined);
+    posthog.identify(userId, email?{email}:undefined);
   },[]);
   const [screen,setScreen]=useState(currentRoute.screen);
   const [lesson,setLesson]=useState(()=>DB.get("currentLesson",null)); const [text,setText]=useState(()=>DB.get("currentText",""));
@@ -55,7 +55,6 @@ function App(){
   const [userWords,setUserWords]=useState(()=>DB.get("unknownWords",[])||[]);
   const [narrow,setNarrow]=useState(false);
   const mode=screen==="lesson"?"session":screen==="done"?"done":"home";
-  const showSideBack=mode!=="home"||screen==="scan"||screen==="preview"||(screen==="input"&&pathname!=="/");
 
   useEffect(()=>{ document.documentElement.classList.toggle("dark",theme==="dark"); },[theme]);
   useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen,step]);
@@ -81,24 +80,24 @@ function App(){
   }
   function toggleTheme(){ setTheme(v=>{ const n=v==="dark"?"light":"dark"; DB.set("theme",n); return n; }); }
   function toggleSide(){ setPinned(p=>!p); }
-  function clearAll(){ if(confirm(t.clearConfirm)){resetAnalytics();DB.clearAll();location.reload();} }
+  function clearAll(){ if(confirm(t.clearConfirm)){posthog.reset();DB.clearAll();location.reload();} }
 
   function resetSession(){ setStep(0); setDoneSet(new Set()); }
   function goStep(index){ const n=Math.max(0,Math.min(STEPS.length-1,index)); setStep(n); navigateTo("lesson",stepPath(n)); if(typeof window!=="undefined"&&window.innerWidth<1200) setPinned(false); scrollToTop(); }
-  function startSession(){ resetSession(); trackEvent("learning_session_started",{session_type:"new",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
-  function reviewSession(){ resetSession(); trackEvent("learning_session_started",{session_type:"review",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
+  function startSession(){ resetSession(); posthog.capture("learning_session_started",{session_type:"new",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
+  function reviewSession(){ resetSession(); posthog.capture("learning_session_started",{session_type:"review",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
   function go(id){ const idx=stepIndex(id); if(idx<0) return; goStep(idx); }
-  function onContinue(){ const cur=STEPS[step]; trackEvent("learning_step_completed",{step_id:cur.id,module_id:cur.mod,step_number:step+1}); setDoneSet(prev=>new Set(prev).add(cur.id));
-    if(step===STEPS.length-1){ trackEvent("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { goStep(step+1); } }
-  function onSkip(){ const cur=STEPS[step]; trackEvent("learning_step_skipped",{step_id:cur.id,module_id:cur.mod,step_number:step+1});
+  function onContinue(){ const cur=STEPS[step]; posthog.capture("learning_step_completed",{step_id:cur.id,module_id:cur.mod,step_number:step+1}); setDoneSet(prev=>new Set(prev).add(cur.id));
+    if(step===STEPS.length-1){ posthog.capture("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { goStep(step+1); } }
+  function onSkip(){ const cur=STEPS[step]; posthog.capture("learning_step_skipped",{step_id:cur.id,module_id:cur.mod,step_number:step+1});
     if(step===STEPS.length-1){ navigateTo("done","/done"); } else { goStep(step+1); } }
   function onPrev(){ goStep(Math.max(0,step-1)); }
 
   // Quick scan → Preview
-  function scanDone(list){ const arr=Array.isArray(list)?list:[]; setUserWords(arr); DB.set("unknownWords",arr); setLesson(cur=>cur?{...cur,userWords:arr}:cur); trackEvent("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
-  function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
+  function scanDone(list){ const arr=Array.isArray(list)?list:[]; setUserWords(arr); DB.set("unknownWords",arr); setLesson(cur=>cur?{...cur,userWords:arr}:cur); posthog.capture("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
+  function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); posthog.capture("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
 
-  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); setUserWords([]); clearLineTr(); setScreen("loading");
+  async function loadLesson(d){ posthog.capture("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); setUserWords([]); clearLineTr(); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }
@@ -120,12 +119,12 @@ function App(){
           <button className="chrome-btn focusable" onClick={toggleTheme} title="Toggle light / dark" aria-label="Toggle light / dark">{theme==="dark"?"☀️":"🌙"}</button>
           <button className="chrome-btn focusable" onClick={clearAll} title={t.clearLocalData} aria-label={t.clearLocalData}><Svg n="trash"/></button>
         </div>
-        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} go={go} onBackHome={()=>navigateTo("input","/")} showBack={showSideBack}/>
+        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} go={go} onBackHome={()=>navigateTo("input","/")}/>
       </div>
       <main className="main">
         {screen==="loading" && <Loading/>}
         {screen==="input" && <InputScreen onNext={loadLesson} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
-        {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}
+        {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip}/>}
         {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
         {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
         {screen==="done" && lesson && <Done lesson={lesson} diag={{unknown:userWords}} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}

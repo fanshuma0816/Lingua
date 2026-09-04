@@ -1,15 +1,21 @@
-function normalizeTopics(topics) {
-  if (Array.isArray(topics)) return topics.join(", ");
-  return topics || "";
+import posthog from "posthog-js";
+
+function trackEvent(name, props = {}) {
+  try {
+    posthog.capture(name, props);
+  } catch (e) {}
 }
 
-export function trackGenerateMaterialsClicked({ currentLevel, sessionGoal, fullLessonTime, topicsYouLike }) {
-  if (typeof window === "undefined" || typeof window.gtag !== "function") return;
-
-  window.gtag("event", "generate_materials_clicked", {
-    current_level: currentLevel || "",
-    session_goal: sessionGoal || "",
-    full_lesson_time: fullLessonTime || "",
-    topics_you_like: normalizeTopics(topicsYouLike),
-  });
+function identifyUser(userId, props) {
+  try {
+    posthog.identify(userId, props);
+  } catch (e) {}
 }
+
+function resetAnalytics() {
+  try {
+    posthog.reset();
+  } catch (e) {}
+}
+
+export { identifyUser, resetAnalytics, trackEvent };

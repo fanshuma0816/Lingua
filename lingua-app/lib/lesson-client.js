@@ -128,9 +128,23 @@ function sourceIcon(source){
 function fallbackGrammarItems(sentence,level,uiLang){
   const s=sentence||"";
   const zh=uiLang==="zh";
+  const rank=levelIdx(level);
+  if(/\bdwars\b/i.test(s)) return [{
+    point: zh ? "表达：dwars zitten" : "Expression: dwars zitten",
+    explain: zh ? "zitten 在这里不是“坐”，而是和 dwars 组成表达，表示某事让人烦心或别扭。" : "Here zitten is part of dwars zitten: something is bothering someone, not literally sitting.",
+    level:"B2",
+    examples:[
+      {sentence:"Die opmerking zit me nog steeds dwars.",translation:zh?"那句话到现在还让我不舒服。":"That comment is still bothering me."},
+      {sentence:"Wat zit haar dwars vandaag?",translation:zh?"她今天到底在烦什么？":"What is bothering her today?"},
+      {sentence:"Er zit iets dwars tussen ons.",translation:zh?"我们之间有点不对劲。":"Something feels off between us."},
+    ],
+  }];
   if(/\b(omdat|terwijl|als|dat|wanneer)\b/i.test(s)) return [{
-    point: zh ? "从句语序" : "Subclause word order",
-    explain: zh ? "看到 omdat/als/dat 这类词时，后半句里的动词常常去句尾。" : "After words like omdat, als, or dat, the verb often moves toward the end.",
+    point: rank>=2 ? (zh ? "从句承载背景信息" : "Subclause as background") : (zh ? "从句语序" : "Subclause word order"),
+    explain: rank>=2
+      ? (zh ? "omdat/als/dat 把原因或条件压进从句，让主句承载真正的重点。" : "Omdat, als, and dat tuck reasons or conditions into a clause so the main idea can carry the weight.")
+      : (zh ? "看到 omdat/als/dat 这类词时，后半句里的动词常常去句尾。" : "After words like omdat, als, or dat, the verb often moves toward the end."),
+    level: rank>=2 ? "B1" : "A2",
     examples:[
       {sentence:"Ik blijf thuis omdat het regent.",translation:zh?"我待在家，因为下雨了。":"I stay home because it is raining."},
       {sentence:"Zij zegt dat ze morgen komt.",translation:zh?"她说她明天来。":"She says that she is coming tomorrow."},
@@ -138,8 +152,11 @@ function fallbackGrammarItems(sentence,level,uiLang){
     ],
   }];
   if(/\b(want|maar|dus|en)\b/i.test(s)) return [{
-    point: zh ? "连接两个主句" : "Linking main clauses",
-    explain: zh ? "want/maar/dus 后面通常保持普通主句语序，动词仍靠前。" : "After want, maar, or dus, Dutch usually keeps normal main-clause word order.",
+    point: rank>=2 ? (zh ? "连接词的语气功能" : "Connector nuance") : (zh ? "连接两个主句" : "Linking main clauses"),
+    explain: rank>=2
+      ? (zh ? "want 补理由，maar 制造转折，dus 推出结论；连接词会改变句子的语气流向。" : "Want adds a reason, maar turns the thought, and dus draws a conclusion; the connector shapes the sentence flow.")
+      : (zh ? "want/maar/dus 后面通常保持普通主句语序，动词仍靠前。" : "After want, maar, or dus, Dutch usually keeps normal main-clause word order."),
+    level: rank>=2 ? "B1" : "A2",
     examples:[
       {sentence:"Ik ga mee, want ik heb tijd.",translation:zh?"我一起去，因为我有时间。":"I am coming along because I have time."},
       {sentence:"Het is laat, maar ik blijf nog even.",translation:zh?"已经晚了，但我还待一会儿。":"It is late, but I will stay a bit longer."},
@@ -147,8 +164,11 @@ function fallbackGrammarItems(sentence,level,uiLang){
     ],
   }];
   if(/\b(heb|hebt|heeft|hebben|ben|bent|is|zijn)\b.+\b(ge\p{L}+|gemaakt|gegaan|gezien|gekocht)\b/iu.test(s)) return [{
-    point: zh ? "完成时" : "Perfect tense",
-    explain: zh ? "hebben/zijn 加过去分词，常用来讲已经发生的事。" : "Dutch uses hebben or zijn plus a past participle for things that have happened.",
+    point: rank>=2 ? (zh ? "完成时的视角" : "Perfect-tense perspective") : (zh ? "完成时" : "Perfect tense"),
+    explain: rank>=2
+      ? (zh ? "完成时不只是说过去，也常强调这个经历或结果和现在有关。" : "The perfect tense often frames a past event by its present result, experience, or relevance.")
+      : (zh ? "hebben/zijn 加过去分词，常用来讲已经发生的事。" : "Dutch uses hebben or zijn plus a past participle for things that have happened."),
+    level: rank>=2 ? "B1" : "A2",
     examples:[
       {sentence:"Ik heb vandaag veel geleerd.",translation:zh?"我今天学了很多。":"I learned a lot today."},
       {sentence:"We zijn naar de markt gegaan.",translation:zh?"我们去了市场。":"We went to the market."},
@@ -156,17 +176,22 @@ function fallbackGrammarItems(sentence,level,uiLang){
     ],
   }];
   if(/\bom te\b|\bte\s+\p{L}{3,}\b/iu.test(s)) return [{
-    point: zh ? "te + 动词" : "te + infinitive",
-    explain: zh ? "te 后面接动词原形，常表达目的或动作本身。" : "te plus an infinitive often expresses a purpose or the action itself.",
+    point: rank>=2 ? (zh ? "te 短语压缩动作" : "Compact te-phrase") : (zh ? "te + 动词" : "te + infinitive"),
+    explain: rank>=2
+      ? (zh ? "te 短语可以把目的、尝试或评价压成一个紧凑的动作单位。" : "A te-phrase compresses purpose, attempt, or evaluation into one compact action unit.")
+      : (zh ? "te 后面接动词原形，常表达目的或动作本身。" : "te plus an infinitive often expresses a purpose or the action itself."),
+    level: rank>=2 ? "B1" : "A2",
     examples:[
       {sentence:"Ik probeer Nederlands te spreken.",translation:zh?"我试着说荷兰语。":"I try to speak Dutch."},
       {sentence:"Zij begint te lezen.",translation:zh?"她开始读。":"She starts to read."},
       {sentence:"We hebben tijd om te oefenen.",translation:zh?"我们有时间练习。":"We have time to practise."},
     ],
   }];
+  if(rank>=2) return [];
   return [{
     point: zh ? "主句语序" : "Main-clause word order",
     explain: zh ? `按你现在的 ${level.slice(0,2)} 水平，先抓住一件事：荷兰语主句里变位动词通常在第二个位置。` : `At ${level.slice(0,2)}, notice one useful anchor: the finite verb usually sits in second position.`,
+    level: "A1",
     examples:[
       {sentence:"Vandaag fiets ik naar de markt.",translation:zh?"今天我骑车去市场。":"Today I cycle to the market."},
       {sentence:"Morgen werk ik thuis.",translation:zh?"明天我在家工作。":"Tomorrow I work from home."},

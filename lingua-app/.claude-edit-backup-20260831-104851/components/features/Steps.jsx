@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import posthog from "posthog-js";
 import { ArticleAudio } from "./Player";
-import { CheckIn, Purpose, Say, StepHead, Svg, Teacher } from "../ui/elements";
-import { LANG_CODE, PARTNER, POS, STEPS, SUPPORT_CHECKOUT_URL } from "../../config/constants";
+import { CheckIn, Purpose, Say, Svg, Teacher } from "../ui/elements";
+import { LANG_CODE, PARTNER, POS, STEPS } from "../../config/constants";
 import { langName } from "../../config/uiText";
 import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
-import { trackEvent } from "../../lib/analytics";
 import { speak, stopSpeak } from "../../lib/audio";
 import { displayWordInfo } from "../../lib/dutch";
 import { normalizePoint, progressPct, scrollToTop } from "../../lib/format";
@@ -21,7 +21,7 @@ import { cachedAiAnalyze, chatFallback } from "../../services/api";
 // Quick scan — the learner taps words they don't know straight in the text.
 // All words look the same (no difficulty hints, no CEFR badges); the marked
 // words are remembered and drive the Vocabulary & Grammar and Recall steps.
-function QuickScan({lesson,text,onDone,onSkip,onBack}){
+function QuickScan({lesson,text,onDone,onSkip}){
   const {t}=useUI();
   const src=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
   const parts=useMemo(()=>src.split(/([\p{L}][\p{L}'’-]*)/u),[src]);
@@ -30,13 +30,12 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   function toggle(w){ const k=w.toLowerCase(); setMarked(prev=>{ const n=new Set(prev); n.has(k)?n.delete(k):n.add(k); return n; }); }
   const count=marked.size;
   return (<div>
-    <div className="step-head"><div className="step-head-main"><div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2></div>
-      <button className="btn btn-outline btn-sm step-skip focusable" onClick={onSkip}>{t.scan.skip}</button></div>
+    <div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2>
     <Teacher>{t.scan.teacher}</Teacher>
     <div className="card card-p" style={{marginBottom:14}}>
       <div style={{whiteSpace:"pre-wrap",lineHeight:2.05,fontSize:16,maxHeight:360,overflowY:"auto"}}>
         {parts.map((p,i)=> isWord(p)
-          ? <span key={i} className="scanw notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined} onClick={()=>toggle(p)}
+          ? <span key={i} onClick={()=>toggle(p)}
               style={{cursor:"pointer",borderRadius:5,padding:"1px 2px",
                 background:marked.has(p.toLowerCase())?"hsl(var(--primary)/.35)":"transparent",
                 boxShadow:marked.has(p.toLowerCase())?"inset 0 -2px 0 hsl(var(--primary))":"none"}}>{p}</span>
@@ -45,66 +44,29 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
       <div className="tiny muted" style={{marginTop:12}}>{t.scan.hint}</div>
     </div>
     <div className="row" style={{justifyContent:"space-between",alignItems:"center"}}>
-      <div className="row" style={{gap:12}}>
-        {onBack && <button className="btn btn-ghost btn-sm focusable" onClick={onBack}>{t.scan.reselect}</button>}
-        <span className="tiny muted">{count?t.scan.marked(count):t.scan.none}</span>
+      <span className="tiny muted">{count?t.scan.marked(count):t.scan.none}</span>
+      <div className="row" style={{gap:8}}>
+        <button className="btn btn-ghost btn-sm" onClick={onSkip}>{t.scan.skip}</button>
+        <button className="btn btn-primary" onClick={()=>onDone([...marked])}>{t.scan.done}</button>
       </div>
-      <button className="btn btn-primary focusable" onClick={()=>onDone([...marked])}>{t.scan.done}</button>
     </div>
   </div>);
 }
 
-function VerbForms({info,t,lang}){
-  const forms=info&&info.verbForms&&typeof info.verbForms==="object"?info.verbForms:null;
-  if(!forms) return null;
-  const labels=(t.gram&&t.gram.verbRows)||{};
-  const valueOf=(value)=>typeof value==="string"?value:value?.form;
-  const tenseKeys=["present","past","presentPerfect"];
-  const personKeys=["firstPerson","secondPerson","thirdPersonPlural"];
-  const cellValue=(tenseKey,personKey)=>{
-    const tense=forms[tenseKey];
-    return valueOf(tense?.[personKey]) || valueOf(tense?.forms?.[personKey]) || valueOf(tense?.cells?.[personKey]);
-  };
-  const rows=tenseKeys.map(tenseKey=>{
-    const directCells=personKeys.map(personKey=>cellValue(tenseKey,personKey));
-    const fallback=valueOf(forms[tenseKey]);
-    const legacyCells=tenseKey==="present"
-      ? personKeys.map(personKey=>valueOf(forms[personKey]) || fallback)
-      : personKeys.map(()=>fallback);
-    const cells=(directCells.some(cell=>String(cell||"").trim())?directCells:legacyCells)
-      .map((form,i)=>({key:personKeys[i],form}));
-    return {key:tenseKey,tense:labels[tenseKey]||tenseKey,cells};
-  }).filter(row=>row.cells.some(cell=>String(cell.form||"").trim()));
-  if(!rows.length) return null;
-  return (<details className="verb-forms">
-    <summary>{t.gram.verbFormsTitle||"Verb forms"}</summary>
-    <div className="verb-table-wrap">
-      <table className="verb-table">
-        <thead><tr><th>{t.gram.verbFormAspect||"Tense"}</th>{personKeys.map(key=><th key={key}>{labels[key]||key}</th>)}</tr></thead>
-        <tbody>{rows.map(row=><tr key={row.key}>
-          <td className="verb-tense-cell">{row.tense}</td>
-          {row.cells.map(cell=><td key={cell.key} className="verb-form-cell notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{cell.form||"-"}</td>)}
-        </tr>)}</tbody>
-      </table>
-    </div>
-  </details>);
-}
-
-function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
+function GrammarStep({lesson,onComplete,onContinue}){
   const {t,uiLang}=useUI();
   const {lang,sents,vocab,vlist,level,recommended}=lesson;
   const N=sents.length;
   const [gi,setGi]=useState(0); const [view,setView]=useState("study"); // study | summary
-  const [explByLang,setExplByLang]=useState({});     // uiLang -> word(lc) -> {meaning, example, pos} from AI
+  const [expl,setExpl]=useState({});     // word(lc) -> {meaning, example, pos} from AI
   const [loadingKw,setLoadingKw]=useState(false);
   const [trs,setTrs]=useState({});
   const [loadingTr,setLoadingTr]=useState(false);
-  const [grammarByLang,setGrammarByLang]=useState({});
+  const [grammar,setGrammar]=useState({});
   const [loadingGrammar,setLoadingGrammar]=useState(false);
   const lookupElapsed=useElapsed(loadingKw);
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
-  const expl=explByLang[uiLang]||{};
-  const grammar=grammarByLang[uiLang]||{};
+  useEffect(()=>{ setTrs({}); setGrammar({}); },[uiLang]);
   const vmap=Object.fromEntries((vocab||[]).map(v=>[v.word.toLowerCase(),v]));
   // The learner's own marked words (from Quick scan) drive this step. If they
   // skipped Quick scan, fall back to salient words from their level and the text.
@@ -127,32 +89,32 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   // (Learn 1) or a previous visit before ever calling the API.
   useEffect(()=>{ let cancel=false;
     const sen=sents[gi]||"";
-    const cached=(lesson.watch||[]).find(x=>x.s===sen)?.tr || getLineTr("en",sen);
+    const cached=(uiLang==="en" ? (lesson.watch||[]).find(x=>x.s===sen)?.tr : null) || getLineTr(uiLang,sen);
     if(cached){ setTrs(prev=>prev[gi]?prev:{...prev,[gi]:cached}); return; }
     if(trs[gi] || !sen){ setLoadingTr(false); return; }
     setLoadingTr(true);
-    cachedAiAnalyze("translate",{sentences:[sen],lang,level,translationLanguage:"English"}).then(d=>{
+    cachedAiAnalyze("translate",{sentences:[sen],lang,level,translationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
       if(cancel) return; setLoadingTr(false);
       const tr=d&&Array.isArray(d.translations)?d.translations[0]:null;
-      if(tr){ setTrs(prev=>({...prev,[gi]:tr})); setLineTr("en",sen,tr); }
+      if(tr){ setTrs(prev=>({...prev,[gi]:tr})); setLineTr(uiLang,sen,tr); }
     });
     return ()=>{cancel=true;};
-  },[gi,trs[gi]]);
+  },[gi,uiLang,trs[gi]]);
   // Ask the AI to explain this sentence's key words in context (meaning + example).
   useEffect(()=>{ let cancel=false;
     const sen=sents[gi]||""; const kws=keyWordsIn(sen,gi).filter(w=>!expl[w.toLowerCase()]);
     if(!kws.length){ setLoadingKw(false); return; }
     setLoadingKw(true);
-    cachedAiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen})),explanationLanguage:uiLang==="zh"?"Chinese":"English",schemaVersion:2}).then(d=>{
+    cachedAiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen})),explanationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
       if(cancel) return; setLoadingKw(false);
-      if(d&&Array.isArray(d.items)){ setExplByLang(prev=>{ const n={...(prev[uiLang]||{})};
-        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,exampleTranslation:it.exampleTranslation||null,pos:it.pos||null,lemma:it.lemma||null,formLabel:it.formLabel||null,formExplanation:it.formExplanation||null,verbForms:it.verbForms||null}; });
-        kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null,lemma:null,formLabel:null,formExplanation:null}; });
-        return {...prev,[uiLang]:n}; }); }
-      else setExplByLang(prev=>{ const n={...(prev[uiLang]||{})}; kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null,lemma:null,formLabel:null,formExplanation:null}; }); return {...prev,[uiLang]:n}; });
+      if(d&&Array.isArray(d.items)){ setExpl(prev=>{ const n={...prev};
+        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,exampleTranslation:it.exampleTranslation||null,pos:it.pos||null}; });
+        kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null}; });
+        return n; }); }
+      else setExpl(prev=>{ const n={...prev}; kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null}; }); return n; });
     });
     return ()=>{cancel=true;};
-  },[gi,view,uiLang]);
+  },[gi,view]);
   useEffect(()=>{ let cancel=false;
     const sen=sents[gi]||"";
     if(grammar[gi] || !sen){ setLoadingGrammar(false); return; }
@@ -163,12 +125,12 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       const prior=new Set(Object.entries(grammar).filter(([k])=>Number(k)<gi).flatMap(([,items])=>(items||[]).map(g=>normalizePoint(g.point))));
       const raw=d&&Array.isArray(d.items)&&d.items.length?d.items:fallbackGrammarItems(sen,level,uiLang);
       const items=raw.filter(g=>!prior.has(normalizePoint(g.point))).slice(0,1);
-      setGrammarByLang(prev=>({...prev,[uiLang]:{...(prev[uiLang]||{}),[gi]:items}}));
+      setGrammar(prev=>({...prev,[gi]:items}));
     });
     return ()=>{cancel=true;};
   },[gi,trs[gi],uiLang]);
   function usageNote(w){ return loadingKw ? t.lookingUpWord : t.studyUsage; }
-  const s=sents[gi]||""; const tr=trs[gi]; const kw=keyWordsIn(s,gi);
+  const s=sents[gi]||""; const tr=trs[gi]; const kw=keyWordsIn(s,gi); const grammarItems=grammar[gi]||fallbackGrammarItems(s,level,uiLang);
   const studyWords=(()=>{ const seen=new Set(), out=[];
     if(userWords.size){
       sents.slice(0,N).forEach((sen,i)=>keyWordsIn(sen,i).forEach(w=>{ const k=w.toLowerCase(); if(!seen.has(k)&&expl[k]){seen.add(k); out.push(w);} }));
@@ -180,19 +142,17 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
     return out;
   })();
   const allGrammarItems=(()=>{ const seen=new Set(), out=[];
-    Object.entries(grammar).sort(([a],[b])=>Number(a)-Number(b)).forEach(([,items])=>{
+    sents.slice(0,N).forEach((sen,i)=>{
+      const items=grammar[i]||fallbackGrammarItems(sen,level,uiLang);
       items.forEach(g=>{ const k=(g.point||"")+"|"+(g.explain||""); if(!seen.has(k)){seen.add(k); out.push(g);} });
     });
     return out;
   })();
-  const hasGrammarEntry=Object.prototype.hasOwnProperty.call(grammar,gi);
-  const grammarPending=!!s&&!hasGrammarEntry;
-  const grammarItems=hasGrammarEntry?(grammar[gi]||[]):[];
   const lookupEstimate=Math.max(6,kw.length*2+2);
   const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
 
   if(view==="summary") return (<div>
-    <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.summaryTitle} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.vocabulary}</div><h2>{t.gram.summaryTitle}</h2>
     <Teacher>{t.gram.summaryTeacher}</Teacher>
     <div className="summary-stack">
       <ArticleAudio sents={sents} lang={lang}/>
@@ -204,13 +164,8 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
             <span className="row" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><Say text={w} lang={lang}/></span>
           </summary>
           {parts.detail && <div className="summary-detail">{parts.detail}</div>}
-          {(e&&e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase()) || e?.formLabel || e?.formExplanation ? <div className="word-form">
-            {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
-            {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
-          </div> : null}
-          {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
+          {e&&e.example && <div className="word-example">“{e.example}”</div>}
           {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
-          <VerbForms info={e} t={t} lang={lang}/>
         </details>
       ); })}
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.patterns}</h3>
@@ -220,7 +175,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{ex.sentence}</span>
+              <span className="grammar-example">{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -232,7 +187,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   </div>);
 
   return (<div>
-    <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.title} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.vocabulary}</div><h2>{t.gram.title}</h2>
     <Teacher>{t.gram.teacher}</Teacher>
     <Purpose>{t.gram.purpose}</Purpose>
 
@@ -243,7 +198,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
 
     <div className="card card-p">
       <div className="row" style={{justifyContent:"space-between",marginBottom:12}}>
-        <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontWeight:600,fontSize:16}}>{s}</span><Say text={s} lang={lang} rate={1} voiceRole={voiceRoleForLine(s,gi,sents)}/></div>
+        <span style={{fontWeight:600,fontSize:16}}>{s}</span><Say text={s} lang={lang} rate={1} voiceRole={voiceRoleForLine(s,gi,sents)}/></div>
       <div className={"translation-line grammar-translation"+(!tr&&loadingTr?" loading":"")}>
         {tr?("→ "+tr):(loadingTr?`→ ${t.lineTranslating(gi+1,N)}`:`→ ${t.translationUnavailable}`)}
       </div>
@@ -257,7 +212,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       </div>}
       {kw.length?kw.map((w,j)=>{ const e=displayWordInfo(w,lang,uiLang,vmap[w.toLowerCase()],expl[w.toLowerCase()]); const parts=meaningParts(e); return (<div className="wcard" key={j}>
         <div className="row" style={{justifyContent:"space-between"}}>
-          <span className="row" style={{gap:9}}><b className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
+          <span className="row" style={{gap:9}}><b style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
           <Say text={w} lang={lang} rate={1}/></div>
         {parts.simple ? (<div className="meaning-block">
           <div className="meaning-simple">{parts.simple}</div>
@@ -265,17 +220,12 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
           <div className="skeleton short"/><div className="skeleton"/>
           <div className="tiny muted" style={{marginTop:7}}>💡 {usageNote(w)}</div>
         </div>)}
-        {(e&&e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase()) || e?.formLabel || e?.formExplanation ? <div className="word-form">
-          {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
-          {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
-        </div> : null}
-        {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
+        {e&&e.example && <div className="word-example">“{e.example}”</div>}
         {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
-        <VerbForms info={e} t={t} lang={lang}/>
       </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}
 
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.grammarCoach}</h3>
-      {(loadingGrammar||grammarPending) && <div className="tiny muted" style={{marginBottom:8}}>{t.gram.grammarLoading}</div>}
+      {loadingGrammar && <div className="tiny muted" style={{marginBottom:8}}>{t.gram.grammarLoading}</div>}
       {grammarItems.length?grammarItems.map((g,j)=><div className="grammar-card" key={j}>
         <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
@@ -283,7 +233,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
-              <span className="grammar-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{ex.sentence}</span>
+              <span className="grammar-example">{ex.sentence}</span>
             </div>
             {ex.translation && <div className="grammar-example-translation">→ {ex.translation}</div>}
           </div>)}
@@ -291,11 +241,10 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       </div>):<div className="tiny muted">{t.gram.noWords}</div>}
     </div>
 
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(gi===0){ onPrev&&onPrev(); } else setGi(g=>g-1); }}>← {gi===0?t.previous:t.gram.previous}</button>
-      {gi<N-1
-        ? <button className="btn btn-primary btn-sm focusable" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
-        : <button className="btn btn-primary btn-sm focusable" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
+    <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
+      <button className="btn btn-ghost btn-sm" disabled={gi===0} onClick={()=>setGi(g=>g-1)}>← {t.gram.previous}</button>
+      {gi<N-1 ? <button className="btn btn-outline btn-sm" onClick={()=>setGi(g=>g+1)}>{t.gram.next} →</button>
+        : <button className="btn btn-primary btn-sm" onClick={()=>setView("summary")}>{t.gram.seeSummary} →</button>}
     </div>
     <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{t.gram.sentence(gi+1,N)}</div>
   </div>);
@@ -303,7 +252,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
 
 // Shadowing — one page, two modes the learner can switch between: read along
 // with the text, or hide the text for a challenge.
-function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
+function Shadowing({sents,lang}){
   const {t}=useUI();
   const list=sents;
   const [withSubs,setWithSubs]=useState(true);
@@ -332,7 +281,7 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
     <button className={"tab"+(withSubs?" on":"")} onClick={()=>setWithSubs(true)}>{t.timed.modeSubs}</button>
     <button className={"tab"+(!withSubs?" on":"")} onClick={()=>setWithSubs(false)}>{t.timed.modeNoSubs}</button>
   </div>);
-  const head=(<StepHead eyebrow={t.nav.mods.shadowing} title={t.timed.title(withSubs)} onSkip={onSkip} skipLabel={t.skipStep}/>);
+  const head=(<><div className="eyebrow">{t.nav.mods.shadowing}</div><h2>{t.timed.title(withSubs)}</h2></>);
 
   if(!started) return (<div>{head}{modeSwitch}
     <Teacher>{withSubs?t.timed.teacherSubs:t.timed.teacherNoSubs}</Teacher>
@@ -341,42 +290,34 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
       <div style={{fontWeight:500,marginBottom:6}}>{t.timed.how}</div>
       <ul className="clean tiny muted">{t.timed.tips.map((tip,i)=><li key={i}>{tip}</li>)}</ul>
     </div>
-    <div className="tiny muted" style={{marginBottom:10}}>{t.timed.breath}</div>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>onPrev&&onPrev()}>← {t.previous}</button>
-      <button className="btn btn-primary btn-sm focusable" onClick={begin}>▶ {t.timed.ready}</button>
-    </div>
+    <button className="btn btn-primary" onClick={begin}>▶ {t.timed.ready}</button>
+    <div className="tiny muted" style={{marginTop:10}}>{t.timed.breath}</div>
   </div>);
 
   if(done) return (<div>{head}{modeSwitch}
     <div className="card bigcard"><div style={{fontSize:34}}>✓</div>
-      <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div></div>
+      <div className="bigsent" style={{fontSize:18}}>{t.timed.done(list.length)}</div>
+      <button className="btn btn-outline btn-sm" onClick={begin}>↺ {t.timed.again}</button></div>
     <CheckIn>{t.timed.doneCheck}</CheckIn>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={begin}>↺ {t.timed.again}</button>
-      <button className="btn btn-primary btn-sm focusable" onClick={()=>onContinue&&onContinue()}>{t.continue} →</button>
-    </div>
   </div>);
 
   return (<div>{head}{modeSwitch}
     <div className="card bigcard">
       <div className="row" style={{gap:8}}><span className="badge badge-outline">{idx+1} / {list.length}</span>
         <span className="phaselab" style={{color:"hsl(var(--success))"}}>🗣️ {t.timed.shadow}</span></div>
-      {(withSubs||reveal) ? <div className="bigsent notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
+      {(withSubs||reveal) ? <div className="bigsent">{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
       {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
     <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
+      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={goPrev}>← {t.back}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(1)}>▶ {t.timed.replay}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(.75)}>▶ {t.timed.slow} 0.75×</button>
-    </div>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(idx===0){ stopSpeak(); setStarted(false); } else goPrev(); }}>← {t.back}</button>
-      <button className="btn btn-primary btn-sm focusable" onClick={goNext}>{idx<list.length-1?`${t.timed.next} →`:`${t.timed.finishRound} ✓`}</button>
+      <button className="btn btn-primary btn-sm" onClick={goNext}>{idx<list.length-1?`${t.timed.next} →`:`${t.timed.finishRound} ✓`}</button>
     </div>
   </div>);
 }
 
-function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
+function RecallStep({lesson,onComplete,onContinue}){
   const {t,uiLang}=useUI();
   const {lang,level,sents,focus}=lesson;
   // Recall focuses on the sentences carrying the most of the learner's own
@@ -421,7 +362,7 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   function check(){ if(!canCheck) return; setShown(s=>({...s,[idx]:true})); }
   function move(next){ stopMic(); setIdx(Math.max(0,Math.min(list.length-1,next))); }
   return (<div>
-    <StepHead eyebrow={t.nav.mods.recall} title={t.recall.title} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.recall}</div><h2>{t.recall.title}</h2>
     <Teacher>{t.recall.teacher}</Teacher>
     <Purpose>{t.recall.purpose}</Purpose>
     <div className="card card-p">
@@ -439,27 +380,25 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       </div>
       {shown[idx] && <div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
         <h3 className="lbl">{t.recall.original}</h3>
-        <div className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontWeight:600}}>{cur}</div>
+        <div style={{fontWeight:600}}>{cur}</div>
         <div style={{marginTop:10}}><Say text={cur} lang={lang} rate={1} voiceRole={voiceRoleForLine(cur,idx,list)}/></div>
       </div>}
     </div>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(idx===0){ onPrev&&onPrev(); } else move(idx-1); }}>← {idx===0?t.previous:t.back}</button>
-      {idx<list.length-1
-        ? <button className="btn btn-primary btn-sm focusable" onClick={()=>move(idx+1)}>{t.gram.next} →</button>
-        : <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{t.continue} →</button>}
+    <div className="row" style={{justifyContent:"space-between",marginTop:16}}>
+      <button className="btn btn-ghost btn-sm" disabled={idx===0} onClick={()=>move(idx-1)}>← {t.back}</button>
+      <span className="tiny muted">{doneCount>=list.length?t.recall.done:t.recall.tryFirst}</span>
+      {idx<list.length-1 ? <button className="btn btn-outline btn-sm" onClick={()=>move(idx+1)}>{t.gram.next} →</button> : <button className="btn btn-primary btn-sm" onClick={onContinue}>{t.continue} →</button>}
     </div>
-    <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{doneCount>=list.length?t.recall.done:t.recall.tryFirst}</div>
   </div>);
 }
 
-function PracticeAI({lesson,onComplete,onSkip}){
+function PracticeAI({lesson,onComplete}){
   const {t}=useUI();
   const [tab,setTab]=useState("chat");
   const [wrote,setWrote]=useState(false); const [talked,setTalked]=useState(false);
   useEffect(()=>{ if(wrote&&talked&&onComplete) onComplete(); },[wrote,talked]);
   return (<div>
-    <StepHead eyebrow={t.nav.mods.using} title={t.aiUse.title} onSkip={onSkip} skipLabel={t.skipStep}/>
+    <div className="eyebrow">{t.nav.mods.using}</div><h2>{t.aiUse.title}</h2>
     <Teacher>{t.aiUse.teacher}</Teacher>
     <Purpose>{t.aiUse.purpose}</Purpose>
     <div className="tabs">
@@ -480,7 +419,7 @@ function AIWrite({lesson,onDone}){
   const [textv,setTextv]=useState(DB.get("aiPractice","")); const [fb,setFb]=useState(null); // null | "loading" | {real} | "mock"
   useEffect(()=>DB.set("aiPractice",textv),[textv]);
   async function getFeedback(){
-    trackEvent("writing_feedback_requested",{language:lang,level:level.slice(0,2),word_count:textv.trim().split(/\s+/).filter(Boolean).length});
+    posthog.capture("writing_feedback_requested",{language:lang,level:level.slice(0,2),word_count:textv.trim().split(/\s+/).filter(Boolean).length});
     setFb("loading"); onDone&&onDone();
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
@@ -491,7 +430,7 @@ function AIWrite({lesson,onDone}){
   }
   const real=fb && fb!=="loading" && fb!=="mock";
   return (<div>
-    <div className="row wrap" style={{gap:7,marginBottom:14}}>{(focusWords.length?focusWords:vocab.slice(0,8).map(v=>v.word)).slice(0,8).map(w=><span key={w} className="badge notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{w}</span>)}</div>
+    <div className="row wrap" style={{gap:7,marginBottom:14}}>{(focusWords.length?focusWords:vocab.slice(0,8).map(v=>v.word)).slice(0,8).map(w=><span key={w} className="badge">{w}</span>)}</div>
     <div className="card card-p" style={{marginBottom:14}}><div className="row" style={{gap:10}}>
       <div className="tface">👩‍🏫</div><div style={{fontWeight:500}}>{question}</div></div></div>
     <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={t.aiUse.writePlaceholder(shownLang)}/>
@@ -510,7 +449,7 @@ function AIWrite({lesson,onDone}){
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{fb.grammar}</span></div>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{fb.vocabulary}</span></div>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.sentence}.</b> <span className="muted">{fb.sentence}</span></div>
-        {fb.revision && <div style={{marginTop:10}}><b>{t.aiUse.revision}:</b><div className="card card-p notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{marginTop:6,background:"hsl(var(--secondary))"}}>{fb.revision}</div></div>}
+        {fb.revision && <div style={{marginTop:10}}><b>{t.aiUse.revision}:</b><div className="card card-p" style={{marginTop:6,background:"hsl(var(--secondary))"}}>{fb.revision}</div></div>}
       </>) : (<>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{t.aiUse.mockGrammar}</span></div>
         <div style={{marginBottom:8}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{t.aiUse.mockVocab}</span></div>
@@ -537,22 +476,12 @@ function AIChat({lesson,onNext,onDone}){
   const [speaking,setSpeaking]=useState(false);
   const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null); const [listening,setListening]=useState(false);
   const mockRef=useRef(false); const recRef=useRef(null); const wantRef=useRef(false); const silenceRef=useRef(null);
-  const mountedRef=useRef(false); const abortRef=useRef(null);
   const MAX_TURNS=5;
 
-  function sayAI(line){
-    if(!mountedRef.current) return;
-    setSpeaking(true);
-    const u=speak(line,lang);
-    if(u){ u.onend=()=>{ if(mountedRef.current) setSpeaking(false); }; }
-    else setSpeaking(false);
-  }
+  function sayAI(line){ setSpeaking(true); const u=speak(line,lang); if(u){ u.onend=()=>setSpeaking(false); } else setSpeaking(false); }
 
   async function aiReply(history,onChunk){
-    const controller=new AbortController();
-    abortRef.current=controller;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        signal:controller.signal,
         body:JSON.stringify({mode:"chat",stream:true,lang,level,vocab:vwords,topic,grammar,sample,history})});
       if(!r.ok) throw new Error("no api");
       const ct=r.headers.get("content-type")||"";
@@ -560,28 +489,24 @@ function AIChat({lesson,onNext,onDone}){
         const reader=r.body.getReader(); const decoder=new TextDecoder(); let text="";
         while(true){
           const {value,done}=await reader.read();
-          if(controller.signal.aborted) return null;
           if(done) break;
           text+=decoder.decode(value,{stream:true});
-          if(!controller.signal.aborted) onChunk&&onChunk(text);
+          onChunk&&onChunk(text);
         }
         text+=decoder.decode();
-        if(text&&!controller.signal.aborted) onChunk&&onChunk(text);
+        if(text) onChunk&&onChunk(text);
         return text.trim()||null;
       }
       const d=await r.json(); return d.reply||null;
     }catch(e){ return null; }
-    finally{ if(abortRef.current===controller) abortRef.current=null; }
   }
   useEffect(()=>{ (async()=>{
-    mountedRef.current=true;
     setBusy(true);
-    const reply=await aiReply([],partial=>{ if(!mountedRef.current) return; mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
-    if(!mountedRef.current) return;
+    const reply=await aiReply([],partial=>{ mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
     if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); sayAI(reply); }
     else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
     setBusy(false);
-  })(); return ()=>{ mountedRef.current=false; if(abortRef.current) abortRef.current.abort(); stopSpeak(); stopMic(); }; },[]);
+  })(); return ()=>{stopSpeak(); stopMic();}; },[]);
 
   const full=draft.trim().split(/\s+/).filter(Boolean).length>=3;
   function toHistory(list){ return list.map(m=>({role:m.who==="ai"?"assistant":"user",content:m.t})); }
@@ -597,11 +522,11 @@ function AIChat({lesson,onNext,onDone}){
     recRef.current=r; try{ r.start(); setListening(true); armSilence(); }catch(e){ setListening(false); } }
   function stopMic(){ wantRef.current=false; clearSilence(); if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
-  async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
+  async function finish(list){ posthog.capture("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
     if(mockRef.current) return;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
-      if(r.ok){ const d=await r.json(); if(mountedRef.current) setEvalz(d); } }catch(e){} }
+      if(r.ok) setEvalz(await r.json()); }catch(e){} }
 
   async function send(){ if(!full||busy) return; stopMic();
     const withMe=[...msgs,{who:"me",t:draft.trim()}]; const nx=turns+1;
@@ -610,8 +535,7 @@ function AIChat({lesson,onNext,onDone}){
     if(mockRef.current){ const line=fallback[nx]||fallback[fallback.length-1]; setMsgs([...withMe,{who:"ai",t:line}]); sayAI(line); return; }
     setBusy(true);
     setMsgs([...withMe,{who:"ai",t:""}]);
-    const reply=await aiReply(toHistory(withMe),partial=>{ if(mountedRef.current) setMsgs([...withMe,{who:"ai",t:partial}]); });
-    if(!mountedRef.current) return;
+    const reply=await aiReply(toHistory(withMe),partial=>setMsgs([...withMe,{who:"ai",t:partial}]));
     const line=reply||"👍"; setMsgs([...withMe,{who:"ai",t:line}]); if(reply) sayAI(line);
     setBusy(false);
   }
@@ -625,7 +549,7 @@ function AIChat({lesson,onNext,onDone}){
       <div style={{fontSize:60,lineHeight:1,filter:speaking?"none":"grayscale(.15)"}}>{partner.face}</div>
       <div style={{fontWeight:700,marginTop:6}}>{partner.name}</div>
       <div className="tiny muted">{busy?"…"+t.chat.thinking:speaking?"🔊 "+t.chat.speaking+"…":t.chat.yourTurn}</div>
-      {lastAi && <div className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontWeight:500,fontSize:17,margin:"12px auto 0",maxWidth:520}}>{lastAi.t}</div>}
+      {lastAi && <div style={{fontWeight:500,fontSize:17,margin:"12px auto 0",maxWidth:520}}>{lastAi.t}</div>}
       <div className="row" style={{gap:8,justifyContent:"center",marginTop:10}}>
         {lastAi && <button className="btn btn-outline btn-sm" onClick={()=>sayAI(lastAi.t)}>🔊 {t.chat.sayAgain}</button>}
         <span className="tiny muted">{t.chat.exchange(Math.min(turns+1,MAX_TURNS),MAX_TURNS)}</span>
@@ -644,7 +568,7 @@ function AIChat({lesson,onNext,onDone}){
         <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>{t.chat.replyTo(partner.name)} →</button></div>
 
       {msgs.length>1 && <details style={{marginTop:14}}><summary className="tiny muted" style={{cursor:"pointer"}}>{t.chat.showTranscript}</summary>
-        <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who+" notranslate"} translate="no" lang={lang==="Dutch"?"nl":undefined}>{m.t}</div>))}</div></details>}
+        <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who}>{m.t}</div>))}</div></details>}
     </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
         <h3 className="lbl">{t.chat.feedbackTitle(!evalz)}</h3>
         {evalz ? (<div>
@@ -661,102 +585,43 @@ function AIChat({lesson,onNext,onDone}){
 function Done({lesson,diag,onNew,onReview}){
   const {t}=useUI();
   const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
-  const [feedbackStep,setFeedbackStep]=useState("most");
-  const [feedbackOpen,setFeedbackOpen]=useState(true);
-  const [devFeedback,setDevFeedback]=useState(()=>DB.get("developmentFeedbackDraft",""));
-  const [devFeedbackStatus,setDevFeedbackStatus]=useState("idle");
+  const [sent,setSent]=useState(false); const [skipped,setSkipped]=useState(false);
   const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
-  useEffect(()=>{ trackEvent("lesson_feedback_opened",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); },[]);
-  function captureSurvey(mostV,leastV){
-    trackEvent("lesson_feedback",{most_helpful:mostV,least_helpful:leastV,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
-  function chooseMost(m){ setMost(m); setFeedbackStep("least"); trackEvent("lesson_feedback_choice_selected",{question:"most_helpful",choice:m,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
-  function chooseLeast(m){ if(m!==most){ setLeast(m); trackEvent("lesson_feedback_choice_selected",{question:"least_helpful",choice:m,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); } }
-  function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); setFeedbackOpen(false); }
-  function closeSurvey(reason){ trackEvent(reason==="skip"?"lesson_feedback_skipped":"lesson_feedback_closed",{step:feedbackStep,most_helpful:most||null,least_helpful:least||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); setFeedbackOpen(false); }
-  useEffect(()=>DB.set("developmentFeedbackDraft",devFeedback),[devFeedback]);
-  async function submitDevelopmentFeedback(){
-    const text=devFeedback.trim();
-    if(!text||devFeedbackStatus==="sending") return;
-    setDevFeedbackStatus("sending");
-    try{
-      const r=await fetch("/api/feedback",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          text,
-          language:lesson?.lang||null,
-          level:(lesson?.level||"").slice(0,2)||null,
-          lessonId:lesson?.id||null,
-          pagePath:typeof window!=="undefined"?window.location.pathname:null,
-        })});
-      if(!r.ok) throw new Error("feedback failed");
-      const d=await r.json();
-      trackEvent("development_feedback_submitted",{feedback_length:d?.feedback_length||text.length,feedback_redacted:!!d?.feedback_redacted,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
-      setDevFeedback("");
-      DB.set("developmentFeedbackDraft","");
-      setDevFeedbackStatus("sent");
-    }catch(e){
-      setDevFeedbackStatus("error");
-    }
-  }
+  function submitSurvey(){ if(!most&&!least) return;
+    try{ if(typeof window!=="undefined"&&window.gtag) window.gtag("event","lesson_feedback",{most_helpful:most||null,least_helpful:least||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }catch(e){}
+    posthog.capture("lesson_feedback",{most_helpful:most,least_helpful:least,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
+    setSent(true); }
+  const name=(DB.get("email","")||"").split("@")[0]||t.done.friend;
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
   const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
-  const isLeastStep=feedbackStep==="least";
-  const feedbackNumber=isLeastStep?2:1;
-  const feedbackText=devFeedback.trim();
-  const feedbackSending=devFeedbackStatus==="sending";
-  return (<>
-    <div className="done-wrap">
-      <div className="done-emoji">🎉</div>
-      <h1 className="done-h1">{t.done.title()}</h1>
-      <p className="done-sub">{t.done.sub(STEPS.length)}</p>
-      <div className="done-card donation-card">
-        <div className="done-card-title">{t.donation.title}</div>
-        <p className="done-card-note">{t.donation.body}</p>
-        <button className="btn btn-outline" onClick={()=>window.location.assign(SUPPORT_CHECKOUT_URL)}>{t.donation.button}</button>
-        <div className="tiny muted">{t.donation.soon}</div>
-        <div className="donation-feedback">
-          <label className="tiny muted" htmlFor="development-feedback">{t.donation.feedbackLabel}</label>
-          <textarea id="development-feedback" value={devFeedback} onChange={e=>{setDevFeedback(e.target.value); if(devFeedbackStatus!=="sending") setDevFeedbackStatus("idle");}} placeholder={t.donation.feedbackPlaceholder}/>
-          <div className="feedback-submit-row">
-            <span className="tiny muted">{t.donation.feedbackPrivacy}</span>
-            <button className="btn btn-primary btn-sm" disabled={!feedbackText||feedbackSending} onClick={submitDevelopmentFeedback}>{feedbackSending?t.donation.feedbackSending:t.donation.feedbackSend}</button>
-          </div>
-          {devFeedbackStatus==="sent" && <div className="tiny feedback-status ok">{t.donation.feedbackSent}</div>}
-          {devFeedbackStatus==="error" && <div className="tiny feedback-status error">{t.donation.feedbackError}</div>}
-        </div>
-      </div>
-      <div className="done-actions">
-        <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
-        <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
-      </div>
+  return (<div className="done-wrap">
+    <div className="done-emoji">🎉</div>
+    <h1 className="done-h1">{t.done.title(name)}</h1>
+    <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+    <div className="done-card">
+      <div className="done-card-emoji">📚✨</div>
+      <div className="done-card-title">{t.celebrate.explored(wordList.length)}</div>
+      <div className="done-chips">{wordList.map(w=><span className="done-chip" key={w}>{w}</span>)}</div>
+      <p className="done-card-note">{t.done.more}</p>
     </div>
-    {feedbackOpen && <div className="feedback-pop" role="dialog" aria-label={t.survey.title}>
-      <div className="feedback-pop-head">
-        <div>
-          <b>{t.survey.title}</b>
-          <div className="tiny muted">{t.survey.progress(feedbackNumber,2)}</div>
-        </div>
-        <button className="feedback-close" aria-label={t.survey.close} onClick={()=>closeSurvey("close")}>×</button>
-      </div>
-      <div className="feedback-step-dots" aria-hidden="true"><span className={!isLeastStep?"on":""}/><span className={isLeastStep?"on":""}/></div>
-      <div className="feedback-question">
-        <span className="feedback-question-icon">{isLeastStep?t.survey.leastIcon:t.survey.mostIcon}</span>
-        <span>{isLeastStep?t.survey.least:t.survey.most}</span>
-      </div>
-      <div className="feedback-options">{SURVEY_MODS.map(m=>{
-        const selected=isLeastStep?least===m:most===m;
-        const disabled=isLeastStep&&most===m;
-        return <button key={m} className={"badge badge-outline feedback-choice"+(selected?" on":"")} disabled={disabled} onClick={()=>isLeastStep?chooseLeast(m):chooseMost(m)}>{t.nav.mods[m]}</button>;
-      })}</div>
-      <div className="feedback-actions">
-        <button className="btn btn-ghost btn-sm" onClick={()=>closeSurvey("skip")}>{t.survey.skip}</button>
-        <div className="row" style={{gap:8}}>
-          {isLeastStep && <button className="btn btn-outline btn-sm" onClick={()=>setFeedbackStep("most")}>{t.survey.back}</button>}
-          {isLeastStep && <button className="btn btn-primary btn-sm" disabled={!most||!least} onClick={submitSurvey}>{t.survey.submit}</button>}
-        </div>
+    {!sent && !skipped && <div className="done-card" style={{textAlign:"left"}}>
+      <div className="done-card-title" style={{marginBottom:10}}>{t.survey.title}</div>
+      <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.most}</div>
+      <div className="row wrap" style={{gap:7,marginBottom:12,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className={"badge"+(most===m?" badge-warm":"")} onClick={()=>setMost(m)} style={{cursor:"pointer",fontWeight:most===m?700:400}}>{t.nav.mods[m]}</button>)}</div>
+      <div className="tiny muted" style={{fontWeight:700,marginBottom:6}}>{t.survey.least}</div>
+      <div className="row wrap" style={{gap:7,marginBottom:14,justifyContent:"center"}}>{SURVEY_MODS.map(m=><button key={m} className={"badge"+(least===m?" badge-warm":"")} onClick={()=>setLeast(m)} style={{cursor:"pointer",fontWeight:least===m?700:400}}>{t.nav.mods[m]}</button>)}</div>
+      <div className="row" style={{justifyContent:"space-between"}}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setSkipped(true)}>{t.survey.skip}</button>
+        <button className="btn btn-primary btn-sm" disabled={!most&&!least} onClick={submitSurvey}>{t.survey.submit}</button>
       </div>
     </div>}
-  </>);
+    {sent && <div className="tiny muted" style={{marginBottom:6}}>{t.survey.thanks}</div>}
+    <div className="done-actions">
+      <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
+      <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
+    </div>
+  </div>);
 }
 
 export { AIChat, AIWrite, Done, GrammarStep, PracticeAI, QuickScan, RecallStep, Shadowing };
