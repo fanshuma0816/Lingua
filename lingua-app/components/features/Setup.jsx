@@ -53,7 +53,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(LEVELS.includes(savedLevel)?savedLevel:LEVELS[LEVELS.length-1]); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const [durationIdx,setDurationIdx]=useState(1);
   const [topicIdx,setTopicIdx]=useState(null);
-  const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>!String(m?.duration||"").includes("45-60")));
+  const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>!String(m?.duration||"").includes("45-60")&&!String(m?.title||"").includes(" + ")&&(!Array.isArray(m?.parts)||m.parts.length<=1)));
   const [selectedMaterial,setSelectedMaterial]=useState(()=>DB.get("genSelected",0));
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);

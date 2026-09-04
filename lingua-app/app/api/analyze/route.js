@@ -60,6 +60,7 @@ export async function POST(req) {
         ? `Light topic preference: ${topics.join(", ")}. Use it only as inspiration; level fit is more important.`
         : "No topic preference. Choose one simple, concrete everyday scenario.";
       const beginnerLine = cur <= 1 ? "Use short sentences, concrete situations, very common words, and little or no subordination." : "";
+      const coherenceLine = "Write ONE coherent text, not a list of unrelated sentences. Keep the same characters, place, and situation from beginning to end, with a simple beginning, middle, and ending.";
       const overCapLine = aboveCapLimit
         ? `The main vocabulary body should be ${mainRange}. At most ${aboveCapLimit} natural words may be above ${capLevel}, only when they are easy to infer from context.`
         : `Keep the vocabulary within ${mainRange}.`;
@@ -75,6 +76,7 @@ export async function POST(req) {
       const buildPrompt = (nonce, extra = "") => (n === 1
         ? `Create 1 short learning material in ${lang} for a CEFR ${targetLevel} learner.
 Goal: ${goal}. Full lesson time: ${duration}. ${topicLine}
+${coherenceLine}
 DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
 - ${overCapLine}
 - It must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; do NOT return an easier text.
@@ -88,6 +90,7 @@ If source is "Dialogue", put each speaker turn on its own line with a short labe
 Use concrete, specific details, not generic textbook filler. Do not include translations. Variation token: ${nonce}.${extra}`
         : `Create ${n} different short learning materials in ${lang} for a CEFR ${targetLevel} learner.
 Goal: ${goal}. Full lesson time: ${duration}. ${topicLine}
+${coherenceLine}
 DIFFICULTY MODEL \u2014 comprehensible input at "i+1":
 - ${overCapLine}
 - Every option must validate as ${targetLevel}${capLevel !== targetLevel ? ` or ${capLevel}` : ""}; do NOT return easier texts.
@@ -171,7 +174,8 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
         return aGap - bGap || a.hardWordRatio - b2.hardWordRatio;
       });
       const tierNames = ["comfortable", "balanced"];
-      const final = [...textbook, ...accepted, ...usable]
+      const prefersGeneratedStory = wMin > 60 && accepted.length > 0;
+      const final = (prefersGeneratedStory ? [...accepted, ...textbook, ...usable] : [...textbook, ...accepted, ...usable])
         .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
         .slice(0, n)
         .map((m, i) => ({ ...m, difficultyTier: n === 1 ? (tier || m.difficultyTier) : (tierNames[i] || m.difficultyTier) }));
@@ -234,10 +238,10 @@ Words: ${JSON.stringify(words)}`;
         try {
           const sys = "You are a warm, precise language teacher. Reply ONLY with minified JSON, no prose.";
           const user = `A ${level} learner of ${lang} is studying these words, each shown with the sentence it appears in.
-Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"lemma":<base dictionary form in ${lang}, or null>,"formLabel":<short English form label, e.g. "third-person singular present", or null>,"formExplanation":<one short ${explanationLanguage} explanation of the form, or null>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
-For Dutch verbs, always include lemma, formLabel, and formExplanation. For non-verbs, use null unless there is a very obvious beginner-level form.
+Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"lemma":<base dictionary form in ${lang}, or null>,"formLabel":<short English form label, e.g. "third-person singular present", or null>,"formExplanation":<one short ${explanationLanguage} explanation of the form, or null>,"verbForms":<for verbs only: {"present":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"past":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"presentPerfect":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"firstPerson":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>}}, or null>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
+For Dutch verbs, always include lemma, formLabel, formExplanation, and verbForms. In verbForms, use the base verb's useful beginner forms; if a form has multiple common options, use a short slash-separated form. For non-verbs, use null unless there is a very obvious beginner-level form.
 Words:\n${JSON.stringify(items)}`;
-          const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 1800 });
+          const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 2600 });
           const p = parseJSON(out);
           aiItems = Array.isArray(p.items) ? p.items : [];
         } catch (e) { aiItems = []; }
@@ -281,6 +285,7 @@ Words:\n${JSON.stringify(items)}`;
             lemma: it.lemma || null,
             formLabel: it.formLabel || null,
             formExplanation: it.formExplanation || null,
+            verbForms: it.verbForms && typeof it.verbForms === "object" ? it.verbForms : null,
             example: it.example || null,
             exampleTranslation: it.exampleTranslation || null,
           };

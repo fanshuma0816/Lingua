@@ -54,20 +54,51 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   </div>);
 }
 
+function VerbForms({info,t,lang}){
+  const forms=info&&info.verbForms&&typeof info.verbForms==="object"?info.verbForms:null;
+  if(!forms) return null;
+  const labels=(t.gram&&t.gram.verbRows)||{};
+  const valueOf=(value)=>typeof value==="string"?value:value?.form;
+  const presentRows=["firstPerson","secondPerson","thirdPersonPlural"]
+    .map(key=>({key,tense:labels.present||"Present tense",person:labels[key]||key,form:valueOf(forms[key])}))
+    .filter(row=>String(row.form||"").trim());
+  const rows=[
+    ...(presentRows.length?presentRows:[{key:"present",tense:labels.present||"Present tense",person:t.gram.verbPersonCommon||"Common",form:valueOf(forms.present)}]),
+    {key:"past",tense:labels.past||"Past tense",person:t.gram.verbPersonCommon||"Common",form:valueOf(forms.past)},
+    {key:"presentPerfect",tense:labels.presentPerfect||"Present perfect",person:t.gram.verbPersonCommon||"Common",form:valueOf(forms.presentPerfect)},
+  ]
+    .filter(row=>String(row.form||"").trim());
+  if(!rows.length) return null;
+  return (<details className="verb-forms">
+    <summary>{t.gram.verbFormsTitle||"Verb forms"}</summary>
+    <div className="verb-table-wrap">
+      <table className="verb-table">
+        <thead><tr><th>{t.gram.verbFormAspect||"Tense"}</th><th>{t.gram.verbFormPerson||"Person"}</th><th>{t.gram.verbFormValue||"Form"}</th></tr></thead>
+        <tbody>{rows.map(row=><tr key={row.key}>
+          <td>{row.tense}</td>
+          <td>{row.person}</td>
+          <td className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{row.form}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>
+  </details>);
+}
+
 function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
   const {t,uiLang}=useUI();
   const {lang,sents,vocab,vlist,level,recommended}=lesson;
   const N=sents.length;
   const [gi,setGi]=useState(0); const [view,setView]=useState("study"); // study | summary
-  const [expl,setExpl]=useState({});     // word(lc) -> {meaning, example, pos} from AI
+  const [explByLang,setExplByLang]=useState({});     // uiLang -> word(lc) -> {meaning, example, pos} from AI
   const [loadingKw,setLoadingKw]=useState(false);
   const [trs,setTrs]=useState({});
   const [loadingTr,setLoadingTr]=useState(false);
-  const [grammar,setGrammar]=useState({});
+  const [grammarByLang,setGrammarByLang]=useState({});
   const [loadingGrammar,setLoadingGrammar]=useState(false);
   const lookupElapsed=useElapsed(loadingKw);
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
-  useEffect(()=>{ setGrammar({}); setExpl({}); },[uiLang]);
+  const expl=explByLang[uiLang]||{};
+  const grammar=grammarByLang[uiLang]||{};
   const vmap=Object.fromEntries((vocab||[]).map(v=>[v.word.toLowerCase(),v]));
   // The learner's own marked words (from Quick scan) drive this step. If they
   // skipped Quick scan, fall back to salient words from their level and the text.
@@ -106,13 +137,13 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
     const sen=sents[gi]||""; const kws=keyWordsIn(sen,gi).filter(w=>!expl[w.toLowerCase()]);
     if(!kws.length){ setLoadingKw(false); return; }
     setLoadingKw(true);
-    cachedAiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen})),explanationLanguage:uiLang==="zh"?"Chinese":"English"}).then(d=>{
+    cachedAiAnalyze("explain",{lang,level,items:kws.map(w=>({word:w,context:sen})),explanationLanguage:uiLang==="zh"?"Chinese":"English",schemaVersion:2}).then(d=>{
       if(cancel) return; setLoadingKw(false);
-      if(d&&Array.isArray(d.items)){ setExpl(prev=>{ const n={...prev};
-        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,exampleTranslation:it.exampleTranslation||null,pos:it.pos||null,lemma:it.lemma||null,formLabel:it.formLabel||null,formExplanation:it.formExplanation||null}; });
+      if(d&&Array.isArray(d.items)){ setExplByLang(prev=>{ const n={...(prev[uiLang]||{})};
+        d.items.forEach(it=>{ if(it&&it.word) n[String(it.word).toLowerCase()]={meaning:it.meaning||null,simpleMeaning:it.simpleMeaning||null,detail:it.detail||null,example:it.example||null,exampleTranslation:it.exampleTranslation||null,pos:it.pos||null,lemma:it.lemma||null,formLabel:it.formLabel||null,formExplanation:it.formExplanation||null,verbForms:it.verbForms||null}; });
         kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null,lemma:null,formLabel:null,formExplanation:null}; });
-        return n; }); }
-      else setExpl(prev=>{ const n={...prev}; kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null,lemma:null,formLabel:null,formExplanation:null}; }); return n; });
+        return {...prev,[uiLang]:n}; }); }
+      else setExplByLang(prev=>{ const n={...(prev[uiLang]||{})}; kws.forEach(w=>{ const k=w.toLowerCase(); if(!n[k]) n[k]={simpleMeaning:w,detail:null,example:null,pos:null,lemma:null,formLabel:null,formExplanation:null}; }); return {...prev,[uiLang]:n}; });
     });
     return ()=>{cancel=true;};
   },[gi,view,uiLang]);
@@ -126,7 +157,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       const prior=new Set(Object.entries(grammar).filter(([k])=>Number(k)<gi).flatMap(([,items])=>(items||[]).map(g=>normalizePoint(g.point))));
       const raw=d&&Array.isArray(d.items)&&d.items.length?d.items:fallbackGrammarItems(sen,level,uiLang);
       const items=raw.filter(g=>!prior.has(normalizePoint(g.point))).slice(0,1);
-      setGrammar(prev=>({...prev,[gi]:items}));
+      setGrammarByLang(prev=>({...prev,[uiLang]:{...(prev[uiLang]||{}),[gi]:items}}));
     });
     return ()=>{cancel=true;};
   },[gi,trs[gi],uiLang]);
@@ -169,6 +200,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
             {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
             {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
           </div> : null}
+          <VerbForms info={e} t={t} lang={lang}/>
           {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
           {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
         </details>
@@ -229,6 +261,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
           {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
           {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
         </div> : null}
+        <VerbForms info={e} t={t} lang={lang}/>
         {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
         {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
       </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}

@@ -26,12 +26,56 @@ const COMMON_DUTCH_VERBS={
   heb:"hebben",hebt:"hebben",heeft:"hebben",hebben:"hebben",had:"hebben",hadden:"hebben",
   doe:"doen",doet:"doen",doen:"doen",deed:"doen",deden:"doen",
   kom:"komen",komt:"komen",komen:"komen",kwam:"komen",kwamen:"komen",
+  sta:"staan",staat:"staan",staan:"staan",stond:"staan",stonden:"staan",
+  ga:"gaan",gaat:"gaan",gaan:"gaan",ging:"gaan",gingen:"gaan",
   woon:"wonen",woont:"wonen",wonen:"wonen",woonde:"wonen",woonden:"wonen",
   maak:"maken",maakt:"maken",maken:"maken",maakte:"maken",maakten:"maken",
   help:"helpen",helpt:"helpen",helpen:"helpen",hielp:"helpen",
   vraag:"vragen",vraagt:"vragen",vragen:"vragen",vroeg:"vragen",
   betaal:"betalen",betaalt:"betalen",betalen:"betalen",betaalde:"betalen",
 };
+
+const DUTCH_VERB_FORMS={
+  zijn:{present:"ben / bent / is / zijn",past:"was / waren",presentPerfect:"ben geweest",firstPerson:"ik ben",secondPerson:"jij bent",thirdPersonPlural:"hij is / wij zijn"},
+  hebben:{present:"heb / hebt / heeft / hebben",past:"had / hadden",presentPerfect:"heb gehad",firstPerson:"ik heb",secondPerson:"jij hebt",thirdPersonPlural:"hij heeft / wij hebben"},
+  doen:{present:"doe / doet / doen",past:"deed / deden",presentPerfect:"heb gedaan",firstPerson:"ik doe",secondPerson:"jij doet",thirdPersonPlural:"hij doet / wij doen"},
+  komen:{present:"kom / komt / komen",past:"kwam / kwamen",presentPerfect:"ben gekomen",firstPerson:"ik kom",secondPerson:"jij komt",thirdPersonPlural:"hij komt / wij komen"},
+  staan:{present:"sta / staat / staan",past:"stond / stonden",presentPerfect:"heb gestaan",firstPerson:"ik sta",secondPerson:"jij staat",thirdPersonPlural:"hij staat / wij staan"},
+  gaan:{present:"ga / gaat / gaan",past:"ging / gingen",presentPerfect:"ben gegaan",firstPerson:"ik ga",secondPerson:"jij gaat",thirdPersonPlural:"hij gaat / wij gaan"},
+  wonen:{present:"woon / woont / wonen",past:"woonde / woonden",presentPerfect:"heb gewoond",firstPerson:"ik woon",secondPerson:"jij woont",thirdPersonPlural:"hij woont / wij wonen"},
+  maken:{present:"maak / maakt / maken",past:"maakte / maakten",presentPerfect:"heb gemaakt",firstPerson:"ik maak",secondPerson:"jij maakt",thirdPersonPlural:"hij maakt / wij maken"},
+  helpen:{present:"help / helpt / helpen",past:"hielp / hielpen",presentPerfect:"heb geholpen",firstPerson:"ik help",secondPerson:"jij helpt",thirdPersonPlural:"hij helpt / wij helpen"},
+  vragen:{present:"vraag / vraagt / vragen",past:"vroeg / vroegen",presentPerfect:"heb gevraagd",firstPerson:"ik vraag",secondPerson:"jij vraagt",thirdPersonPlural:"hij vraagt / wij vragen"},
+  betalen:{present:"betaal / betaalt / betalen",past:"betaalde / betaalden",presentPerfect:"heb betaald",firstPerson:"ik betaal",secondPerson:"jij betaalt",thirdPersonPlural:"hij betaalt / wij betalen"},
+  kopen:{present:"koop / koopt / kopen",past:"kocht / kochten",presentPerfect:"heb gekocht",firstPerson:"ik koop",secondPerson:"jij koopt",thirdPersonPlural:"hij koopt / wij kopen"},
+  zeggen:{present:"zeg / zegt / zeggen",past:"zei / zeiden",presentPerfect:"heb gezegd",firstPerson:"ik zeg",secondPerson:"jij zegt",thirdPersonPlural:"hij zegt / wij zeggen"},
+  geven:{present:"geef / geeft / geven",past:"gaf / gaven",presentPerfect:"heb gegeven",firstPerson:"ik geef",secondPerson:"jij geeft",thirdPersonPlural:"hij geeft / wij geven"},
+  koken:{present:"kook / kookt / koken",past:"kookte / kookten",presentPerfect:"heb gekookt",firstPerson:"ik kook",secondPerson:"jij kookt",thirdPersonPlural:"hij kookt / wij koken"},
+};
+
+function dutchVerbForms(lemma,uiLang="en"){
+  const forms=DUTCH_VERB_FORMS[String(lemma||"").toLowerCase()];
+  if(!forms) return null;
+  const zh=uiLang==="zh";
+  const notes=zh
+    ? {
+        present:"现在时常见形式",
+        past:"过去时常见形式",
+        presentPerfect:"现在完成时常见形式",
+        firstPerson:"第一人称单数",
+        secondPerson:"第二人称单数",
+        thirdPersonPlural:"第三人称单数 / 复数",
+      }
+    : {
+        present:"common present-tense forms",
+        past:"common past-tense forms",
+        presentPerfect:"common present perfect",
+        firstPerson:"first-person singular",
+        secondPerson:"second-person singular",
+        thirdPersonPlural:"third-person singular / plural",
+      };
+  return Object.fromEntries(Object.entries(forms).map(([key,form])=>[key,{form,note:notes[key]||""}]));
+}
 
 function inferDutchPos(word){
   const w=String(word||"").toLowerCase();
@@ -59,14 +103,17 @@ function fallbackWordInfo(word,lang,uiLang="en"){
   const w=String(word||"").toLowerCase();
   const h=lang==="Dutch" ? DUTCH_HINTS[w] : null;
   const form=lang==="Dutch" ? inferDutchVerbForm(w,uiLang) : {};
-  if(!h) return {word,pos:lang==="Dutch"?inferDutchPos(w):"phrase",simpleMeaning:word,detail:null,...form};
+  const verbForms=lang==="Dutch" ? dutchVerbForms(form.lemma||h?.lemma||w,uiLang) : null;
+  if(!h) return {word,pos:lang==="Dutch"?inferDutchPos(w):"phrase",simpleMeaning:word,detail:null,...form,verbForms};
   const zh=uiLang==="zh";
-  return {word,pos:h.pos||inferDutchPos(w),simpleMeaning:zh?(h.zh||h.en):(h.en||h.zh),detail:zh?(h.detailZh||h.detailEn||null):(h.detailEn||h.detailZh||null),lemma:h.lemma||form.lemma||null,formLabel:h.formLabel||form.formLabel||null,formExplanation:zh?(h.formZh||form.formExplanation||null):(h.formLabel||form.formExplanation||null)};
+  return {word,pos:h.pos||inferDutchPos(w),simpleMeaning:zh?(h.zh||h.en):(h.en||h.zh),detail:zh?(h.detailZh||h.detailEn||null):(h.detailEn||h.detailZh||null),lemma:h.lemma||form.lemma||null,formLabel:h.formLabel||form.formLabel||null,formExplanation:zh?(h.formZh||form.formExplanation||null):(h.formLabel||form.formExplanation||null),verbForms};
 }
 
 function displayWordInfo(word,lang,uiLang,base,ai){
   const fallback=fallbackWordInfo(word,lang,uiLang);
-  return {...(base||{}),...fallback,...(ai||{}),word:(base&&base.word)||word};
+  const out={...(base||{}),...fallback,...(ai||{}),word:(base&&base.word)||word};
+  if(!out.verbForms && fallback.verbForms) out.verbForms=fallback.verbForms;
+  return out;
 }
 
 export { DUTCH_HINTS, displayWordInfo, fallbackWordInfo, inferDutchPos, safeDutchMaterial };
