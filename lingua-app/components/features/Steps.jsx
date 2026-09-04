@@ -59,25 +59,31 @@ function VerbForms({info,t,lang}){
   if(!forms) return null;
   const labels=(t.gram&&t.gram.verbRows)||{};
   const valueOf=(value)=>typeof value==="string"?value:value?.form;
-  const presentRows=["firstPerson","secondPerson","thirdPersonPlural"]
-    .map(key=>({key,tense:labels.present||"Present tense",person:labels[key]||key,form:valueOf(forms[key])}))
-    .filter(row=>String(row.form||"").trim());
-  const rows=[
-    ...(presentRows.length?presentRows:[{key:"present",tense:labels.present||"Present tense",person:t.gram.verbPersonCommon||"Common",form:valueOf(forms.present)}]),
-    {key:"past",tense:labels.past||"Past tense",person:t.gram.verbPersonCommon||"Common",form:valueOf(forms.past)},
-    {key:"presentPerfect",tense:labels.presentPerfect||"Present perfect",person:t.gram.verbPersonCommon||"Common",form:valueOf(forms.presentPerfect)},
-  ]
-    .filter(row=>String(row.form||"").trim());
+  const tenseKeys=["present","past","presentPerfect"];
+  const personKeys=["firstPerson","secondPerson","thirdPersonPlural"];
+  const cellValue=(tenseKey,personKey)=>{
+    const tense=forms[tenseKey];
+    return valueOf(tense?.[personKey]) || valueOf(tense?.forms?.[personKey]) || valueOf(tense?.cells?.[personKey]);
+  };
+  const rows=tenseKeys.map(tenseKey=>{
+    const directCells=personKeys.map(personKey=>cellValue(tenseKey,personKey));
+    const fallback=valueOf(forms[tenseKey]);
+    const legacyCells=tenseKey==="present"
+      ? personKeys.map(personKey=>valueOf(forms[personKey]) || fallback)
+      : personKeys.map(()=>fallback);
+    const cells=(directCells.some(cell=>String(cell||"").trim())?directCells:legacyCells)
+      .map((form,i)=>({key:personKeys[i],form}));
+    return {key:tenseKey,tense:labels[tenseKey]||tenseKey,cells};
+  }).filter(row=>row.cells.some(cell=>String(cell.form||"").trim()));
   if(!rows.length) return null;
   return (<details className="verb-forms">
     <summary>{t.gram.verbFormsTitle||"Verb forms"}</summary>
     <div className="verb-table-wrap">
       <table className="verb-table">
-        <thead><tr><th>{t.gram.verbFormAspect||"Tense"}</th><th>{t.gram.verbFormPerson||"Person"}</th><th>{t.gram.verbFormValue||"Form"}</th></tr></thead>
+        <thead><tr><th>{t.gram.verbFormAspect||"Tense"}</th>{personKeys.map(key=><th key={key}>{labels[key]||key}</th>)}</tr></thead>
         <tbody>{rows.map(row=><tr key={row.key}>
-          <td>{row.tense}</td>
-          <td>{row.person}</td>
-          <td className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{row.form}</td>
+          <td className="verb-tense-cell">{row.tense}</td>
+          {row.cells.map(cell=><td key={cell.key} className="verb-form-cell notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{cell.form||"-"}</td>)}
         </tr>)}</tbody>
       </table>
     </div>
@@ -162,7 +168,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
     return ()=>{cancel=true;};
   },[gi,trs[gi],uiLang]);
   function usageNote(w){ return loadingKw ? t.lookingUpWord : t.studyUsage; }
-  const s=sents[gi]||""; const tr=trs[gi]; const kw=keyWordsIn(s,gi); const grammarItems=grammar[gi]||fallbackGrammarItems(s,level,uiLang);
+  const s=sents[gi]||""; const tr=trs[gi]; const kw=keyWordsIn(s,gi);
   const studyWords=(()=>{ const seen=new Set(), out=[];
     if(userWords.size){
       sents.slice(0,N).forEach((sen,i)=>keyWordsIn(sen,i).forEach(w=>{ const k=w.toLowerCase(); if(!seen.has(k)&&expl[k]){seen.add(k); out.push(w);} }));
@@ -174,12 +180,14 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
     return out;
   })();
   const allGrammarItems=(()=>{ const seen=new Set(), out=[];
-    sents.slice(0,N).forEach((sen,i)=>{
-      const items=grammar[i]||fallbackGrammarItems(sen,level,uiLang);
+    Object.entries(grammar).sort(([a],[b])=>Number(a)-Number(b)).forEach(([,items])=>{
       items.forEach(g=>{ const k=(g.point||"")+"|"+(g.explain||""); if(!seen.has(k)){seen.add(k); out.push(g);} });
     });
     return out;
   })();
+  const hasGrammarEntry=Object.prototype.hasOwnProperty.call(grammar,gi);
+  const grammarPending=!!s&&!hasGrammarEntry;
+  const grammarItems=hasGrammarEntry?(grammar[gi]||[]):[];
   const lookupEstimate=Math.max(6,kw.length*2+2);
   const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
 
@@ -200,9 +208,9 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
             {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
             {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
           </div> : null}
-          <VerbForms info={e} t={t} lang={lang}/>
           {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
           {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
+          <VerbForms info={e} t={t} lang={lang}/>
         </details>
       ); })}
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.patterns}</h3>
@@ -261,13 +269,13 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
           {e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase() && <span><b>{t.gram.lemmaLabel}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{e.lemma}</span></span>}
           {(e.formLabel||e.formExplanation) && <span><b>{t.gram.formLabel}:</b> {e.formExplanation||e.formLabel}</span>}
         </div> : null}
-        <VerbForms info={e} t={t} lang={lang}/>
         {e&&e.example && <div className="word-example notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>“{e.example}”</div>}
         {e&&e.example&&e.exampleTranslation && <div className="word-example-translation">→ {e.exampleTranslation}</div>}
+        <VerbForms info={e} t={t} lang={lang}/>
       </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}
 
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.grammarCoach}</h3>
-      {loadingGrammar && <div className="tiny muted" style={{marginBottom:8}}>{t.gram.grammarLoading}</div>}
+      {(loadingGrammar||grammarPending) && <div className="tiny muted" style={{marginBottom:8}}>{t.gram.grammarLoading}</div>}
       {grammarItems.length?grammarItems.map((g,j)=><div className="grammar-card" key={j}>
         <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>

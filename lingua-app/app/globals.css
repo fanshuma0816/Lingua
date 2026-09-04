@@ -112,11 +112,13 @@
   .verb-forms[open] summary::after{content:"-"}
   .verb-forms summary::-webkit-details-marker{display:none}
   .verb-table-wrap{overflow-x:auto}
-  .verb-table{width:100%;border-collapse:collapse;min-width:360px;font-size:12px;line-height:1.35}
+  .verb-table{width:100%;border-collapse:collapse;min-width:520px;font-size:12px;line-height:1.35}
   .verb-table th,.verb-table td{padding:8px 10px;text-align:left;border-bottom:1px solid hsl(var(--border));vertical-align:top}
   .verb-table tr:last-child td{border-bottom:0}
   .verb-table th{font-size:11px;text-transform:uppercase;color:hsl(var(--muted-foreground));letter-spacing:0;font-weight:700}
-  .verb-table td:nth-child(3){font-weight:700;color:hsl(var(--foreground));white-space:nowrap}
+  .verb-table th:not(:first-child),.verb-table td:not(:first-child){min-width:112px}
+  .verb-tense-cell{font-weight:600;color:hsl(var(--foreground))}
+  .verb-form-cell{font-weight:700;color:hsl(var(--foreground));white-space:nowrap}
   .word-example{font-size:12.5px;color:hsl(var(--muted-foreground));line-height:1.5;margin-top:7px;font-style:italic}
   .word-example-translation{font-size:12.5px;color:hsl(var(--muted-foreground));line-height:1.45;margin-top:3px;font-weight:600}
   .meaning-loading{margin-top:10px}
@@ -208,9 +210,11 @@
   .summary-card summary::-webkit-details-marker{display:none}
   .summary-card[open] summary{border-bottom:1px solid hsl(var(--border))}
   .summary-detail{font-size:12.5px;color:hsl(var(--muted-foreground));line-height:1.5;padding:10px 13px 0}
-  .summary-card .verb-forms{margin:9px 13px 8px}
+  .summary-card .verb-forms{margin:9px 13px 12px}
   .summary-card .word-example{padding:0 13px 4px}
-  .summary-card .word-example-translation{padding:0 13px 12px}
+  .summary-card .word-example:last-child{padding-bottom:12px}
+  .summary-card .word-example-translation{padding:0 13px}
+  .summary-card .word-example-translation:last-child{padding-bottom:12px}
   ul.clean{margin:0;padding-left:18px} ul.clean li{margin-bottom:7px}
   .star{color:hsl(var(--warm));font-size:15px} .star.off{color:hsl(var(--border))}
   .plan-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid hsl(var(--border))}

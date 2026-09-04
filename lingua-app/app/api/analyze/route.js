@@ -238,8 +238,8 @@ Words: ${JSON.stringify(words)}`;
         try {
           const sys = "You are a warm, precise language teacher. Reply ONLY with minified JSON, no prose.";
           const user = `A ${level} learner of ${lang} is studying these words, each shown with the sentence it appears in.
-Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"lemma":<base dictionary form in ${lang}, or null>,"formLabel":<short English form label, e.g. "third-person singular present", or null>,"formExplanation":<one short ${explanationLanguage} explanation of the form, or null>,"verbForms":<for verbs only: {"present":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"past":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"presentPerfect":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"firstPerson":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} form>,"note":<short ${explanationLanguage} note>}}, or null>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
-For Dutch verbs, always include lemma, formLabel, formExplanation, and verbForms. In verbForms, use the base verb's useful beginner forms; if a form has multiple common options, use a short slash-separated form. For non-verbs, use null unless there is a very obvious beginner-level form.
+Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"lemma":<base dictionary form in ${lang}, or null>,"formLabel":<short English form label, e.g. "third-person singular present", or null>,"formExplanation":<one short ${explanationLanguage} explanation of the form, or null>,"verbForms":<for verbs only: {"present":{"firstPerson":{"form":<${lang} first-person form with pronoun>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} second-person form with pronoun>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} third-person singular and plural forms with pronouns, slash-separated if useful>,"note":<short ${explanationLanguage} note>}},"past":{"firstPerson":{"form":<${lang} first-person past form with pronoun>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} second-person past form with pronoun>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} third-person singular and plural past forms with pronouns, slash-separated if useful>,"note":<short ${explanationLanguage} note>}},"presentPerfect":{"firstPerson":{"form":<${lang} first-person present perfect form with pronoun>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} second-person present perfect form with pronoun>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} third-person singular and plural present perfect forms with pronouns, slash-separated if useful>,"note":<short ${explanationLanguage} note>}}}, or null>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
+For Dutch verbs, always include lemma, formLabel, formExplanation, and verbForms. In verbForms, rows are tenses and columns are person: present, past, and presentPerfect each contain firstPerson, secondPerson, and thirdPersonPlural. Put the actual learner-facing conjugated word form in every cell. If a cell has multiple common options, use a short slash-separated form. For non-verbs, use null unless there is a very obvious beginner-level form.
 Words:\n${JSON.stringify(items)}`;
           const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 2600 });
           const p = parseJSON(out);
@@ -301,20 +301,40 @@ Words:\n${JSON.stringify(items)}`;
       const translation = b.translation ? `Known translation: ${b.translation}` : "";
       const sys = "You are a diagnostic Dutch teacher. Reply ONLY with minified JSON, no prose.";
       const covered = Array.isArray(b.covered) && b.covered.length ? `Already covered grammar points, DO NOT repeat these unless the sentence cannot be explained otherwise: ${b.covered.slice(0, 8).join("; ")}.` : "";
+      const advancedLearner = cefrIdx(level) >= cefrIdx("B1");
+      const levelPolicy = advancedLearner
+        ? `For B1/B2 learners, do NOT teach A1/A2 basics such as ordinary main-clause V2 word order, simple present tense, or generic subject-verb order. Prefer sentence-specific usage, idiom, register, modal nuance, subclause structure, separable verbs, pronominal adverbs, word choice, or discourse function. If the only available point is a basic A1/A2 review, return {"items":[]}.`
+        : `For A1/A2 learners, a simple review point is acceptable when it directly helps this sentence.`;
       const user = `A ${level} learner is studying this ${lang} sentence:
 ${sentence}
 ${translation}
 ${covered}
+${levelPolicy}
 Explain EXACTLY ONE grammar point \u2014 the single most useful one for a ${level} learner in THIS sentence.
 Use ${feedbackLanguage} for "point" and "explain". Keep each explanation under 22 words.
 Give exactly 3 short new ${lang} example sentences for each grammar point, with natural ${feedbackLanguage} translations.
-If the sentence is very simple, return one useful review point rather than inventing advanced grammar.
+For A1/A2 learners, if the sentence is very simple, return one useful review point rather than inventing advanced grammar.
 If ${lang} is Dutch and there is a clear Netherlands Dutch vs Belgian Dutch difference relevant to this sentence or examples, mention it briefly in ${feedbackLanguage}. If there is no relevant difference, do not mention Belgium.
 Do not repeat the original sentence as an example.
-Return JSON {"items":[{"point":<short label>,"explain":<level-specific explanation>,"examples":[{"sentence":<new sentence in ${lang}>,"translation":<translation in ${feedbackLanguage}>}]}]}.`;
+Return JSON {"items":[{"point":<short label>,"level":<CEFR level of this grammar point, one of A1/A2/B1/B2/C1>,"explain":<level-specific explanation>,"examples":[{"sentence":<new sentence in ${lang}>,"translation":<translation in ${feedbackLanguage}>}]}]}.`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 1000 });
       const p = parseJSON(out);
-      return Response.json({ items: Array.isArray(p.items) ? p.items.slice(0, 1) : [] });
+      const basicPattern = /ordinary\s+main[-\s]?clause|main[-\s]?clause\s+v2|main[-\s]?clause\s+word\s+order|basic\s+word\s+order|verb\s*(second|position)|finite verb|subject[-\s]?verb|simple present|v2|主句语序|普通语序|基础语序|动词.*第二|变位动词.*第二|主语.*动词/i;
+      const items = (Array.isArray(p.items) ? p.items : [])
+        .map(item => ({
+          point: item?.point || "",
+          level: String(item?.level || "").toUpperCase().slice(0, 2),
+          explain: item?.explain || "",
+          examples: Array.isArray(item?.examples) ? item.examples.slice(0, 3) : [],
+        }))
+        .filter(item => item.point && item.explain)
+        .filter(item => {
+          if (!advancedLearner) return true;
+          const itemLevel = item.level && cefrIdx(item.level);
+          if (Number.isFinite(itemLevel) && itemLevel < cefrIdx("B1")) return false;
+          return !basicPattern.test(`${item.point} ${item.explain}`);
+        });
+      return Response.json({ items: items.slice(0, 1) });
     }
 
     // --- a short comprehension quiz in the target language ---

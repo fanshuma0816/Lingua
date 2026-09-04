@@ -74,7 +74,53 @@ function dutchVerbForms(lemma,uiLang="en"){
         secondPerson:"second-person singular",
         thirdPersonPlural:"third-person singular / plural",
       };
-  return Object.fromEntries(Object.entries(forms).map(([key,form])=>[key,{form,note:notes[key]||""}]));
+  const splitPair=(value)=>{
+    const parts=String(value||"").split("/").map(x=>x.trim()).filter(Boolean);
+    return [parts[0]||"",parts[1]||parts[0]||""];
+  };
+  const subjectForm=(value,subject)=>{
+    const text=String(value||"").trim();
+    return text && !text.startsWith(subject+" ") ? `${subject} ${text}` : text;
+  };
+  const perfectForms=(value)=>{
+    const text=String(value||"").trim();
+    const match=text.match(/^(ben|heb)\s+(.+)$/);
+    if(!match){
+      return {firstPerson:text,secondPerson:text,thirdPersonPlural:text};
+    }
+    const [,aux,rest]=match;
+    if(aux==="ben"){
+      return {
+        firstPerson:`ik ben ${rest}`,
+        secondPerson:`jij bent ${rest}`,
+        thirdPersonPlural:`hij is ${rest} / wij zijn ${rest}`,
+      };
+    }
+    return {
+      firstPerson:`ik heb ${rest}`,
+      secondPerson:`jij hebt ${rest}`,
+      thirdPersonPlural:`hij heeft ${rest} / wij hebben ${rest}`,
+    };
+  };
+  const [pastSingular,pastPlural]=splitPair(forms.past);
+  const perfect=perfectForms(forms.presentPerfect);
+  return {
+    present:{
+      firstPerson:{form:forms.firstPerson,note:notes.firstPerson||""},
+      secondPerson:{form:forms.secondPerson,note:notes.secondPerson||""},
+      thirdPersonPlural:{form:forms.thirdPersonPlural,note:notes.thirdPersonPlural||""},
+    },
+    past:{
+      firstPerson:{form:subjectForm(pastSingular,"ik"),note:notes.past||""},
+      secondPerson:{form:subjectForm(pastSingular,"jij"),note:notes.past||""},
+      thirdPersonPlural:{form:[subjectForm(pastSingular,"hij"),subjectForm(pastPlural,"wij")].filter(Boolean).join(" / "),note:notes.past||""},
+    },
+    presentPerfect:{
+      firstPerson:{form:perfect.firstPerson,note:notes.presentPerfect||""},
+      secondPerson:{form:perfect.secondPerson,note:notes.presentPerfect||""},
+      thirdPersonPlural:{form:perfect.thirdPersonPlural,note:notes.presentPerfect||""},
+    },
+  };
 }
 
 function inferDutchPos(word){
