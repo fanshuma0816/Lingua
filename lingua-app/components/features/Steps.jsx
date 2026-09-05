@@ -719,7 +719,7 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
     try{
       DB.set("email",email);
       DB.set("pendingSaveAfterLogin",true);
-      await signInWithEmail(email,"/done?save=1");
+      await signInWithEmail(email);
       trackEvent("save_login_link_sent",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
       setStatus("sent");
       setMessage(t.saveProgress.linkSent);

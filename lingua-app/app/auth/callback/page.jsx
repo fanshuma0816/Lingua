@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { completeSessionFromHash } from "../../../lib/auth-client";
+import { DB } from "../../../lib/storage";
 
 export default function AuthCallbackPage() {
   const [status, setStatus] = useState("Signing you in...");
@@ -11,7 +12,7 @@ export default function AuthCallbackPage() {
     async function finish() {
       try {
         const params = new URLSearchParams(window.location.search);
-        const next = params.get("next") || "/done";
+        const next = params.get("next") || (DB.get("pendingSaveAfterLogin", false) ? "/done?save=1" : "/done");
         const session = await completeSessionFromHash(window.location.hash);
         if (!session) throw new Error("No sign-in token was found.");
         if (!cancelled) {
