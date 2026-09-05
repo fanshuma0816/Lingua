@@ -9,8 +9,10 @@ import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
 import { speak, stopSpeak } from "../../lib/audio";
+import { getAuthState, signInWithEmail } from "../../lib/auth-client";
 import { displayWordInfo } from "../../lib/dutch";
 import { normalizePoint, progressPct, scrollToTop } from "../../lib/format";
+import { buildCompletedLessonPayload, saveCompletedLesson } from "../../lib/learning-sync";
 import { fallbackGrammarItems, practiceQuestion } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { STOP, grammarExamples, meaningParts, words } from "../../lib/text";
@@ -658,7 +660,93 @@ function AIChat({lesson,onNext,onDone}){
   </div>);
 }
 
-function Done({lesson,diag,onNew,onReview}){
+function SaveProgressCard({lesson,text,wordList,doneSet}){
+  const {t}=useUI();
+  const [auth,setAuth]=useState({configured:true,session:null,checked:false});
+  const [email,setEmail]=useState(()=>DB.get("email",""));
+  const [status,setStatus]=useState("idle");
+  const [message,setMessage]=useState("");
+  const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  const completedSteps=[...((doneSet&&doneSet.size)?doneSet:new Set(STEPS.map(s=>s.id)))];
+  const payload=()=>buildCompletedLessonPayload({lesson,text,userWords:wordList,completedSteps});
+
+  async function refreshAuth(){
+    const state=await getAuthState();
+    setAuth({...state,checked:true});
+    return state;
+  }
+
+  useEffect(()=>{ refreshAuth(); },[]);
+  useEffect(()=>{
+    let cancelled=false;
+    async function maybeSave(){
+      const shouldSave=DB.get("pendingSaveAfterLogin",false) || (typeof window!=="undefined"&&window.location.search.includes("save=1"));
+      if(!shouldSave||status==="saving"||status==="saved") return;
+      const state=await refreshAuth();
+      if(cancelled||!state.session?.accessToken) return;
+      await doSave(state.session.accessToken,true);
+    }
+    maybeSave();
+    return ()=>{cancelled=true;};
+  },[lesson?.material?.id]);
+
+  async function doSave(accessToken,automatic=false){
+    setStatus("saving");
+    setMessage("");
+    try{
+      const result=await saveCompletedLesson(payload(),accessToken);
+      trackEvent("learning_progress_saved",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2),word_count:result?.wordCount||0,automatic});
+      if(typeof window!=="undefined"&&window.location.search.includes("save=1")) window.history.replaceState(null,"","/done");
+      setStatus("saved");
+      setMessage(t.saveProgress.savedDetail(result?.wordCount||0));
+    }catch(e){
+      setStatus("error");
+      setMessage(e?.message||t.saveProgress.error);
+    }
+  }
+
+  async function handleSave(){
+    const state=await refreshAuth();
+    if(!state.configured){ setStatus("error"); setMessage(t.saveProgress.notConfigured); return; }
+    if(state.session?.accessToken){ await doSave(state.session.accessToken); return; }
+    setStatus("auth");
+  }
+
+  async function sendLink(){
+    if(!ok||status==="sending") return;
+    setStatus("sending");
+    setMessage("");
+    try{
+      DB.set("email",email);
+      DB.set("pendingSaveAfterLogin",true);
+      await signInWithEmail(email,"/done?save=1");
+      trackEvent("save_login_link_sent",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
+      setStatus("sent");
+      setMessage(t.saveProgress.linkSent);
+    }catch(e){
+      setStatus("error");
+      setMessage(e?.message||t.saveProgress.error);
+    }
+  }
+
+  const signedIn=!!auth.session?.accessToken;
+  const busy=status==="saving"||status==="sending";
+  return (<div className="done-card save-card">
+    <div className="done-card-title">{status==="saved"?t.saveProgress.savedTitle:t.saveProgress.title}</div>
+    <p className="done-card-note">{status==="saved"?t.saveProgress.savedBody:t.saveProgress.body(wordList.length)}</p>
+    {status==="auth"||status==="sent" ? <div className="save-login">
+      <label className="tiny muted" htmlFor="save-email">{t.email}</label>
+      <input id="save-email" className="input" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>
+      <button className="btn btn-primary" disabled={!ok||busy} onClick={sendLink}>{status==="sending"?t.saveProgress.sending:t.saveProgress.sendLink}</button>
+    </div> : <button className={status==="saved"?"btn btn-outline":"btn btn-primary"} disabled={busy||status==="saved"} onClick={handleSave}>
+      <Svg n={status==="saved"?"check":"book"}/> {status==="saving"?t.saveProgress.saving:(status==="saved"?t.saveProgress.savedButton:(signedIn?t.saveProgress.save:t.saveProgress.saveWithLogin))}
+    </button>}
+    {message && <div className={"tiny save-status "+(status==="error"?"error":status==="saved"||status==="sent"?"ok":"")}>{message}</div>}
+    {!signedIn && status!=="saved" && status!=="auth" && status!=="sent" && <div className="tiny muted save-hint">{t.saveProgress.noPassword}</div>}
+  </div>);
+}
+
+function Done({lesson,text,diag,doneSet,onNew,onReview}){
   const {t}=useUI();
   const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
   const [feedbackStep,setFeedbackStep]=useState("most");
@@ -699,7 +787,8 @@ function Done({lesson,diag,onNew,onReview}){
   }
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
-  const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
+  const saveWordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean);
+  const wordList=saveWordList.slice(0,6);
   const isLeastStep=feedbackStep==="least";
   const feedbackNumber=isLeastStep?2:1;
   const feedbackText=devFeedback.trim();
@@ -709,6 +798,7 @@ function Done({lesson,diag,onNew,onReview}){
       <div className="done-emoji">🎉</div>
       <h1 className="done-h1">{t.done.title()}</h1>
       <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+      <SaveProgressCard lesson={lesson} text={text} wordList={saveWordList} doneSet={doneSet}/>
       <div className="done-card donation-card">
         <div className="done-card-title">{t.donation.title}</div>
         <p className="done-card-note">{t.donation.body}</p>

@@ -44,7 +44,62 @@
      - （可选）名字 `GCP_PROJECT_ID`，值填你的 GCP 项目 ID（默认 `lingua-tts-504817`）。
      - （可选）名字 `GEMINI_MODEL`，默认已经是 `gemini-3.7-flash`。
      - （可选）如果不用服务账号，也可以用 `GEMINI_API_KEY`；但这个 key 需要在 Google Cloud 里允许 **Agent Platform (Vertex)**，普通只允许 Translation/TTS 或 Gemini API 的 key 会被 `aiplatform.googleapis.com` 拦截。
+     - （可选，用于“完成后保存学习记录”）`NEXT_PUBLIC_SUPABASE_URL`，填 Supabase Project URL。
+     - （可选，用于“完成后保存学习记录”）`NEXT_PUBLIC_SUPABASE_ANON_KEY`，填 Supabase anon public key。
+     - （可选，用于“完成后保存学习记录”和反馈）`SUPABASE_SERVICE_ROLE_KEY`，填 Supabase service role key。这个只能放服务器端环境变量里。
    - 点 Deploy，等一两分钟，就会得到一个 `https://...vercel.app` 的网址——这就是你可以分享给测试者的真实产品。
+
+### 可选：开启“学完后保存进度和词表”
+
+这个功能不会阻止新用户直接学习。用户完成一节课后，可以选择登录并保存本节课的进度和 wordlist。
+
+在 Supabase 后台先开启 Email 登录，然后到 SQL Editor 运行：
+
+```sql
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.lesson_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  local_lesson_id text,
+  lang text not null,
+  level text not null,
+  goal text,
+  material_title text,
+  material_source text,
+  material_hash text,
+  material_summary jsonb not null default '{}'::jsonb,
+  stats jsonb not null default '{}'::jsonb,
+  completed_steps jsonb not null default '[]'::jsonb,
+  completed_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.user_words (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  word text not null,
+  lang text not null,
+  level text,
+  source text,
+  source_lesson_id uuid references public.lesson_sessions(id) on delete set null,
+  created_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  unique (user_id, lang, word)
+);
+```
+
+Supabase Authentication 的 Redirect URLs 里加上你的站点回调地址，例如：
+
+```text
+https://你的域名/auth/callback
+http://localhost:3000/auth/callback
+```
 
 > Gemini 的服务位置在代码里固定为 `global`，不用再设置 `VERTEX_LOCATION`。
 > 想改密钥，以后在 Vercel 后台点几下即可，不用碰代码。

@@ -374,6 +374,15 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .donation-card .done-card-title{margin-bottom:8px}
 .donation-card .done-card-note{margin-bottom:16px}
 .donation-card .btn{margin-bottom:8px}
+.save-card{border-color:hsl(var(--primary)/.48);background:hsl(var(--primary)/.10)}
+.save-card .done-card-title{margin-bottom:8px}
+.save-card .done-card-note{margin-bottom:16px}
+.save-login{display:grid;grid-template-columns:1fr auto;gap:8px;text-align:left;align-items:end;max-width:430px;margin:0 auto}
+.save-login label{grid-column:1 / -1}
+.save-status{margin-top:10px;font-weight:600}
+.save-status.ok{color:hsl(var(--success))}
+.save-status.error{color:hsl(0 72% 43%)}
+.save-hint{margin-top:10px}
 .donation-feedback{margin-top:16px;padding-top:14px;border-top:1px solid hsl(var(--border));text-align:left}
 .donation-feedback label{display:block;margin-bottom:7px}
 .donation-feedback textarea{min-height:74px;font-size:13px}
@@ -449,6 +458,8 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
   .step-head{flex-wrap:wrap}
   .done-actions{flex-direction:column-reverse}
   .done-actions .btn{width:100%}
+  .save-login{grid-template-columns:1fr}
+  .save-login .btn{width:100%}
   .feedback-pop{left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:auto}
   .scanw{padding:3px 5px!important}
 }

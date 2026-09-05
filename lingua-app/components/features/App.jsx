@@ -128,7 +128,7 @@ function App(){
         {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}
         {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
         {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
-        {screen==="done" && lesson && <Done lesson={lesson} diag={{unknown:userWords}} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
+        {screen==="done" && lesson && <Done lesson={lesson} text={text} diag={{unknown:userWords}} doneSet={doneSet} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
       </main>
     </div>
     <div className={"scrim"+((pinned&&narrow)?" on":"")} onClick={()=>setPinned(false)}/>
