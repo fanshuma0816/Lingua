@@ -76,7 +76,7 @@ async function signInWithEmail(email, nextPath = "/done") {
   if (!configured) throw new Error("Supabase auth is not configured.");
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-  const response = await fetch(`${url}/auth/v1/otp`, {
+  const response = await fetch(`${url}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -86,7 +86,6 @@ async function signInWithEmail(email, nextPath = "/done") {
     body: JSON.stringify({
       email,
       create_user: true,
-      options: { email_redirect_to: redirectTo },
     }),
   });
   if (!response.ok) throw new Error("Could not send sign-in link.");
