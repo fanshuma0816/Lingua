@@ -110,8 +110,9 @@ function CollectionSaveButton({type,item,auth,onRequireLogin}){
       setStatus("error");
     }
   }
-  return (<button className={"save-mini focusable"+(status==="saved"?" saved":"")} disabled={status==="saving"||status==="saved"} onClick={(e)=>{e.preventDefault();e.stopPropagation();save();}} title={status==="saved"?t.collection.saved:t.collection.save}>
-    <Svg n={status==="saved"?"bookmarkCheck":"bookmark"}/> <span>{status==="saving"?t.collection.saving:(status==="saved"?t.collection.saved:t.collection.save)}</span>
+  const label=status==="saving"?t.collection.saving:(status==="saved"?t.collection.saved:(status==="error"?t.collection.saveError:t.collection.save));
+  return (<button className={"save-mini focusable"+(status==="saved"?" saved":status==="error"?" error":"")} disabled={status==="saving"||status==="saved"} onClick={(e)=>{e.preventDefault();e.stopPropagation();save();}} title={label}>
+    <Svg n={status==="saved"?"bookmarkCheck":"bookmark"}/> <span>{label}</span>
   </button>);
 }
 

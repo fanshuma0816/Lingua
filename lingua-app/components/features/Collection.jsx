@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Say, Svg } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
 import { fetchCollection } from "../../lib/collection";
+import { meaningParts } from "../../lib/text";
 
 function CollectionEmpty({ signedIn, tab, onLogin, onStartLearning }) {
   const { t } = useUI();
@@ -23,22 +24,23 @@ function CollectionEmpty({ signedIn, tab, onLogin, onStartLearning }) {
 
 function WordCard({ item }) {
   const { t } = useUI();
+  const parts = meaningParts(item);
   return (
     <div className="wcard collection-word-card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <span className="row" style={{ gap: 9 }}>
           <b className="notranslate" translate="no" lang={item.lang === "Dutch" ? "nl" : undefined} style={{ fontSize: 15 }}>{item.word}</b>
-          {item.level && <span className="badge badge-outline">{item.level}</span>}
+          {item.pos && <span className="badge badge-outline">{item.pos}</span>}
         </span>
         <span className="row" style={{ gap: 8 }}>
           <span className="saved-pill"><Svg n="bookmarkCheck" /> {t.collection.saved}</span>
           <Say text={item.word} lang={item.lang} rate={1} />
         </span>
       </div>
-      <div className="word-form">
-        {item.lang && <span><b>{t.collection.language}:</b> {item.lang}</span>}
-        {item.source && <span><b>{t.collection.source}:</b> {item.source}</span>}
-      </div>
+      {parts.simple && <div className="meaning-block"><div className="meaning-simple">{parts.simple}</div></div>}
+      {parts.detail && <div className="summary-detail collection-word-detail">{parts.detail}</div>}
+      {item.example && <div className="word-example notranslate" translate="no" lang={item.lang === "Dutch" ? "nl" : undefined}>“{item.example}”</div>}
+      {item.exampleTranslation && <div className="word-example-translation">→ {item.exampleTranslation}</div>}
     </div>
   );
 }
@@ -60,10 +62,6 @@ function GrammarCard({ item }) {
           {item.example_translation && <div className="grammar-example-translation">→ {item.example_translation}</div>}
         </div>
       </div>}
-      <div className="word-form">
-        {item.lang && <span><b>{t.collection.language}:</b> {item.lang}</span>}
-        {item.level && <span><b>{t.collection.level}:</b> {item.level}</span>}
-      </div>
     </div>
   );
 }
@@ -73,6 +71,7 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
   const signedIn = !!auth?.session?.accessToken;
   const active = tab === "grammar" ? "grammar" : "words";
   const [state, setState] = useState({ loading: false, error: "", words: [], grammar: [] });
+  const [language, setLanguage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -93,12 +92,17 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
     return () => { cancelled = true; };
   }, [signedIn, auth?.session?.accessToken]);
 
-  const items = active === "grammar" ? state.grammar : state.words;
+  const languages = [...new Set([...(state.words || []), ...(state.grammar || [])].map((item) => item.lang).filter(Boolean))];
+  useEffect(() => {
+    if (!languages.length) setLanguage("");
+    else if (!language || !languages.includes(language)) setLanguage(languages[0]);
+  }, [languages.join("|"), language]);
+  const allItems = active === "grammar" ? state.grammar : state.words;
+  const items = languages.length > 1 && language ? allItems.filter((item) => item.lang === language) : allItems;
 
   return (
     <div className="account-page">
       <div className="page-head">
-        <div className="eyebrow">{t.ia.collection}</div>
         <h1>{t.collection.title}</h1>
         <p className="sub">{t.collection.subtitle}</p>
       </div>
@@ -107,6 +111,9 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
         <button className={"tab" + (active === "words" ? " on" : "")} onClick={() => onTabChange?.("words")}>{t.collection.wordsTab}</button>
         <button className={"tab" + (active === "grammar" ? " on" : "")} onClick={() => onTabChange?.("grammar")}>{t.collection.grammarTab}</button>
       </div>
+      {signedIn && languages.length > 1 && <div className="tabs language-tabs">
+        {languages.map((lang) => <button className={"tab" + (language === lang ? " on" : "")} onClick={() => setLanguage(lang)} key={lang}>{lang}</button>)}
+      </div>}
 
       {!signedIn && <CollectionEmpty signedIn={false} tab={active} onLogin={onLogin} onStartLearning={onStartLearning} />}
       {signedIn && state.loading && <div className="card card-p">{t.collection.loading}</div>}

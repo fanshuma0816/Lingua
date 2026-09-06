@@ -1,7 +1,5 @@
 export const runtime = "nodejs";
 
-const MAX_WORDS = 80;
-
 function supabaseEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -11,11 +9,6 @@ function supabaseEnv() {
 function shortText(value, limit = 160) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   return text ? text.slice(0, limit) : null;
-}
-
-function cleanWord(value) {
-  const word = String(value || "").replace(/\s+/g, " ").trim();
-  return word ? word.slice(0, 120) : null;
 }
 
 function jsonHeaders(serviceKey, extra = {}) {
@@ -107,36 +100,10 @@ export async function POST(req) {
     }, env);
 
     const lessonSession = Array.isArray(inserted) ? inserted[0] : inserted;
-    const words = Array.isArray(body?.words) ? body.words : [];
-    const seen = new Set();
-    const rows = words.slice(0, MAX_WORDS).map((item) => {
-      const word = cleanWord(item?.word || item);
-      const key = `${lang}:${word}`.toLowerCase();
-      if (!word || seen.has(key)) return null;
-      seen.add(key);
-      return {
-        user_id: user.id,
-        word,
-        lang,
-        level: shortText(item?.level || level, 40),
-        source: shortText(item?.source, 40) || "lesson_completion",
-        source_lesson_id: lessonSession?.id || null,
-        last_seen_at: new Date().toISOString(),
-      };
-    }).filter(Boolean);
-
-    if (rows.length) {
-      await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,word", {
-        method: "POST",
-        headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
-        body: JSON.stringify(rows),
-      }, env);
-    }
-
     return Response.json({
       ok: true,
       lessonSessionId: lessonSession?.id || null,
-      wordCount: rows.length,
+      wordCount: Number(stats.vocabCount) || 0,
     });
   } catch (e) {
     return Response.json({ error: e?.message || "Could not save learning progress." }, { status: 502 });

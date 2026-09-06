@@ -60,7 +60,6 @@ function Progress({ auth, onLogin, onStartLearning }) {
   return (
     <div className="account-page">
       <div className="page-head">
-        <div className="eyebrow">{t.ia.progress}</div>
         <h1>{t.progress.title}</h1>
         <p className="sub">{t.progress.subtitle}</p>
       </div>
@@ -71,10 +70,8 @@ function Progress({ auth, onLogin, onStartLearning }) {
       {signedIn && !state.loading && !state.error && !hasLessons && <EmptyState signedIn onLogin={onLogin} onStartLearning={onStartLearning} />}
 
       {signedIn && !state.loading && !state.error && hasLessons && <>
-        <div className="stats-grid">
+        <div className="stats-grid progress-stats">
           <div className="stat"><div className="k">{t.progress.lessonsCompleted}</div><div className="v">{state.stats?.lessonCount || state.lessons.length}</div></div>
-          <div className="stat"><div className="k">{t.progress.wordsCollected}</div><div className="v">{state.stats?.wordCount || 0}</div></div>
-          <div className="stat"><div className="k">{t.progress.grammarCollected}</div><div className="v">{state.stats?.grammarCount || 0}</div></div>
         </div>
 
         {localStats && <div className="resume-card">

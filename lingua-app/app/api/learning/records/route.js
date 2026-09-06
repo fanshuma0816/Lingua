@@ -57,15 +57,11 @@ export async function GET(req) {
 
     const userId = encodeURIComponent(user.id);
     const lessons = await readRows(`/rest/v1/lesson_sessions?user_id=eq.${userId}&select=id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at&order=completed_at.desc&limit=20`, env);
-    const words = await readRows(`/rest/v1/user_words?user_id=eq.${userId}&select=id,word,lang,level,source,source_lesson_id,last_seen_at&order=last_seen_at.desc&limit=200`, env);
-    const grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id&limit=200`, env, true);
 
     return Response.json({
       lessons: Array.isArray(lessons) ? lessons : [],
       stats: {
         lessonCount: Array.isArray(lessons) ? lessons.length : 0,
-        wordCount: Array.isArray(words) ? words.length : 0,
-        grammarCount: Array.isArray(grammar) ? grammar.length : 0,
       },
     });
   } catch (e) {

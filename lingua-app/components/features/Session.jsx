@@ -75,11 +75,6 @@ function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack,activeMain,onN
   const progress=mode==="done"?100:Math.round(doneSet.size/STEPS.length*100);
   const ctx=mode==="home"||!lesson ? t.nav.ctx : t.nav.ctxSession(langName(t,lesson.lang),(lesson.level||"").split(" — ")[0]);
   const canJump=mode==="session"||mode==="done";
-  const navItems=[
-    {id:"learn",label:t.ia.learn,icon:"book",path:"/"},
-    {id:"progress",label:t.ia.progress,icon:"progress",path:"/progress"},
-    {id:"collection",label:t.ia.collection,icon:"collection",path:"/collection"},
-  ];
   return (<aside className="sidebar">
     <div className="side-head">
       <div className="side-head-row"><Brand/></div>
@@ -88,11 +83,11 @@ function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack,activeMain,onN
         <div className="prog"><span style={{width:progress+"%"}}/></div></div>
     </div>
     <nav className="side-main-nav" aria-label="Main sections">
-      {navItems.map(item=><button key={item.id} className={"side-main-link focusable"+(activeMain===item.id?" on":"")} onClick={()=>onNavigate?.(item.path)}>
-        <Svg n={item.icon}/><span>{item.label}</span>
-      </button>)}
+      <button className={"side-main-link focusable"+(activeMain==="learn"?" on":"")} onClick={()=>onNavigate?.("/")}>
+        <Svg n="book"/><span>{t.ia.learn}</span>
+      </button>
     </nav>
-    <nav className="side-nav" aria-label="Learning modules">
+    {activeMain==="learn" && <nav className="side-nav learn-subnav" aria-label="Learning modules">
       {!canJump && <div className="side-hint">{t.nav.lockedHint}</div>}
       {MODULES.map(m=>{
         const s=STEPS.find(x=>x.mod===m.id); const idx=stepIndex(s.id);
@@ -108,13 +103,21 @@ function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack,activeMain,onN
           </button>
         </div>);
       })}
+    </nav>}
+    <nav className="side-main-nav side-main-rest" aria-label="Saved sections">
+      <button className={"side-main-link focusable"+(activeMain==="progress"?" on":"")} onClick={()=>onNavigate?.("/progress")}>
+        <Svg n="progress"/><span>{t.ia.progress}</span>
+      </button>
+      <button className={"side-main-link focusable"+(activeMain==="collection"?" on":"")} onClick={()=>onNavigate?.("/collection")}>
+        <Svg n="collection"/><span>{t.ia.collection}</span>
+      </button>
     </nav>
     <div className="side-foot">
-      <div className="side-foot-top">
+      {activeMain==="learn" && <div className="side-foot-top">
         {showBack
           ? <button className="btn btn-outline btn-sm focusable" onClick={onBackHome} title={t.nav.backHome}><Svg n="home"/> {t.nav.backHome}</button>
           : <span className="tiny muted">{t.nav.previewHint}</span>}
-      </div>
+      </div>}
       <div className="account-strip">
         {signedIn ? <>
           <div className="account-email"><Svg n="user"/><span>{email||t.account.signedIn}</span></div>

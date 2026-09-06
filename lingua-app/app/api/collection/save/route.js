@@ -76,7 +76,7 @@ export async function POST(req) {
           word,
           lang,
           level,
-          source: shortText(item.source, 40) || "collection",
+          source: "collection",
           source_lesson_id: shortText(item.sourceLessonId, 160),
           last_seen_at: new Date().toISOString(),
         }),
