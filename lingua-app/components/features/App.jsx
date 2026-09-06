@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { AuthPrompt } from "./AuthPrompt";
+import { Collection } from "./Collection";
 import { Login } from "./Login";
+import { Progress } from "./Progress";
 import { SessionView, Sidebar } from "./Session";
 import { InputScreen, Preview } from "./Setup";
 import { Done, QuickScan } from "./Steps";
@@ -12,6 +15,7 @@ import { UI_TEXT } from "../../config/uiText";
 import { UIContext } from "../../hooks/useUI";
 import { identifyUser, resetAnalytics, trackEvent } from "../../lib/analytics";
 import { stopSpeak } from "../../lib/audio";
+import { getAuthState, signOut } from "../../lib/auth-client";
 import { scrollToTop } from "../../lib/format";
 import { generateLesson } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
@@ -27,6 +31,10 @@ function routeState(pathname){
   if(path==="/scan") return {screen:"scan",inputMode:null,path:"/scan"};
   if(path==="/preview") return {screen:"preview",inputMode:null,path:"/preview"};
   if(path==="/done") return {screen:"done",inputMode:null,path:"/done"};
+  if(path==="/login") return {screen:"login",inputMode:null,path:"/login"};
+  if(path==="/progress") return {screen:"progress",inputMode:null,path:"/progress"};
+  if(path==="/collection"||path==="/collection/words") return {screen:"collection",inputMode:null,path:"/collection",collectionTab:"words"};
+  if(path==="/collection/grammar") return {screen:"collection",inputMode:null,path:"/collection/grammar",collectionTab:"grammar"};
   if(path==="/learn") return {screen:"lesson",inputMode:null,path:stepPath(0),stepIndex:0};
   if(path.startsWith("/learn/")){ const slug=path.slice(7); const i=STEPS.findIndex(s=>STEP_SLUG[s.mod]===slug); return {screen:"lesson",inputMode:null,path,stepIndex:i>=0?i:0}; }
   return {screen:"input",inputMode:null,path:"/"};
@@ -54,12 +62,16 @@ function App(){
   const [doneSet,setDoneSet]=useState(()=>new Set());
   const [userWords,setUserWords]=useState(()=>DB.get("unknownWords",[])||[]);
   const [narrow,setNarrow]=useState(false);
+  const [auth,setAuth]=useState({configured:true,session:null,checked:false});
+  const [authPrompt,setAuthPrompt]=useState(false);
   const mode=screen==="lesson"?"session":screen==="done"?"done":"home";
+  const activeMain=screen==="progress"?"progress":screen==="collection"?"collection":"learn";
   const showSideBack=mode!=="home"||screen==="scan"||screen==="preview"||(screen==="input"&&pathname!=="/");
 
   useEffect(()=>{ document.documentElement.classList.toggle("dark",theme==="dark"); },[theme]);
   useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen,step]);
   useEffect(()=>{ const on=()=>setNarrow(window.innerWidth<1200); on(); window.addEventListener("resize",on); return ()=>window.removeEventListener("resize",on); },[]);
+  useEffect(()=>{ refreshAuth(); },[]);
   // The learning path (sidebar) stays open by default on desktop; the learner
   // can still collapse it with the toggle. On narrow screens it starts closed.
   useEffect(()=>{ if(typeof window!=="undefined") setPinned(window.innerWidth>=1200); },[]);
@@ -73,6 +85,11 @@ function App(){
 
   function navigateTo(nextScreen,path){ setScreen(nextScreen); if(pathname!==path) router.push(path); }
   function replaceWith(path){ if(pathname!==path) router.replace(path); }
+  async function refreshAuth(){ const state=await getAuthState(); setAuth({...state,checked:true}); return state; }
+  function navigatePath(path){ const r=routeState(path); navigateTo(r.screen,r.path); }
+  function startLogin(nextPath){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPrompt(false); navigateTo("login","/login"); }
+  async function handleSignOut(){ signOut(); await refreshAuth(); }
+  function requireLogin(nextPath=pathname){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPrompt(true); }
   function continueAfterLogin(){
     const r=routeState(pathname);
     if((r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"||r.screen==="done")&&!lesson){ navigateTo("input","/"); return; }
@@ -107,7 +124,7 @@ function App(){
     } }
 
   if(screen==="login") return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
-    <main className="main"><Login onDone={continueAfterLogin}/></main></UIContext.Provider>);
+    <main className="main"><Login nextPath={DB.get("loginNextPath","/progress")} onDone={continueAfterLogin}/></main></UIContext.Provider>);
 
   return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
     <div className={"shell"+(pinned?" pinned":"")}>
@@ -120,16 +137,20 @@ function App(){
           <button className="chrome-btn focusable" onClick={toggleTheme} title="Toggle light / dark" aria-label="Toggle light / dark">{theme==="dark"?"☀️":"🌙"}</button>
           <button className="chrome-btn focusable" onClick={clearAll} title={t.clearLocalData} aria-label={t.clearLocalData}><Svg n="trash"/></button>
         </div>
-        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} go={go} onBackHome={()=>navigateTo("input","/")} showBack={showSideBack}/>
+        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} go={go} onBackHome={()=>navigateTo("input","/")} showBack={showSideBack}
+          activeMain={activeMain} onNavigate={navigatePath} auth={auth} onLogin={()=>startLogin(pathname)} onSignOut={handleSignOut}/>
       </div>
       <main className="main">
         {screen==="loading" && <Loading/>}
         {screen==="input" && <InputScreen onNext={loadLesson} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
         {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}
         {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
-        {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
+        {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} auth={auth} onRequireLogin={requireLogin} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
         {screen==="done" && lesson && <Done lesson={lesson} text={text} diag={{unknown:userWords}} doneSet={doneSet} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
+        {screen==="progress" && <Progress auth={auth} onLogin={()=>startLogin("/progress")} onStartLearning={()=>navigateTo("input","/")}/>}
+        {screen==="collection" && <Collection auth={auth} tab={currentRoute.collectionTab} onTabChange={(tab)=>navigateTo("collection",tab==="grammar"?"/collection/grammar":"/collection")} onLogin={()=>startLogin(currentRoute.path)} onStartLearning={()=>navigateTo("input","/")}/>}
       </main>
+      <AuthPrompt open={authPrompt} onClose={()=>setAuthPrompt(false)} onSignIn={()=>startLogin(DB.get("loginNextPath",pathname||"/"))}/>
     </div>
     <div className={"scrim"+((pinned&&narrow)?" on":"")} onClick={()=>setPinned(false)}/>
   </UIContext.Provider>);

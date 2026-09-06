@@ -71,11 +71,12 @@ async function getAuthState() {
   return { configured: true, session: null };
 }
 
-async function signInWithEmail(email) {
+async function signInWithEmail(email, nextPath = "") {
   const { url, anonKey, configured } = supabaseConfig();
   if (!configured) throw new Error("Supabase auth is not configured.");
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const redirectTo = `${origin}/auth/callback`;
+  const next = nextPath ? `?next=${encodeURIComponent(nextPath)}` : "";
+  const redirectTo = `${origin}/auth/callback${next}`;
   const response = await fetch(`${url}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: "POST",
     headers: {

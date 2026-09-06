@@ -67,4 +67,15 @@ async function saveCompletedLesson(payload, accessToken) {
   return data;
 }
 
-export { buildCompletedLessonPayload, saveCompletedLesson };
+async function fetchLearningRecords(accessToken) {
+  const response = await fetch("/api/learning/records", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || "Could not load learning progress.");
+  return data;
+}
+
+export { buildCompletedLessonPayload, fetchLearningRecords, saveCompletedLesson };
