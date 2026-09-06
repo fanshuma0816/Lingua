@@ -16,7 +16,7 @@ function levelIdx(l){ const p=(l||"").slice(0,2); return Math.max(0,LEVELS.findI
 // freely between them.
 const MODULES=[
   {id:"understanding",icon:"book"},
-  {id:"vocabulary",icon:"target"},
+  {id:"vocabulary",icon:"languages"},
   {id:"shadowing",icon:"mic"},
   {id:"recall",icon:"recall"},
   {id:"using",icon:"chat"},

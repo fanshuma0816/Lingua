@@ -9,7 +9,7 @@ import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
 import { setLineTr } from "../../lib/trcache";
 
-function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
+function SessionView({lesson,text,step,auth,onRequireLogin,onPrev,onContinue,onSkip,onPreview}){
   const {t}=useUI();
   const S=STEPS[step]; const M=MODULES.find(m=>m.id===S.mod);
   const readerRef=useRef(null);
@@ -40,7 +40,7 @@ function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
         <span className="tiny muted">{t.nav.mods[M.id]} · {t.nav.steps[S.id]}</span>
         <span className="tiny muted">{t.min(stepMin)}</span></div>
     </div>
-    <div className="stage"><StepBody step={S} lesson={lesson} text={text} onContinue={onContinue} onSkip={onSkip} onPrev={step===0?onPreview:onPrev} readerRef={readerRef} onReaderPageState={handleReaderPageState}/></div>
+    <div className="stage"><StepBody step={S} lesson={lesson} text={text} auth={auth} onRequireLogin={onRequireLogin} onContinue={onContinue} onSkip={onSkip} onPrev={step===0?onPreview:onPrev} readerRef={readerRef} onReaderPageState={handleReaderPageState}/></div>
     {!hideFoot && <div className="footnav">
       <button className="btn btn-ghost btn-sm focusable" onClick={backAction}>← {backLabel}</button>
       <div className="row" style={{gap:8}}>
@@ -50,7 +50,7 @@ function SessionView({lesson,text,step,onPrev,onContinue,onSkip,onPreview}){
   </div>);
 }
 
-function StepBody({step,lesson,text,onContinue,onSkip,onPrev,readerRef,onReaderPageState}){
+function StepBody({step,lesson,text,auth,onRequireLogin,onContinue,onSkip,onPrev,readerRef,onReaderPageState}){
   const {t}=useUI();
   const {lang}=lesson; const sents=lesson.sents;
   switch(step.kind){
@@ -61,15 +61,17 @@ function StepBody({step,lesson,text,onContinue,onSkip,onPrev,readerRef,onReaderP
       <SyncReader ref={readerRef} key="understand-reader" controls="external" onPageStateChange={onReaderPageState} items={sents.map((s)=>({s,tr:(lesson.watch||[]).find(x=>x.s===s)?.tr||null}))} lang={lang} level={lesson.level} translation={true} onTranslated={(sen,tr)=>setLineTr("en",sen,tr)}/>
       <CheckIn>{t.watch.check}</CheckIn>
     </div>);
-    case "grammar": return <GrammarStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
+    case "grammar": return <GrammarStep lesson={lesson} auth={auth} onRequireLogin={onRequireLogin} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
     case "shadow":  return <Shadowing key="shadow" sents={sents} lang={lang} onSkip={onSkip} onPrev={onPrev} onContinue={onContinue}/>;
     case "recall":  return <RecallStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
     default:        return <PracticeAI lesson={lesson} onComplete={()=>{}} onSkip={onSkip}/>;
   }
 }
 
-function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack}){
+function Sidebar({mode,activeScreen,lesson,step,doneSet,go,onGoScan,onBackHome,showBack,activeMain,onNavigate,auth,onLogin,onSignOut}){
   const {t}=useUI();
+  const signedIn=!!auth?.session?.accessToken;
+  const email=auth?.session?.user?.email||"";
   const progress=mode==="done"?100:Math.round(doneSet.size/STEPS.length*100);
   const ctx=mode==="home"||!lesson ? t.nav.ctx : t.nav.ctxSession(langName(t,lesson.lang),(lesson.level||"").split(" — ")[0]);
   const canJump=mode==="session"||mode==="done";
@@ -80,27 +82,56 @@ function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack}){
       <div className="side-progress" style={{visibility:(mode==="session"||mode==="done")?"visible":"hidden"}}>
         <div className="prog"><span style={{width:progress+"%"}}/></div></div>
     </div>
-    <nav className="side-nav" aria-label="Learning modules">
-      {!canJump && <div className="side-hint">{t.nav.lockedHint}</div>}
+    <nav className="side-main-nav learn-main-nav" aria-label="Main sections">
+      <button className={"side-main-link focusable"+(activeMain==="learn"?" on":"")} onClick={()=>onNavigate?.("/")}>
+        <Svg n="book"/><span>{t.ia.learn}</span>
+      </button>
+    </nav>
+    {activeMain==="learn" && <nav className="side-nav learn-subnav" aria-label="Learning modules">
+      {!lesson && <p className="locked-line">{t.nav.lockedLine}</p>}
+      <div className="nav-group">
+        <button className={"group-trigger focusable"+(!lesson?" disabled":"")} data-hasactive={activeScreen==="scan"?"true":"false"} aria-disabled={!lesson}
+          onClick={()=>{ if(lesson) onGoScan?.(); }}>
+          <span className="gicon"><Svg n="target"/></span>
+          <span className="gname">{t.nav.quickScan}</span>
+          <span style={{marginLeft:"auto",fontSize:11,lineHeight:1,color:activeScreen==="scan"?"hsl(var(--foreground))":"hsl(var(--muted-foreground)/.45)"}}>{activeScreen==="scan"?"●":""}</span>
+        </button>
+        {!lesson && <span className="lock-tip">{t.nav.lockedHint}</span>}
+      </div>
       {MODULES.map(m=>{
         const s=STEPS.find(x=>x.mod===m.id); const idx=stepIndex(s.id);
         const done=doneSet.has(s.id);
         const cur=mode==="session"&&idx===step;
         const dis=!canJump;
         return (<div className="nav-group" key={m.id}>
-          <button className={"group-trigger focusable"+(dis?" disabled":"")} data-hasactive={cur?"true":"false"} aria-disabled={dis} disabled={dis}
+          <button className={"group-trigger focusable"+(dis?" disabled":"")} data-hasactive={cur?"true":"false"} aria-disabled={dis}
             onClick={()=>{ if(!dis) go(s.id); }}>
             <span className="gicon"><Svg n={m.icon}/></span>
             <span className="gname">{t.nav.mods[m.id]}</span>
             <span style={{marginLeft:"auto",fontSize:11,lineHeight:1,color:done?"hsl(var(--success))":cur?"hsl(var(--foreground))":"hsl(var(--muted-foreground)/.45)"}}>{done?"✓":cur?"●":""}</span>
           </button>
+          {!lesson && <span className="lock-tip">{t.nav.lockedHint}</span>}
         </div>);
       })}
+    </nav>}
+    <nav className="side-main-nav side-main-rest" aria-label="Saved sections">
+      <button className={"side-main-link focusable"+(activeMain==="progress"?" on":"")} onClick={()=>onNavigate?.("/progress")}>
+        <Svg n="progress"/><span>{t.ia.progress}</span>
+      </button>
+      <button className={"side-main-link focusable"+(activeMain==="collection"?" on":"")} onClick={()=>onNavigate?.("/collection")}>
+        <Svg n="collection"/><span>{t.ia.collection}</span>
+      </button>
     </nav>
     <div className="side-foot">
-      {showBack
-        ? <button className="btn btn-outline btn-sm focusable" onClick={onBackHome} title={t.nav.backHome}><Svg n="home"/> {t.nav.backHome}</button>
-        : <span className="tiny muted">{t.nav.previewHint}</span>}
+      {activeMain==="learn" && showBack && <div className="side-foot-top">
+        <button className="btn btn-outline btn-sm focusable" onClick={onBackHome} title={t.nav.backHome}><Svg n="home"/> {t.nav.backHome}</button>
+      </div>}
+      <div className="account-strip">
+        {signedIn ? <>
+          <div className="account-email"><Svg n="user"/><span>{email||t.account.signedIn}</span></div>
+          <button className="icon-btn focusable" onClick={onSignOut} title={t.account.signOut} aria-label={t.account.signOut}><Svg n="signOut"/></button>
+        </> : <button className="account-login focusable" onClick={onLogin}><Svg n="user"/> <span>{t.account.signInToSave}</span></button>}
+      </div>
     </div>
   </aside>);
 }

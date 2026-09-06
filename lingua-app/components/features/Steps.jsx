@@ -9,8 +9,11 @@ import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
 import { speak, stopSpeak } from "../../lib/audio";
+import { getAuthState, signInWithEmail } from "../../lib/auth-client";
+import { fetchCollection, grammarItemKey, removeGrammarFromCollection, removeWordFromCollection, saveGrammarToCollection, saveWordToCollection, wordLemmaKey } from "../../lib/collection";
 import { displayWordInfo } from "../../lib/dutch";
 import { normalizePoint, progressPct, scrollToTop } from "../../lib/format";
+import { buildCompletedLessonPayload, saveCompletedLesson } from "../../lib/learning-sync";
 import { fallbackGrammarItems, practiceQuestion } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { STOP, grammarExamples, meaningParts, words } from "../../lib/text";
@@ -90,7 +93,33 @@ function VerbForms({info,t,lang}){
   </details>);
 }
 
-function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
+function CollectionSaveButton({type,item,auth,onRequireLogin,saved,onToggle}){
+  const {t}=useUI();
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState(false);
+  const signedIn=!!auth?.session?.accessToken;
+  async function click(e){
+    e.preventDefault(); e.stopPropagation();
+    if(busy) return;
+    if(!signedIn){ onRequireLogin?.(typeof window!=="undefined"?window.location.pathname:"/"); return; }
+    setBusy(true); setError(false);
+    try{
+      const wasSaved=saved;
+      await onToggle?.();
+      if(!wasSaved) trackEvent("collection_item_saved",{item_type:type,language:item?.lang,level:(item?.level||"").slice(0,2)});
+    }catch(err){
+      setError(true);
+    }finally{
+      setBusy(false);
+    }
+  }
+  const label=error?t.collection.saveError:(busy?(saved?t.collection.removing:t.collection.saving):(saved?t.collection.saved:t.collection.save));
+  return (<button className={"save-mini focusable"+(saved?" saved":"")+(error?" error":"")} onClick={click} title={saved?t.collection.removeHint:label} aria-pressed={saved?"true":"false"}>
+    <Svg n={saved?"bookmarkCheck":"bookmark"}/> <span>{label}</span>
+  </button>);
+}
+
+function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,onPrev}){
   const {t,uiLang}=useUI();
   const {lang,sents,vocab,vlist,level,recommended}=lesson;
   const N=sents.length;
@@ -168,6 +197,72 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
     return ()=>{cancel=true;};
   },[gi,trs[gi],uiLang]);
   function usageNote(w){ return loadingKw ? t.lookingUpWord : t.studyUsage; }
+  const collectionToken=auth?.session?.accessToken||null;
+  const [savedWords,setSavedWords]=useState({keys:new Set(),map:{}});
+  const [savedGrammarKeys,setSavedGrammarKeys]=useState(()=>new Set());
+  useEffect(()=>{
+    let cancel=false;
+    if(!collectionToken){ setSavedWords({keys:new Set(),map:{}}); setSavedGrammarKeys(new Set()); return; }
+    fetchCollection(collectionToken).then(data=>{
+      if(cancel) return;
+      const keys=new Set(), map={};
+      (data.words||[]).forEach(row=>{ const k=wordLemmaKey(row.word,row.lang); keys.add(k); (map[k]=map[k]||[]).push(row.word); });
+      setSavedWords({keys,map});
+      setSavedGrammarKeys(new Set((data.grammar||[]).map(g=>grammarItemKey({title:g.title,lang:g.lang}))));
+    }).catch(()=>{});
+    return ()=>{cancel=true;};
+  },[collectionToken]);
+  async function toggleWordSave(item){
+    if(!collectionToken) return;
+    const key=wordLemmaKey(item.word,item.lang);
+    if(savedWords.keys.has(key)){
+      const words=savedWords.map[key]||[item.word];
+      for(const w of words){ await removeWordFromCollection({word:w,lang:item.lang},collectionToken); }
+      setSavedWords(prev=>{ const keys=new Set(prev.keys); keys.delete(key); const map={...prev.map}; delete map[key]; return {keys,map}; });
+    } else {
+      await saveWordToCollection(item,collectionToken);
+      setSavedWords(prev=>{ const keys=new Set(prev.keys); keys.add(key); const map={...prev.map}; map[key]=[...(map[key]||[]),item.word]; return {keys,map}; });
+    }
+  }
+  async function toggleGrammarSave(item){
+    if(!collectionToken) return;
+    const key=grammarItemKey(item);
+    if(savedGrammarKeys.has(key)){
+      await removeGrammarFromCollection(item,collectionToken);
+      setSavedGrammarKeys(prev=>{ const set=new Set(prev); set.delete(key); return set; });
+    } else {
+      await saveGrammarToCollection(item,collectionToken);
+      setSavedGrammarKeys(prev=>{ const set=new Set(prev); set.add(key); return set; });
+    }
+  }
+  const isWordSaved=(w)=>savedWords.keys.has(wordLemmaKey(w,lang));
+  const isGrammarSaved=(item)=>savedGrammarKeys.has(grammarItemKey(item));
+  function wordCollectionItem(w,e){
+    return {
+      word:w,
+      lang,
+      level,
+      source:"lesson_card",
+      sourceLessonId:lesson?.material?.id||lesson?.id||null,
+      meaning:e?.simpleMeaning||e?.meaning||null,
+      detail:e?.detail||null,
+      example:e?.example||null,
+      exampleTranslation:e?.exampleTranslation||null,
+      pos:e?.pos||null,
+    };
+  }
+  function grammarCollectionItem(g){
+    const ex=grammarExamples(g)[0]||{};
+    return {
+      title:g?.point||t.gram.wordOrder,
+      explanation:g?.explain||"",
+      example:ex.sentence||"",
+      exampleTranslation:ex.translation||"",
+      lang,
+      level,
+      sourceLessonId:lesson?.material?.id||lesson?.id||null,
+    };
+  }
   const s=sents[gi]||""; const tr=trs[gi]; const kw=keyWordsIn(s,gi);
   const studyWords=(()=>{ const seen=new Set(), out=[];
     if(userWords.size){
@@ -201,7 +296,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
         <details className="summary-card" key={w}>
           <summary>
             <span className="row" style={{gap:9}}><b>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
-            <span className="row" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><Say text={w} lang={lang}/></span>
+            <span className="row" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang}/></span>
           </summary>
           {parts.detail && <div className="summary-detail">{parts.detail}</div>}
           {(e&&e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase()) || e?.formLabel || e?.formExplanation ? <div className="word-form">
@@ -215,8 +310,10 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       ); })}
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.patterns}</h3>
       {allGrammarItems.map((g,j)=><div className="grammar-card" key={j}>
-        <b>{g.point||t.gram.wordOrder}</b>
-        <p>{g.explain}</p>
+        <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
+          <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin} saved={isGrammarSaved(grammarCollectionItem(g))} onToggle={()=>toggleGrammarSave(grammarCollectionItem(g))}/>
+        </div>
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
             <div className="row" style={{justifyContent:"space-between",gap:8}}>
@@ -258,7 +355,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       {kw.length?kw.map((w,j)=>{ const e=displayWordInfo(w,lang,uiLang,vmap[w.toLowerCase()],expl[w.toLowerCase()]); const parts=meaningParts(e); return (<div className="wcard" key={j}>
         <div className="row" style={{justifyContent:"space-between"}}>
           <span className="row" style={{gap:9}}><b className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
-          <Say text={w} lang={lang} rate={1}/></div>
+          <span className="row" style={{gap:8}}><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang} rate={1}/></span></div>
         {parts.simple ? (<div className="meaning-block">
           <div className="meaning-simple">{parts.simple}</div>
         </div>) : (<div className="meaning-loading">
@@ -279,6 +376,7 @@ function GrammarStep({lesson,onComplete,onContinue,onSkip,onPrev}){
       {grammarItems.length?grammarItems.map((g,j)=><div className="grammar-card" key={j}>
         <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
+          <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin} saved={isGrammarSaved(grammarCollectionItem(g))} onToggle={()=>toggleGrammarSave(grammarCollectionItem(g))}/>
         </div>
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
@@ -658,7 +756,93 @@ function AIChat({lesson,onNext,onDone}){
   </div>);
 }
 
-function Done({lesson,diag,onNew,onReview}){
+function SaveProgressCard({lesson,text,wordList,doneSet}){
+  const {t}=useUI();
+  const [auth,setAuth]=useState({configured:true,session:null,checked:false});
+  const [email,setEmail]=useState(()=>DB.get("email",""));
+  const [status,setStatus]=useState("idle");
+  const [message,setMessage]=useState("");
+  const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  const completedSteps=[...((doneSet&&doneSet.size)?doneSet:new Set(STEPS.map(s=>s.id)))];
+  const payload=()=>buildCompletedLessonPayload({lesson,text,userWords:wordList,completedSteps});
+
+  async function refreshAuth(){
+    const state=await getAuthState();
+    setAuth({...state,checked:true});
+    return state;
+  }
+
+  useEffect(()=>{ refreshAuth(); },[]);
+  useEffect(()=>{
+    let cancelled=false;
+    async function maybeSave(){
+      const shouldSave=DB.get("pendingSaveAfterLogin",false) || (typeof window!=="undefined"&&window.location.search.includes("save=1"));
+      if(!shouldSave||status==="saving"||status==="saved") return;
+      const state=await refreshAuth();
+      if(cancelled||!state.session?.accessToken) return;
+      await doSave(state.session.accessToken,true);
+    }
+    maybeSave();
+    return ()=>{cancelled=true;};
+  },[lesson?.material?.id]);
+
+  async function doSave(accessToken,automatic=false){
+    setStatus("saving");
+    setMessage("");
+    try{
+      const result=await saveCompletedLesson(payload(),accessToken);
+      trackEvent("learning_progress_saved",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2),word_count:result?.wordCount||0,automatic});
+      if(typeof window!=="undefined"&&window.location.search.includes("save=1")) window.history.replaceState(null,"","/done");
+      setStatus("saved");
+      setMessage(t.saveProgress.savedDetail(result?.wordCount||0));
+    }catch(e){
+      setStatus("error");
+      setMessage(e?.message||t.saveProgress.error);
+    }
+  }
+
+  async function handleSave(){
+    const state=await refreshAuth();
+    if(!state.configured){ setStatus("error"); setMessage(t.saveProgress.notConfigured); return; }
+    if(state.session?.accessToken){ await doSave(state.session.accessToken); return; }
+    setStatus("auth");
+  }
+
+  async function sendLink(){
+    if(!ok||status==="sending") return;
+    setStatus("sending");
+    setMessage("");
+    try{
+      DB.set("email",email);
+      DB.set("pendingSaveAfterLogin",true);
+      await signInWithEmail(email);
+      trackEvent("save_login_link_sent",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2)});
+      setStatus("sent");
+      setMessage(t.saveProgress.linkSent);
+    }catch(e){
+      setStatus("error");
+      setMessage(e?.message||t.saveProgress.error);
+    }
+  }
+
+  const signedIn=!!auth.session?.accessToken;
+  const busy=status==="saving"||status==="sending";
+  return (<div className="done-card save-card">
+    <div className="done-card-title">{status==="saved"?t.saveProgress.savedTitle:t.saveProgress.title}</div>
+    <p className="done-card-note">{status==="saved"?t.saveProgress.savedBody:t.saveProgress.body(wordList.length)}</p>
+    {status==="auth"||status==="sent" ? <div className="save-login">
+      <label className="tiny muted" htmlFor="save-email">{t.email}</label>
+      <input id="save-email" className="input" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>
+      <button className="btn btn-primary" disabled={!ok||busy} onClick={sendLink}>{status==="sending"?t.saveProgress.sending:t.saveProgress.sendLink}</button>
+    </div> : <button className={status==="saved"?"btn btn-outline":"btn btn-primary"} disabled={busy||status==="saved"} onClick={handleSave}>
+      <Svg n={status==="saved"?"check":"book"}/> {status==="saving"?t.saveProgress.saving:(status==="saved"?t.saveProgress.savedButton:(signedIn?t.saveProgress.save:t.saveProgress.saveWithLogin))}
+    </button>}
+    {message && <div className={"tiny save-status "+(status==="error"?"error":status==="saved"||status==="sent"?"ok":"")}>{message}</div>}
+    {!signedIn && status!=="saved" && status!=="auth" && status!=="sent" && <div className="tiny muted save-hint">{t.saveProgress.noPassword}</div>}
+  </div>);
+}
+
+function Done({lesson,text,diag,doneSet,onNew,onReview}){
   const {t}=useUI();
   const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
   const [feedbackStep,setFeedbackStep]=useState("most");
@@ -699,7 +883,8 @@ function Done({lesson,diag,onNew,onReview}){
   }
   const fromDiag=(diag&&Array.isArray(diag.unknown)&&diag.unknown.length)?diag.unknown:null;
   const fromFocus=(lesson.focus&&Array.isArray(lesson.focus.vocab))?lesson.focus.vocab.map(v=>v.word):[];
-  const wordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean).slice(0,6);
+  const saveWordList=(fromDiag||(fromFocus.length?fromFocus:(lesson.vlist||[]))).filter(Boolean);
+  const wordList=saveWordList.slice(0,6);
   const isLeastStep=feedbackStep==="least";
   const feedbackNumber=isLeastStep?2:1;
   const feedbackText=devFeedback.trim();
@@ -709,6 +894,7 @@ function Done({lesson,diag,onNew,onReview}){
       <div className="done-emoji">🎉</div>
       <h1 className="done-h1">{t.done.title()}</h1>
       <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+      <SaveProgressCard lesson={lesson} text={text} wordList={saveWordList} doneSet={doneSet}/>
       <div className="done-card donation-card">
         <div className="done-card-title">{t.donation.title}</div>
         <p className="done-card-note">{t.donation.body}</p>
