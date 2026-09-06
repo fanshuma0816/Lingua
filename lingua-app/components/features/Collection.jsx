@@ -3,8 +3,19 @@
 import { useEffect, useState } from "react";
 import { Say, Svg } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
-import { fetchCollection } from "../../lib/collection";
+import { fetchCollection, removeGrammarFromCollection, removeWordFromCollection, wordLemmaKey } from "../../lib/collection";
 import { meaningParts } from "../../lib/text";
+
+// Collapse inflected variants so the word list shows each base word once.
+function dedupeWords(list) {
+  const seen = new Set(), out = [];
+  for (const it of (list || [])) {
+    const k = wordLemmaKey(it.word, it.lang);
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(it);
+  }
+  return out;
+}
 
 function CollectionEmpty({ signedIn, tab, onLogin, onStartLearning }) {
   const { t } = useUI();
@@ -22,7 +33,7 @@ function CollectionEmpty({ signedIn, tab, onLogin, onStartLearning }) {
   );
 }
 
-function WordCard({ item }) {
+function WordCard({ item, onRemove }) {
   const { t } = useUI();
   const parts = meaningParts(item);
   return (
@@ -33,7 +44,7 @@ function WordCard({ item }) {
           {item.pos && <span className="badge badge-outline">{item.pos}</span>}
         </span>
         <span className="row" style={{ gap: 8 }}>
-          <span className="saved-pill"><Svg n="bookmarkCheck" /> {t.collection.saved}</span>
+          <button className="saved-pill saved-pill-btn focusable" onClick={() => onRemove?.(item)} title={t.collection.removeHint}><Svg n="bookmarkCheck" /> {t.collection.saved}</button>
           <Say text={item.word} lang={item.lang} rate={1} />
         </span>
       </div>
@@ -45,7 +56,7 @@ function WordCard({ item }) {
   );
 }
 
-function GrammarCard({ item }) {
+function GrammarCard({ item, onRemove }) {
   const { t } = useUI();
   return (
     <div className="grammar-card collection-grammar-card">
@@ -54,7 +65,7 @@ function GrammarCard({ item }) {
           <b>{item.title}</b>
           {item.explanation && <p>{item.explanation}</p>}
         </div>
-        <span className="saved-pill"><Svg n="bookmarkCheck" /> {t.collection.saved}</span>
+        <button className="saved-pill saved-pill-btn focusable" onClick={() => onRemove?.(item)} title={t.collection.removeHint}><Svg n="bookmarkCheck" /> {t.collection.saved}</button>
       </div>
       {(item.example || item.example_translation) && <div className="grammar-examples">
         <div className="grammar-example-row">
@@ -98,7 +109,26 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
     else if (!language || !languages.includes(language)) setLanguage(languages[0]);
   }, [languages.join("|"), language]);
   const allItems = active === "grammar" ? state.grammar : state.words;
-  const items = languages.length > 1 && language ? allItems.filter((item) => item.lang === language) : allItems;
+  const filtered = languages.length > 1 && language ? allItems.filter((item) => item.lang === language) : allItems;
+  const items = active === "grammar" ? filtered : dedupeWords(filtered);
+
+  async function removeItem(item, type) {
+    const token = auth?.session?.accessToken;
+    if (!token) return;
+    try {
+      if (type === "grammar") {
+        await removeGrammarFromCollection(item, token);
+        setState((prev) => ({ ...prev, grammar: prev.grammar.filter((g) => g.id !== item.id) }));
+      } else {
+        const key = wordLemmaKey(item.word, item.lang);
+        const group = state.words.filter((w) => wordLemmaKey(w.word, w.lang) === key);
+        for (const w of group) { await removeWordFromCollection({ word: w.word, lang: w.lang }, token); }
+        setState((prev) => ({ ...prev, words: prev.words.filter((w) => wordLemmaKey(w.word, w.lang) !== key) }));
+      }
+    } catch (e) {
+      setState((prev) => ({ ...prev, error: e?.message || t.collection.loadError }));
+    }
+  }
 
   return (
     <div className="account-page">
@@ -121,8 +151,8 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
       {signedIn && !state.loading && !state.error && !items.length && <CollectionEmpty signedIn tab={active} onLogin={onLogin} onStartLearning={onStartLearning} />}
       {signedIn && !state.loading && !state.error && !!items.length && <div className="collection-list">
         {active === "grammar"
-          ? items.map((item) => <GrammarCard key={item.id} item={item} />)
-          : items.map((item) => <WordCard key={item.id || `${item.lang}-${item.word}`} item={item} />)}
+          ? items.map((item) => <GrammarCard key={item.id} item={item} onRemove={(it) => removeItem(it, "grammar")} />)
+          : items.map((item) => <WordCard key={item.id || `${item.lang}-${item.word}`} item={item} onRemove={(it) => removeItem(it, "word")} />)}
       </div>}
     </div>
   );

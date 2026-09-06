@@ -353,6 +353,9 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .save-mini svg.i{font-size:14px}
 .saved-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid hsl(var(--primary)/.5);background:hsl(var(--primary)/.14);border-radius:999px;padding:4px 8px;font-size:11.5px;font-weight:700;color:hsl(var(--foreground));white-space:nowrap}
 .saved-pill svg.i{font-size:13px}
+.save-mini.saved:hover{border-color:hsl(0 72% 55%);background:hsl(0 72% 51%/.10);color:hsl(0 72% 43%)}
+.saved-pill-btn{cursor:pointer;transition:.12s}
+.saved-pill-btn:hover{border-color:hsl(0 72% 55%);background:hsl(0 72% 51%/.10);color:hsl(0 72% 43%)}
 
 /* session learnbar/footnav inside the shell (override the sticky app styles) */
 .main .learnbar{position:static;background:transparent;backdrop-filter:none;border-bottom:none;padding:2px 4px 12px;margin-bottom:0}

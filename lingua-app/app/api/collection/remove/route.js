@@ -11,11 +11,6 @@ function shortText(value, limit = 220) {
   return text ? text.slice(0, limit) : null;
 }
 
-function uuidOrNull(value) {
-  const text = shortText(value, 80);
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text || "") ? text : null;
-}
-
 function jsonHeaders(serviceKey, extra = {}) {
   return {
     "Content-Type": "application/json",
@@ -27,23 +22,22 @@ function jsonHeaders(serviceKey, extra = {}) {
 
 async function getUser(accessToken, env) {
   const response = await fetch(`${env.url}/auth/v1/user`, {
-    headers: {
-      apikey: env.serviceKey,
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: { apikey: env.serviceKey, Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) return null;
   return response.json();
 }
 
-async function supabaseWrite(path, options, env) {
-  const response = await fetch(`${env.url}${path}`, options);
+async function supabaseDelete(path, env) {
+  const response = await fetch(`${env.url}${path}`, {
+    method: "DELETE",
+    headers: jsonHeaders(env.serviceKey, { Prefer: "return=minimal" }),
+  });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Supabase write failed.");
+    throw new Error(errorText || "Supabase delete failed.");
   }
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  return true;
 }
 
 export async function POST(req) {
@@ -56,7 +50,7 @@ export async function POST(req) {
     const auth = req.headers.get("authorization") || "";
     const accessToken = auth.replace(/^Bearer\s+/i, "").trim();
     if (!accessToken) {
-      return Response.json({ error: "Please sign in to save to your collection." }, { status: 401 });
+      return Response.json({ error: "Please sign in to update your collection." }, { status: 401 });
     }
 
     const user = await getUser(accessToken, env);
@@ -68,49 +62,24 @@ export async function POST(req) {
     const type = body?.type;
     const item = body?.item && typeof body.item === "object" ? body.item : {};
     const lang = shortText(item.lang, 60);
-    const level = shortText(item.level, 40);
+    const uid = encodeURIComponent(user.id);
 
     if (type === "word") {
       const word = shortText(item.word, 120);
       if (!word || !lang) return Response.json({ error: "Missing word or language." }, { status: 400 });
-      await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,word", {
-        method: "POST",
-        headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
-        body: JSON.stringify({
-          user_id: user.id,
-          word,
-          lang,
-          level,
-          source: "collection",
-          source_lesson_id: uuidOrNull(item.sourceLessonId),
-          last_seen_at: new Date().toISOString(),
-        }),
-      }, env);
+      await supabaseDelete(`/rest/v1/user_words?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&word=eq.${encodeURIComponent(word)}&source=eq.collection`, env);
       return Response.json({ ok: true, type: "word", word });
     }
 
     if (type === "grammar") {
       const title = shortText(item.title, 220);
       if (!title || !lang) return Response.json({ error: "Missing grammar title or language." }, { status: 400 });
-      await supabaseWrite("/rest/v1/user_grammar_items?on_conflict=user_id,lang,title", {
-        method: "POST",
-        headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
-        body: JSON.stringify({
-          user_id: user.id,
-          title,
-          explanation: shortText(item.explanation, 900),
-          example: shortText(item.example, 500),
-          example_translation: shortText(item.exampleTranslation, 500),
-          lang,
-          level,
-          source_lesson_id: uuidOrNull(item.sourceLessonId),
-        }),
-      }, env);
-      return Response.json({ ok: true, type: "grammar" });
+      await supabaseDelete(`/rest/v1/user_grammar_items?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&title=eq.${encodeURIComponent(title)}`, env);
+      return Response.json({ ok: true, type: "grammar", title });
     }
 
     return Response.json({ error: "Unknown collection item type." }, { status: 400 });
   } catch (e) {
-    return Response.json({ error: e?.message || "Could not save to collection." }, { status: 502 });
+    return Response.json({ error: e?.message || "Could not remove from collection." }, { status: 502 });
   }
 }

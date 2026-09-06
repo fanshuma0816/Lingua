@@ -92,6 +92,20 @@ create table if not exists public.user_words (
   last_seen_at timestamptz not null default now(),
   unique (user_id, lang, word)
 );
+
+create table if not exists public.user_grammar_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  explanation text,
+  example text,
+  example_translation text,
+  lang text not null,
+  level text,
+  source_lesson_id uuid references public.lesson_sessions(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (user_id, lang, title)
+);
 ```
 
 Supabase Authentication 的 Redirect URLs 里加上你的站点回调地址，例如：

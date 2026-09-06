@@ -10,7 +10,7 @@ import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
 import { speak, stopSpeak } from "../../lib/audio";
 import { getAuthState, signInWithEmail } from "../../lib/auth-client";
-import { saveGrammarToCollection, saveWordToCollection } from "../../lib/collection";
+import { fetchCollection, grammarItemKey, removeGrammarFromCollection, removeWordFromCollection, saveGrammarToCollection, saveWordToCollection, wordLemmaKey } from "../../lib/collection";
 import { displayWordInfo } from "../../lib/dutch";
 import { normalizePoint, progressPct, scrollToTop } from "../../lib/format";
 import { buildCompletedLessonPayload, saveCompletedLesson } from "../../lib/learning-sync";
@@ -93,26 +93,29 @@ function VerbForms({info,t,lang}){
   </details>);
 }
 
-function CollectionSaveButton({type,item,auth,onRequireLogin}){
+function CollectionSaveButton({type,item,auth,onRequireLogin,saved,onToggle}){
   const {t}=useUI();
-  const [status,setStatus]=useState("idle");
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState(false);
   const signedIn=!!auth?.session?.accessToken;
-  async function save(){
-    if(status==="saving"||status==="saved") return;
+  async function click(e){
+    e.preventDefault(); e.stopPropagation();
+    if(busy) return;
     if(!signedIn){ onRequireLogin?.(typeof window!=="undefined"?window.location.pathname:"/"); return; }
-    setStatus("saving");
+    setBusy(true); setError(false);
     try{
-      if(type==="grammar") await saveGrammarToCollection(item,auth.session.accessToken);
-      else await saveWordToCollection(item,auth.session.accessToken);
-      setStatus("saved");
-      trackEvent("collection_item_saved",{item_type:type,language:item?.lang,level:(item?.level||"").slice(0,2)});
-    }catch(e){
-      setStatus("error");
+      const wasSaved=saved;
+      await onToggle?.();
+      if(!wasSaved) trackEvent("collection_item_saved",{item_type:type,language:item?.lang,level:(item?.level||"").slice(0,2)});
+    }catch(err){
+      setError(true);
+    }finally{
+      setBusy(false);
     }
   }
-  const label=status==="saving"?t.collection.saving:(status==="saved"?t.collection.saved:(status==="error"?t.collection.saveError:t.collection.save));
-  return (<button className={"save-mini focusable"+(status==="saved"?" saved":status==="error"?" error":"")} disabled={status==="saving"||status==="saved"} onClick={(e)=>{e.preventDefault();e.stopPropagation();save();}} title={label}>
-    <Svg n={status==="saved"?"bookmarkCheck":"bookmark"}/> <span>{label}</span>
+  const label=error?t.collection.saveError:(busy?(saved?t.collection.removing:t.collection.saving):(saved?t.collection.saved:t.collection.save));
+  return (<button className={"save-mini focusable"+(saved?" saved":"")+(error?" error":"")} onClick={click} title={saved?t.collection.removeHint:label} aria-pressed={saved?"true":"false"}>
+    <Svg n={saved?"bookmarkCheck":"bookmark"}/> <span>{label}</span>
   </button>);
 }
 
@@ -194,6 +197,46 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
     return ()=>{cancel=true;};
   },[gi,trs[gi],uiLang]);
   function usageNote(w){ return loadingKw ? t.lookingUpWord : t.studyUsage; }
+  const collectionToken=auth?.session?.accessToken||null;
+  const [savedWords,setSavedWords]=useState({keys:new Set(),map:{}});
+  const [savedGrammarKeys,setSavedGrammarKeys]=useState(()=>new Set());
+  useEffect(()=>{
+    let cancel=false;
+    if(!collectionToken){ setSavedWords({keys:new Set(),map:{}}); setSavedGrammarKeys(new Set()); return; }
+    fetchCollection(collectionToken).then(data=>{
+      if(cancel) return;
+      const keys=new Set(), map={};
+      (data.words||[]).forEach(row=>{ const k=wordLemmaKey(row.word,row.lang); keys.add(k); (map[k]=map[k]||[]).push(row.word); });
+      setSavedWords({keys,map});
+      setSavedGrammarKeys(new Set((data.grammar||[]).map(g=>grammarItemKey({title:g.title,lang:g.lang}))));
+    }).catch(()=>{});
+    return ()=>{cancel=true;};
+  },[collectionToken]);
+  async function toggleWordSave(item){
+    if(!collectionToken) return;
+    const key=wordLemmaKey(item.word,item.lang);
+    if(savedWords.keys.has(key)){
+      const words=savedWords.map[key]||[item.word];
+      for(const w of words){ await removeWordFromCollection({word:w,lang:item.lang},collectionToken); }
+      setSavedWords(prev=>{ const keys=new Set(prev.keys); keys.delete(key); const map={...prev.map}; delete map[key]; return {keys,map}; });
+    } else {
+      await saveWordToCollection(item,collectionToken);
+      setSavedWords(prev=>{ const keys=new Set(prev.keys); keys.add(key); const map={...prev.map}; map[key]=[...(map[key]||[]),item.word]; return {keys,map}; });
+    }
+  }
+  async function toggleGrammarSave(item){
+    if(!collectionToken) return;
+    const key=grammarItemKey(item);
+    if(savedGrammarKeys.has(key)){
+      await removeGrammarFromCollection(item,collectionToken);
+      setSavedGrammarKeys(prev=>{ const set=new Set(prev); set.delete(key); return set; });
+    } else {
+      await saveGrammarToCollection(item,collectionToken);
+      setSavedGrammarKeys(prev=>{ const set=new Set(prev); set.add(key); return set; });
+    }
+  }
+  const isWordSaved=(w)=>savedWords.keys.has(wordLemmaKey(w,lang));
+  const isGrammarSaved=(item)=>savedGrammarKeys.has(grammarItemKey(item));
   function wordCollectionItem(w,e){
     return {
       word:w,
@@ -253,7 +296,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
         <details className="summary-card" key={w}>
           <summary>
             <span className="row" style={{gap:9}}><b>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
-            <span className="row" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin}/><Say text={w} lang={lang}/></span>
+            <span className="row" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang}/></span>
           </summary>
           {parts.detail && <div className="summary-detail">{parts.detail}</div>}
           {(e&&e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase()) || e?.formLabel || e?.formExplanation ? <div className="word-form">
@@ -269,7 +312,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       {allGrammarItems.map((g,j)=><div className="grammar-card" key={j}>
         <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
-          <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin}/>
+          <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin} saved={isGrammarSaved(grammarCollectionItem(g))} onToggle={()=>toggleGrammarSave(grammarCollectionItem(g))}/>
         </div>
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
@@ -312,7 +355,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       {kw.length?kw.map((w,j)=>{ const e=displayWordInfo(w,lang,uiLang,vmap[w.toLowerCase()],expl[w.toLowerCase()]); const parts=meaningParts(e); return (<div className="wcard" key={j}>
         <div className="row" style={{justifyContent:"space-between"}}>
           <span className="row" style={{gap:9}}><b className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
-          <span className="row" style={{gap:8}}><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin}/><Say text={w} lang={lang} rate={1}/></span></div>
+          <span className="row" style={{gap:8}}><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang} rate={1}/></span></div>
         {parts.simple ? (<div className="meaning-block">
           <div className="meaning-simple">{parts.simple}</div>
         </div>) : (<div className="meaning-loading">
@@ -333,7 +376,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       {grammarItems.length?grammarItems.map((g,j)=><div className="grammar-card" key={j}>
         <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
           <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
-          <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin}/>
+          <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin} saved={isGrammarSaved(grammarCollectionItem(g))} onToggle={()=>toggleGrammarSave(grammarCollectionItem(g))}/>
         </div>
         <div className="grammar-examples">
           {grammarExamples(g).map((ex,k)=><div className="grammar-example-row" key={k}>
