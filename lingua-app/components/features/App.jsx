@@ -87,7 +87,14 @@ function App(){
   function replaceWith(path){ if(pathname!==path) router.replace(path); }
   async function refreshAuth(){ const state=await getAuthState(); setAuth({...state,checked:true}); return state; }
   function navigatePath(path){ const r=routeState(path); navigateTo(r.screen,r.path); }
-  function startLogin(nextPath){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPrompt(false); navigateTo("login","/login"); }
+  async function startLogin(nextPath){
+    const target=nextPath||pathname||"/";
+    const state=await refreshAuth();
+    setAuthPrompt(false);
+    if(state.session?.accessToken){ navigatePath(target); return; }
+    DB.set("loginNextPath",target);
+    navigateTo("login","/login");
+  }
   async function handleSignOut(){ signOut(); await refreshAuth(); }
   function requireLogin(nextPath=pathname){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPrompt(true); }
   function continueAfterLogin(){
