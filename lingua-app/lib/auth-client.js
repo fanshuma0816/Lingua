@@ -42,18 +42,32 @@ async function fetchUser(accessToken) {
 
 async function refreshSession(session) {
   const { url, configured } = supabaseConfig();
-  if (!configured || !session?.refreshToken) return null;
-  const response = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ refresh_token: session.refreshToken }),
-  });
-  if (!response.ok) return null;
-  const fresh = await response.json();
-  const user = fresh.user || session.user || null;
-  const next = normalizeSession(fresh, user);
-  if (next) DB.set(AUTH_KEY, next);
-  return next;
+  if (!configured || !session?.refreshToken) return { status: "retry", session: null };
+  let response;
+  try {
+    response = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ refresh_token: session.refreshToken }),
+    });
+  } catch (e) {
+    // Network error / offline: keep the stored session and retry next time.
+    return { status: "retry", session: null };
+  }
+  if (!response.ok) {
+    // 400/401 means the refresh token itself is no longer valid -> sign out.
+    // Anything else (5xx, rate limit, etc.) is transient -> keep the session.
+    if (response.status === 400 || response.status === 401) return { status: "invalid", session: null };
+    return { status: "retry", session: null };
+  }
+  const fresh = await response.json().catch(() => null);
+  const user = (fresh && fresh.user) || session.user || null;
+  const next = fresh ? normalizeSession(fresh, user) : null;
+  if (next) {
+    DB.set(AUTH_KEY, next);
+    return { status: "ok", session: next };
+  }
+  return { status: "retry", session: null };
 }
 
 async function getAuthState() {
@@ -65,10 +79,15 @@ async function getAuthState() {
   if (session.expiresAt && session.expiresAt - 60 > now) {
     return { configured: true, session };
   }
-  const fresh = await refreshSession(session);
-  if (fresh) return { configured: true, session: fresh };
-  DB.remove(AUTH_KEY);
-  return { configured: true, session: null };
+  const result = await refreshSession(session);
+  if (result.status === "ok") return { configured: true, session: result.session };
+  if (result.status === "invalid") {
+    DB.remove(AUTH_KEY);
+    return { configured: true, session: null };
+  }
+  // Transient failure (offline, 5xx): keep the stored session so a network blip
+  // doesn't sign the user out. The next check will try to refresh again.
+  return { configured: true, session };
 }
 
 async function signInWithEmail(email, nextPath = "") {

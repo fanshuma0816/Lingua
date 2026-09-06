@@ -88,13 +88,15 @@ function Sidebar({mode,activeScreen,lesson,step,doneSet,go,onGoScan,onBackHome,s
       </button>
     </nav>
     {activeMain==="learn" && <nav className="side-nav learn-subnav" aria-label="Learning modules">
+      {!lesson && <p className="locked-line">{t.nav.lockedLine}</p>}
       <div className="nav-group">
-        <button className={"group-trigger focusable"+(!lesson?" disabled":"")} data-hasactive={activeScreen==="scan"?"true":"false"} aria-disabled={!lesson} disabled={!lesson}
-          title={!lesson?t.nav.lockedHint:undefined} onClick={()=>{ if(lesson) onGoScan?.(); }}>
+        <button className={"group-trigger focusable"+(!lesson?" disabled":"")} data-hasactive={activeScreen==="scan"?"true":"false"} aria-disabled={!lesson}
+          onClick={()=>{ if(lesson) onGoScan?.(); }}>
           <span className="gicon"><Svg n="target"/></span>
           <span className="gname">{t.nav.quickScan}</span>
           <span style={{marginLeft:"auto",fontSize:11,lineHeight:1,color:activeScreen==="scan"?"hsl(var(--foreground))":"hsl(var(--muted-foreground)/.45)"}}>{activeScreen==="scan"?"●":""}</span>
         </button>
+        {!lesson && <span className="lock-tip">{t.nav.lockedHint}</span>}
       </div>
       {MODULES.map(m=>{
         const s=STEPS.find(x=>x.mod===m.id); const idx=stepIndex(s.id);
@@ -102,12 +104,13 @@ function Sidebar({mode,activeScreen,lesson,step,doneSet,go,onGoScan,onBackHome,s
         const cur=mode==="session"&&idx===step;
         const dis=!canJump;
         return (<div className="nav-group" key={m.id}>
-          <button className={"group-trigger focusable"+(dis?" disabled":"")} data-hasactive={cur?"true":"false"} aria-disabled={dis} disabled={dis}
-            title={dis?t.nav.lockedHint:undefined} onClick={()=>{ if(!dis) go(s.id); }}>
+          <button className={"group-trigger focusable"+(dis?" disabled":"")} data-hasactive={cur?"true":"false"} aria-disabled={dis}
+            onClick={()=>{ if(!dis) go(s.id); }}>
             <span className="gicon"><Svg n={m.icon}/></span>
             <span className="gname">{t.nav.mods[m.id]}</span>
             <span style={{marginLeft:"auto",fontSize:11,lineHeight:1,color:done?"hsl(var(--success))":cur?"hsl(var(--foreground))":"hsl(var(--muted-foreground)/.45)"}}>{done?"✓":cur?"●":""}</span>
           </button>
+          {!lesson && <span className="lock-tip">{t.nav.lockedHint}</span>}
         </div>);
       })}
     </nav>}
@@ -120,10 +123,8 @@ function Sidebar({mode,activeScreen,lesson,step,doneSet,go,onGoScan,onBackHome,s
       </button>
     </nav>
     <div className="side-foot">
-      {activeMain==="learn" && <div className="side-foot-top">
-        {showBack
-          ? <button className="btn btn-outline btn-sm focusable" onClick={onBackHome} title={t.nav.backHome}><Svg n="home"/> {t.nav.backHome}</button>
-          : <span className="tiny muted">{t.nav.previewHint}</span>}
+      {activeMain==="learn" && showBack && <div className="side-foot-top">
+        <button className="btn btn-outline btn-sm focusable" onClick={onBackHome} title={t.nav.backHome}><Svg n="home"/> {t.nav.backHome}</button>
       </div>}
       <div className="account-strip">
         {signedIn ? <>

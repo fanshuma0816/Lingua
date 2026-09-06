@@ -103,7 +103,7 @@ const UI_TEXT={
     nav:{
       mods:{understanding:"Understanding",vocabulary:"Vocabulary & Grammar",shadowing:"Shadowing",recall:"Recall",using:"Using"},
       steps:{understanding:"Understanding",vocabulary:"Vocabulary & Grammar",shadowing:"Shadowing",recall:"Recall",using:"Using"},
-      ctx:"Your learning path", ctxSession:(lang,level)=>`${lang} · ${level}`, backHome:"Back to home page", previewHint:"Preview of your path", lockedHint:"Choose a material first. Your lesson will open automatically here.", quickScan:"Quick Scan",
+      ctx:"Your learning path", ctxSession:(lang,level)=>`${lang} · ${level}`, backHome:"Back to home page", previewHint:"Preview of your path", lockedHint:"Add a text first — import your own or generate one with AI — and these steps open up.", lockedLine:"🔒 These steps unlock once you have a text.", quickScan:"Quick Scan",
     },
     diagnosis:{
       readEyebrow:"Diagnosis · Step 1", readTitle:"How much can you read?",
@@ -230,7 +230,7 @@ const UI_TEXT={
     nav:{
       mods:{understanding:"理解",vocabulary:"词汇与语法",shadowing:"跟读",recall:"回忆",using:"输出"},
       steps:{understanding:"理解",vocabulary:"词汇与语法",shadowing:"跟读",recall:"回忆",using:"输出"},
-      ctx:"你的学习路径", ctxSession:(lang,level)=>`${lang} · ${level}`, backHome:"返回首页", previewHint:"路径预览", lockedHint:"先选择学习内容，之后会自动进入学习流程。", quickScan:"快速扫读",
+      ctx:"你的学习路径", ctxSession:(lang,level)=>`${lang} · ${level}`, backHome:"返回首页", previewHint:"路径预览", lockedHint:"先准备一段文本——可以自己导入，也可以用 AI 生成——这些步骤就会解锁。", lockedLine:"🔒 有了文本之后，这些步骤会自动解锁。", quickScan:"快速扫读",
     },
     diagnosis:{
       readEyebrow:"诊断 · 第 1 步", readTitle:"你能读懂多少？",
