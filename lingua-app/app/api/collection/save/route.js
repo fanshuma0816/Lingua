@@ -11,6 +11,11 @@ function shortText(value, limit = 220) {
   return text ? text.slice(0, limit) : null;
 }
 
+function uuidOrNull(value) {
+  const text = shortText(value, 80);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text || "") ? text : null;
+}
+
 function jsonHeaders(serviceKey, extra = {}) {
   return {
     "Content-Type": "application/json",
@@ -77,7 +82,7 @@ export async function POST(req) {
           lang,
           level,
           source: "collection",
-          source_lesson_id: shortText(item.sourceLessonId, 160),
+          source_lesson_id: uuidOrNull(item.sourceLessonId),
           last_seen_at: new Date().toISOString(),
         }),
       }, env);
@@ -98,7 +103,7 @@ export async function POST(req) {
           example_translation: shortText(item.exampleTranslation, 500),
           lang,
           level,
-          source_lesson_id: shortText(item.sourceLessonId, 160),
+          source_lesson_id: uuidOrNull(item.sourceLessonId),
           created_at: new Date().toISOString(),
         }),
       }, env);

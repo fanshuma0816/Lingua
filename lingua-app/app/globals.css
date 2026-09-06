@@ -299,11 +299,15 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .side-progress .prog{height:4px;background:hsl(var(--secondary));border-radius:999px;overflow:hidden}
 .side-progress .prog>span{display:block;height:100%;background:hsl(var(--primary));border-radius:999px;transition:width .4s ease;width:0%}
 .side-main-nav{padding:12px 8px 2px;border-bottom:1px solid hsl(var(--border));display:grid;gap:2px}
+.learn-main-nav{border-bottom:0;padding-bottom:3px}
 .side-main-rest{padding-top:8px;padding-bottom:8px;border-top:1px solid hsl(var(--border))}
 .side-main-link{width:100%;display:flex;align-items:center;gap:9px;border:0;background:transparent;border-radius:8px;padding:8px;color:hsl(var(--muted-foreground));font-size:13px;font-weight:700;text-align:left}
 .side-main-link:hover,.side-main-link.on{background:hsl(var(--accent));color:hsl(var(--foreground))}
 .side-main-link svg.i{font-size:16px;flex:0 0 auto}
 .side-nav{overflow-y:auto;min-height:0;padding:10px 8px 8px;flex:1;margin-top:2px}
+.learn-subnav{padding:0 8px 12px 20px;margin-top:0}
+.learn-subnav .group-trigger{padding-left:11px}
+.learn-subnav .group-trigger .gicon{width:16px}
 .side-hint{font-size:11.5px;line-height:1.45;color:hsl(var(--muted-foreground));background:hsl(var(--secondary)/.7);border:1px solid hsl(var(--border));border-radius:8px;padding:8px 9px;margin:0 0 8px}
 .side-foot{padding:10px 14px;border-top:1px solid hsl(var(--border));display:grid;gap:10px}
 .side-foot-top{min-height:32px;display:flex;align-items:center}

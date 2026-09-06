@@ -68,7 +68,7 @@ function StepBody({step,lesson,text,auth,onRequireLogin,onContinue,onSkip,onPrev
   }
 }
 
-function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack,activeMain,onNavigate,auth,onLogin,onSignOut}){
+function Sidebar({mode,activeScreen,lesson,step,doneSet,go,onGoScan,onBackHome,showBack,activeMain,onNavigate,auth,onLogin,onSignOut}){
   const {t}=useUI();
   const signedIn=!!auth?.session?.accessToken;
   const email=auth?.session?.user?.email||"";
@@ -82,13 +82,20 @@ function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack,activeMain,onN
       <div className="side-progress" style={{visibility:(mode==="session"||mode==="done")?"visible":"hidden"}}>
         <div className="prog"><span style={{width:progress+"%"}}/></div></div>
     </div>
-    <nav className="side-main-nav" aria-label="Main sections">
+    <nav className="side-main-nav learn-main-nav" aria-label="Main sections">
       <button className={"side-main-link focusable"+(activeMain==="learn"?" on":"")} onClick={()=>onNavigate?.("/")}>
         <Svg n="book"/><span>{t.ia.learn}</span>
       </button>
     </nav>
     {activeMain==="learn" && <nav className="side-nav learn-subnav" aria-label="Learning modules">
-      {!canJump && <div className="side-hint">{t.nav.lockedHint}</div>}
+      <div className="nav-group">
+        <button className={"group-trigger focusable"+(!lesson?" disabled":"")} data-hasactive={activeScreen==="scan"?"true":"false"} aria-disabled={!lesson} disabled={!lesson}
+          title={!lesson?t.nav.lockedHint:undefined} onClick={()=>{ if(lesson) onGoScan?.(); }}>
+          <span className="gicon"><Svg n="target"/></span>
+          <span className="gname">{t.nav.quickScan}</span>
+          <span style={{marginLeft:"auto",fontSize:11,lineHeight:1,color:activeScreen==="scan"?"hsl(var(--foreground))":"hsl(var(--muted-foreground)/.45)"}}>{activeScreen==="scan"?"●":""}</span>
+        </button>
+      </div>
       {MODULES.map(m=>{
         const s=STEPS.find(x=>x.mod===m.id); const idx=stepIndex(s.id);
         const done=doneSet.has(s.id);
@@ -96,7 +103,7 @@ function Sidebar({mode,lesson,step,doneSet,go,onBackHome,showBack,activeMain,onN
         const dis=!canJump;
         return (<div className="nav-group" key={m.id}>
           <button className={"group-trigger focusable"+(dis?" disabled":"")} data-hasactive={cur?"true":"false"} aria-disabled={dis} disabled={dis}
-            onClick={()=>{ if(!dis) go(s.id); }}>
+            title={dis?t.nav.lockedHint:undefined} onClick={()=>{ if(!dis) go(s.id); }}>
             <span className="gicon"><Svg n={m.icon}/></span>
             <span className="gname">{t.nav.mods[m.id]}</span>
             <span style={{marginLeft:"auto",fontSize:11,lineHeight:1,color:done?"hsl(var(--success))":cur?"hsl(var(--foreground))":"hsl(var(--muted-foreground)/.45)"}}>{done?"✓":cur?"●":""}</span>

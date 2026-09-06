@@ -44,10 +44,19 @@ function App(){
   const router=useRouter();
   const pathname=usePathname()||"/";
   const currentRoute=routeState(pathname);
-  const [uiLang,setUiLangState]=useState(DB.get("uiLang","en"));
+  const [hydrated,setHydrated]=useState(false);
+  const [uiLang,setUiLangState]=useState("en");
   const t=UI_TEXT[uiLang]||UI_TEXT.en;
   function setUiLang(next){ setUiLangState(next); DB.set("uiLang",next); }
   useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
+  useEffect(()=>{
+    setUiLangState(DB.get("uiLang","en"));
+    setLesson(DB.get("currentLesson",null));
+    setText(DB.get("currentText",""));
+    setTheme(DB.get("theme","light"));
+    setUserWords(DB.get("unknownWords",[])||[]);
+    setHydrated(true);
+  },[]);
   useEffect(()=>{
     const userId=DB.get("userId",crypto.randomUUID());
     DB.set("userId",userId);
@@ -55,12 +64,12 @@ function App(){
     identifyUser(userId, email?{email}:undefined);
   },[]);
   const [screen,setScreen]=useState(currentRoute.screen);
-  const [lesson,setLesson]=useState(()=>DB.get("currentLesson",null)); const [text,setText]=useState(()=>DB.get("currentText",""));
-  const [theme,setTheme]=useState(DB.get("theme","light"));
+  const [lesson,setLesson]=useState(null); const [text,setText]=useState("");
+  const [theme,setTheme]=useState("light");
   const [pinned,setPinned]=useState(false);
   const [step,setStep]=useState(()=>currentRoute.stepIndex||0);
   const [doneSet,setDoneSet]=useState(()=>new Set());
-  const [userWords,setUserWords]=useState(()=>DB.get("unknownWords",[])||[]);
+  const [userWords,setUserWords]=useState([]);
   const [narrow,setNarrow]=useState(false);
   const [auth,setAuth]=useState({configured:true,session:null,checked:false});
   const [authPrompt,setAuthPrompt]=useState(false);
@@ -76,17 +85,39 @@ function App(){
   // can still collapse it with the toggle. On narrow screens it starts closed.
   useEffect(()=>{ if(typeof window!=="undefined") setPinned(window.innerWidth>=1200); },[]);
   useEffect(()=>{
+    if(!hydrated) return;
     if(screen==="login") return;
     const r=routeState(pathname);
     if((r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"||r.screen==="done")&&!lesson){ setScreen("input"); if(pathname!=="/") router.replace("/"); return; }
     if(r.screen==="lesson") setStep(r.stepIndex||0);
     setScreen(r.screen);
-  },[pathname]);
+  },[pathname,hydrated,lesson]);
+  useEffect(()=>{
+    if(!lesson) return;
+    const r=routeState(pathname);
+    if(r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"){
+      DB.set("resumePath",r.screen==="lesson"?stepPath(r.stepIndex||step||0):r.path);
+    }
+  },[pathname,lesson,step]);
 
-  function navigateTo(nextScreen,path){ setScreen(nextScreen); if(pathname!==path) router.push(path); }
+  function rememberResumePath(path){
+    if(!lesson) return;
+    const r=routeState(path);
+    if(r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"){
+      DB.set("resumePath",r.screen==="lesson"?stepPath(r.stepIndex||0):r.path);
+    }
+  }
+  function navigateTo(nextScreen,path){ setScreen(nextScreen); rememberResumePath(path); if(pathname!==path) router.push(path); }
   function replaceWith(path){ if(pathname!==path) router.replace(path); }
   async function refreshAuth(){ const state=await getAuthState(); setAuth({...state,checked:true}); return state; }
   function navigatePath(path){ const r=routeState(path); navigateTo(r.screen,r.path); }
+  function resumeLearning(){
+    if(!lesson){ navigateTo("input","/"); return; }
+    const path=DB.get("resumePath",stepPath(step||0));
+    const r=routeState(path);
+    if(r.screen==="lesson") setStep(r.stepIndex||0);
+    navigateTo(r.screen,r.path);
+  }
   async function startLogin(nextPath){
     const target=nextPath||pathname||"/";
     const state=await refreshAuth();
@@ -108,7 +139,7 @@ function App(){
   function clearAll(){ if(confirm(t.clearConfirm)){resetAnalytics();DB.clearAll();location.reload();} }
 
   function resetSession(){ setStep(0); setDoneSet(new Set()); }
-  function goStep(index){ const n=Math.max(0,Math.min(STEPS.length-1,index)); setStep(n); navigateTo("lesson",stepPath(n)); if(typeof window!=="undefined"&&window.innerWidth<1200) setPinned(false); scrollToTop(); }
+  function goStep(index){ const n=Math.max(0,Math.min(STEPS.length-1,index)); setStep(n); DB.set("resumePath",stepPath(n)); navigateTo("lesson",stepPath(n)); if(typeof window!=="undefined"&&window.innerWidth<1200) setPinned(false); scrollToTop(); }
   function startSession(){ resetSession(); trackEvent("learning_session_started",{session_type:"new",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
   function reviewSession(){ resetSession(); trackEvent("learning_session_started",{session_type:"review",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
   function go(id){ const idx=stepIndex(id); if(idx<0) return; goStep(idx); }
@@ -123,10 +154,10 @@ function App(){
   function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
 
   async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); setUserWords([]); clearLineTr(); setScreen("loading");
-    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); navigateTo("scan","/scan");
+    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }
-    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null); setLesson(L); DB.set("currentLesson",L); navigateTo("scan","/scan");
+    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     } }
 
@@ -144,7 +175,7 @@ function App(){
           <button className="chrome-btn focusable" onClick={toggleTheme} title="Toggle light / dark" aria-label="Toggle light / dark">{theme==="dark"?"☀️":"🌙"}</button>
           <button className="chrome-btn focusable" onClick={clearAll} title={t.clearLocalData} aria-label={t.clearLocalData}><Svg n="trash"/></button>
         </div>
-        <Sidebar mode={mode} lesson={lesson} step={step} doneSet={doneSet} go={go} onBackHome={()=>navigateTo("input","/")} showBack={showSideBack}
+        <Sidebar mode={mode} activeScreen={screen} lesson={lesson} step={step} doneSet={doneSet} go={go} onGoScan={()=>navigateTo("scan","/scan")} onBackHome={()=>navigateTo("input","/")} showBack={showSideBack}
           activeMain={activeMain} onNavigate={navigatePath} auth={auth} onLogin={()=>startLogin(pathname)} onSignOut={handleSignOut}/>
       </div>
       <main className="main">
@@ -154,7 +185,7 @@ function App(){
         {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
         {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} auth={auth} onRequireLogin={requireLogin} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
         {screen==="done" && lesson && <Done lesson={lesson} text={text} diag={{unknown:userWords}} doneSet={doneSet} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
-        {screen==="progress" && <Progress auth={auth} onLogin={()=>startLogin("/progress")} onStartLearning={()=>navigateTo("input","/")}/>}
+        {screen==="progress" && <Progress auth={auth} onLogin={()=>startLogin("/progress")} onStartLearning={()=>navigateTo("input","/")} onResume={resumeLearning}/>}
         {screen==="collection" && <Collection auth={auth} tab={currentRoute.collectionTab} onTabChange={(tab)=>navigateTo("collection",tab==="grammar"?"/collection/grammar":"/collection")} onLogin={()=>startLogin(currentRoute.path)} onStartLearning={()=>navigateTo("input","/")}/>}
       </main>
       <AuthPrompt open={authPrompt} onClose={()=>setAuthPrompt(false)} onSignIn={()=>startLogin(DB.get("loginNextPath",pathname||"/"))}/>

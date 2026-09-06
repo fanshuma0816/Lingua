@@ -56,7 +56,7 @@ export async function GET(req) {
     }
 
     const userId = encodeURIComponent(user.id);
-    const words = await readRows(`/rest/v1/user_words?user_id=eq.${userId}&source=in.(collection,lesson_card)&select=id,word,lang,level,source,source_lesson_id,last_seen_at&order=last_seen_at.desc&limit=200`, env);
+    const words = await readRows(`/rest/v1/user_words?user_id=eq.${userId}&source=eq.collection&select=id,word,lang,level,source,source_lesson_id,last_seen_at&order=last_seen_at.desc&limit=200`, env);
     const grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
 
     return Response.json({
