@@ -11,6 +11,11 @@ function shortText(value, limit = 220) {
   return text ? text.slice(0, limit) : null;
 }
 
+function numberOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function uuidOrNull(value) {
   const text = shortText(value, 80);
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(text || "") ? text : null;
@@ -46,6 +51,10 @@ async function supabaseWrite(path, options, env) {
   return text ? JSON.parse(text) : null;
 }
 
+function likelyMissingRichWordColumns(error) {
+  return /lemma|pos|meaning|detail|example|example_translation|audio_key|tts_lang|tts_rate|tts_voice_role|schema cache|column/i.test(String(error?.message || ""));
+}
+
 export async function POST(req) {
   try {
     const env = supabaseEnv();
@@ -73,19 +82,42 @@ export async function POST(req) {
     if (type === "word") {
       const word = shortText(item.word, 120);
       if (!word || !lang) return Response.json({ error: "Missing word or language." }, { status: 400 });
-      await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,word", {
-        method: "POST",
-        headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
-        body: JSON.stringify({
-          user_id: user.id,
-          word,
-          lang,
-          level,
-          source: "collection",
-          source_lesson_id: uuidOrNull(item.sourceLessonId),
-          last_seen_at: new Date().toISOString(),
-        }),
-      }, env);
+      const wordRow = {
+        user_id: user.id,
+        word,
+        lang,
+        level,
+        source: "collection",
+        source_lesson_id: uuidOrNull(item.sourceLessonId),
+        last_seen_at: new Date().toISOString(),
+      };
+      const richWordRow = {
+        ...wordRow,
+        lemma: shortText(item.lemma, 120),
+        pos: shortText(item.pos, 80),
+        meaning: shortText(item.meaning, 600),
+        detail: shortText(item.detail, 1200),
+        example: shortText(item.example, 700),
+        example_translation: shortText(item.exampleTranslation, 700),
+        audio_key: shortText(item.audioKey, 4200),
+        tts_lang: shortText(item.ttsLang || lang, 60),
+        tts_rate: numberOrNull(item.ttsRate ?? 1),
+        tts_voice_role: shortText(item.ttsVoiceRole, 80),
+      };
+      try {
+        await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,word", {
+          method: "POST",
+          headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
+          body: JSON.stringify(richWordRow),
+        }, env);
+      } catch (e) {
+        if (!likelyMissingRichWordColumns(e)) throw e;
+        await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,word", {
+          method: "POST",
+          headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
+          body: JSON.stringify(wordRow),
+        }, env);
+      }
       return Response.json({ ok: true, type: "word", word });
     }
 

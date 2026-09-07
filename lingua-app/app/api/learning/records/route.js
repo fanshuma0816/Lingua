@@ -37,6 +37,19 @@ async function readRows(path, env, optional = false) {
   return response.json();
 }
 
+async function readLessonRows(userId, env) {
+  const richSelect = "id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at,input_text,lesson_snapshot,interaction_snapshot,saved_options";
+  const basicSelect = "id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at";
+  const richPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${richSelect}&order=completed_at.desc&limit=20`;
+  const basicPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${basicSelect}&order=completed_at.desc&limit=20`;
+  try {
+    return await readRows(richPath, env);
+  } catch (e) {
+    if (!/input_text|lesson_snapshot|interaction_snapshot|saved_options|schema cache|column/i.test(String(e?.message || ""))) throw e;
+    return readRows(basicPath, env);
+  }
+}
+
 export async function GET(req) {
   try {
     const env = supabaseEnv();
@@ -56,7 +69,7 @@ export async function GET(req) {
     }
 
     const userId = encodeURIComponent(user.id);
-    const lessons = await readRows(`/rest/v1/lesson_sessions?user_id=eq.${userId}&select=id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at&order=completed_at.desc&limit=20`, env);
+    const lessons = await readLessonRows(userId, env);
 
     return Response.json({
       lessons: Array.isArray(lessons) ? lessons : [],

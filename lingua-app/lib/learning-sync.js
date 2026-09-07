@@ -26,7 +26,25 @@ function lessonMaterialSummary(lesson) {
   };
 }
 
-function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps }) {
+function buildInteractionSnapshot({ includePractice = true } = {}) {
+  const recallAnswers = DB.get("recallAnswers", {}) || {};
+  const recallShown = DB.get("recallShown", {}) || {};
+  const writing = includePractice ? {
+    text: DB.get("aiPractice", "") || "",
+    feedback: DB.get("aiPracticeFeedback", null),
+  } : null;
+  const conversation = includePractice ? {
+    transcript: DB.get("aiChatTranscript", []) || [],
+    evaluation: DB.get("aiChatEvaluation", null),
+  } : null;
+  return {
+    recall: { answers: recallAnswers, checked: recallShown },
+    writing,
+    conversation,
+  };
+}
+
+function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, includePractice = true }) {
   const focusWords = Array.isArray(lesson?.focus?.vocab) ? lesson.focus.vocab : [];
   const lessonWords = Array.isArray(lesson?.vocab) ? lesson.vocab : [];
   const words = uniqueWords([
@@ -39,8 +57,23 @@ function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps }
     lang: lesson?.lang || null,
     level: lesson?.level || null,
     goal: lesson?.goal || null,
+    inputText: text || "",
     material: lessonMaterialSummary(lesson),
     materialHash: lesson?.material?.id || null,
+    lessonSnapshot: {
+      id: lesson?.id || null,
+      material: lessonMaterialSummary(lesson),
+      sentences: Array.isArray(lesson?.sents) ? lesson.sents : [],
+      watch: Array.isArray(lesson?.watch) ? lesson.watch : [],
+      vocab: Array.isArray(lesson?.vocab) ? lesson.vocab : [],
+      focus: lesson?.focus || null,
+      grammarFocus: lesson?.grammarFocus || [],
+      topics: lesson?.topics || [],
+      markedWords: userWords || [],
+      lessonWords: words,
+    },
+    interactionSnapshot: buildInteractionSnapshot({ includePractice }),
+    savedOptions: { includePractice },
     stats: {
       charCount: lesson?.charCount || String(text || "").length || null,
       sentenceCount: Array.isArray(lesson?.sents) ? lesson.sents.length : null,

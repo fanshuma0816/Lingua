@@ -8,7 +8,7 @@ import { langName } from "../../config/uiText";
 import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
-import { speak, stopSpeak } from "../../lib/audio";
+import { cacheKey, speak, stopSpeak } from "../../lib/audio";
 import { getAuthState, signInWithEmail } from "../../lib/auth-client";
 import { fetchCollection, grammarItemKey, removeGrammarFromCollection, removeWordFromCollection, saveGrammarToCollection, saveWordToCollection, wordLemmaKey } from "../../lib/collection";
 import { displayWordInfo } from "../../lib/dutch";
@@ -248,7 +248,12 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       detail:e?.detail||null,
       example:e?.example||null,
       exampleTranslation:e?.exampleTranslation||null,
+      lemma:e?.lemma||null,
       pos:e?.pos||null,
+      audioKey:cacheKey(w,lang,1,null),
+      ttsLang:lang,
+      ttsRate:1,
+      ttsVoiceRole:null,
     };
   }
   function grammarCollectionItem(g){
@@ -584,8 +589,11 @@ function AIWrite({lesson,onDone}){
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim(),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
       if(!r.ok) throw new Error("no api");
-      const d=await r.json(); setFb(d);
-    }catch(e){ setFb("mock"); }
+      const d=await r.json(); setFb(d); DB.set("aiPracticeFeedback",{question,text:textv.trim(),feedback:d,simulated:false});
+    }catch(e){
+      setFb("mock");
+      DB.set("aiPracticeFeedback",{question,text:textv.trim(),feedback:null,simulated:true});
+    }
   }
   const real=fb && fb!=="loading" && fb!=="mock";
   return (<div>
@@ -637,6 +645,7 @@ function AIChat({lesson,onNext,onDone}){
   const mockRef=useRef(false); const recRef=useRef(null); const wantRef=useRef(false); const silenceRef=useRef(null);
   const mountedRef=useRef(false); const abortRef=useRef(null);
   const MAX_TURNS=5;
+  useEffect(()=>{ DB.set("aiChatTranscript",msgs); },[msgs]);
 
   function sayAI(line){
     if(!mountedRef.current) return;
@@ -696,10 +705,11 @@ function AIChat({lesson,onNext,onDone}){
   function stopMic(){ wantRef.current=false; clearSilence(); if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
   async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
-    if(mockRef.current) return;
+    if(mockRef.current){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); return; }
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
-      if(r.ok){ const d=await r.json(); if(mountedRef.current) setEvalz(d); } }catch(e){} }
+      if(r.ok){ const d=await r.json(); DB.set("aiChatEvaluation",{feedback:d,simulated:false}); if(mountedRef.current) setEvalz(d); } }catch(e){}
+  }
 
   async function send(){ if(!full||busy) return; stopMic();
     const withMe=[...msgs,{who:"me",t:draft.trim()}]; const nx=turns+1;
@@ -762,9 +772,10 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
   const [email,setEmail]=useState(()=>DB.get("email",""));
   const [status,setStatus]=useState("idle");
   const [message,setMessage]=useState("");
+  const [includePractice,setIncludePractice]=useState(true);
   const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
   const completedSteps=[...((doneSet&&doneSet.size)?doneSet:new Set(STEPS.map(s=>s.id)))];
-  const payload=()=>buildCompletedLessonPayload({lesson,text,userWords:wordList,completedSteps});
+  const payload=()=>buildCompletedLessonPayload({lesson,text,userWords:wordList,completedSteps,includePractice});
 
   async function refreshAuth(){
     const state=await getAuthState();
@@ -830,6 +841,11 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
   return (<div className="done-card save-card">
     <div className="done-card-title">{status==="saved"?t.saveProgress.savedTitle:t.saveProgress.title}</div>
     <p className="done-card-note">{status==="saved"?t.saveProgress.savedBody:t.saveProgress.body(wordList.length)}</p>
+    {status!=="saved" && <label className="save-option">
+      <input type="checkbox" checked={includePractice} onChange={e=>setIncludePractice(e.target.checked)} />
+      <span>{t.saveProgress.includePractice}</span>
+    </label>}
+    {status!=="saved" && <div className="tiny muted save-hint">{t.saveProgress.disappears}</div>}
     {status==="auth"||status==="sent" ? <div className="save-login">
       <label className="tiny muted" htmlFor="save-email">{t.email}</label>
       <input id="save-email" className="input" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>

@@ -136,8 +136,20 @@ async function completeSessionFromHash(hash) {
   return next;
 }
 
-function signOut() {
+async function signOut(session) {
+  const current = session || DB.get(AUTH_KEY, null);
+  const { url, configured } = supabaseConfig();
+  if (configured && current?.accessToken) {
+    try {
+      await fetch(`${url}/auth/v1/logout`, {
+        method: "POST",
+        headers: authHeaders(current.accessToken),
+      });
+    } catch (e) {}
+  }
   DB.remove(AUTH_KEY);
+  DB.remove("pendingSaveAfterLogin");
+  DB.remove("loginNextPath");
 }
 
 export { completeSessionFromHash, getAuthState, signInWithEmail, signOut, supabaseConfig };
