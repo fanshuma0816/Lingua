@@ -126,7 +126,7 @@ function App(){
     DB.set("loginNextPath",target);
     navigateTo("login","/login");
   }
-  async function handleSignOut(){ signOut(); await refreshAuth(); }
+  async function handleSignOut(){ await signOut(auth.session); await refreshAuth(); }
   function requireLogin(nextPath=pathname){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPrompt(true); }
   function continueAfterLogin(){
     const r=routeState(pathname);
@@ -153,7 +153,7 @@ function App(){
   function scanDone(list){ const arr=Array.isArray(list)?list:[]; setUserWords(arr); DB.set("unknownWords",arr); setLesson(cur=>cur?{...cur,userWords:arr}:cur); trackEvent("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
   function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
 
-  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); setUserWords([]); clearLineTr(); setScreen("loading");
+  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }

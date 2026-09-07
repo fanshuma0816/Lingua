@@ -34,7 +34,17 @@ function grammarItemKey(item) {
 
 function mergeCachedWords(words) {
   const cached = DB.get("collectionWordCards", {}) || {};
-  return (words || []).map((word) => ({ ...(cached[wordKey(word)] || {}), ...word }));
+  return (words || []).map((word) => {
+    const normalized = {
+      ...word,
+      exampleTranslation: word?.exampleTranslation || word?.example_translation || null,
+      audioKey: word?.audioKey || word?.audio_key || null,
+      ttsLang: word?.ttsLang || word?.tts_lang || word?.lang || null,
+      ttsRate: word?.ttsRate || word?.tts_rate || 1,
+      ttsVoiceRole: word?.ttsVoiceRole || word?.tts_voice_role || null,
+    };
+    return { ...(cached[wordKey(normalized)] || {}), ...normalized };
+  });
 }
 
 function mergeCachedGrammar(grammar) {

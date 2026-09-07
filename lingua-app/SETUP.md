@@ -106,6 +106,24 @@ create table if not exists public.user_grammar_items (
   created_at timestamptz not null default now(),
   unique (user_id, lang, title)
 );
+
+alter table public.lesson_sessions
+  add column if not exists input_text text,
+  add column if not exists lesson_snapshot jsonb not null default '{}'::jsonb,
+  add column if not exists interaction_snapshot jsonb not null default '{}'::jsonb,
+  add column if not exists saved_options jsonb not null default '{}'::jsonb;
+
+alter table public.user_words
+  add column if not exists lemma text,
+  add column if not exists pos text,
+  add column if not exists meaning text,
+  add column if not exists detail text,
+  add column if not exists example text,
+  add column if not exists example_translation text,
+  add column if not exists audio_key text,
+  add column if not exists tts_lang text,
+  add column if not exists tts_rate numeric,
+  add column if not exists tts_voice_role text;
 ```
 
 Supabase Authentication 的 Redirect URLs 里加上你的站点回调地址，例如：

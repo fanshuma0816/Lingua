@@ -12,6 +12,7 @@ const ICONS={
   user:'<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>',
   signOut:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
+  chevronRight:'<path d="m9 18 6-6-6-6"/>',
   home:'<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
   panel:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
   panelClose:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>',

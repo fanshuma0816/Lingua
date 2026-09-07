@@ -128,8 +128,8 @@ function Sidebar({mode,activeScreen,lesson,step,doneSet,go,onGoScan,onBackHome,s
       </div>}
       <div className="account-strip">
         {signedIn ? <>
-          <div className="account-email"><Svg n="user"/><span>{email||t.account.signedIn}</span></div>
-          <button className="icon-btn focusable" onClick={onSignOut} title={t.account.signOut} aria-label={t.account.signOut}><Svg n="signOut"/></button>
+          <div className="account-email"><Svg n="user"/><span>{email?t.account.signedInAs(email):t.account.signedIn}</span></div>
+          <button className="account-signout focusable" onClick={onSignOut} title={t.account.signOut} aria-label={t.account.signOut}><Svg n="signOut"/><span>{t.account.signOut}</span></button>
         </> : <button className="account-login focusable" onClick={onLogin}><Svg n="user"/> <span>{t.account.signInToSave}</span></button>}
       </div>
     </div>
