@@ -1,0 +1,1 @@
+{ "provider": "google", "package": "@posthog/ai", "otel_init_file": "lib/ai.js" }

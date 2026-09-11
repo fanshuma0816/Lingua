@@ -51,6 +51,19 @@ async function supabaseWrite(path, options, env) {
   return text ? JSON.parse(text) : null;
 }
 
+async function syncProfile(user, env) {
+  if (!user?.id) return;
+  await supabaseWrite("/rest/v1/profiles?on_conflict=id", {
+    method: "POST",
+    headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
+    body: JSON.stringify({
+      id: user.id,
+      email: shortText(user.email, 240),
+      updated_at: new Date().toISOString(),
+    }),
+  }, env);
+}
+
 function likelyMissingRichWordColumns(error) {
   return /lemma|pos|meaning|detail|example|example_translation|audio_key|tts_lang|tts_rate|tts_voice_role|schema cache|column/i.test(String(error?.message || ""));
 }
@@ -72,6 +85,8 @@ export async function POST(req) {
     if (!user?.id) {
       return Response.json({ error: "Your sign-in session could not be verified." }, { status: 401 });
     }
+
+    await syncProfile(user, env);
 
     const body = await req.json();
     const type = body?.type;

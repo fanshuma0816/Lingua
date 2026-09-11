@@ -1,6 +1,7 @@
 // AI writing feedback + live conversation + evaluation.
 // Uses whatever provider is configured in lib/ai.js. Returns 204 when no key
 // is set (or the call fails) so the client falls back to the simulated version.
+import { randomUUID } from "crypto";
 import { AI, chatComplete, geminiStream, parseJSON } from "../../../lib/ai";
 
 export const runtime = "nodejs";
@@ -29,12 +30,15 @@ export async function POST(req) {
   if (!AI.textEnabled) return new Response(null, { status: 204 });
   try {
     const b = await req.json();
+    // One turn per request; the lesson id (when the client sends one) groups every
+    // AI interaction made while studying that lesson into one AI Observability session.
+    const ph = { distinctId: b.userId || undefined, sessionId: b.sessionId || undefined, traceId: randomUUID() };
 
     if (b.mode === "feedback") {
       const sys = "You are a warm, encouraging language teacher. Reply ONLY with minified JSON.";
       const feedbackLanguage = b.feedbackLanguage || "English";
       const user = `A ${b.level} learner of ${b.lang} answered the prompt "${b.question}". Their writing:\n"""${b.text}"""\nReturn JSON {"grammar": <one short encouraging note in ${feedbackLanguage}>, "vocabulary": <one short note in ${feedbackLanguage}>, "sentence": <one short note in ${feedbackLanguage}>, "revision": <an improved version of their text in ${b.lang}>}. Be specific and kind.`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true });
+      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, ...ph });
       return Response.json(parseJSON(out));
     }
 
@@ -48,8 +52,8 @@ Ask concrete, specific questions ABOUT that text's ideas and details (not vague 
       Gently reuse today's words (${(b.vocab || []).join(", ")}) so replies feel achievable.
 Keep EVERY reply to ONE short, natural sentence ending in a question, at or just below ${b.level}. React briefly to what they said before asking the next thing. Be encouraging and human. About 5 exchanges.`;
       const messages = [{ role: "system", content: sys }, ...(Array.isArray(b.history) ? b.history : [])];
-      if (b.stream) return streamText(geminiStream(messages, { temp: 0.7, max: 160 }));
-      const out = await chatComplete(messages, { temp: 0.7, max: 160 });
+      if (b.stream) return streamText(geminiStream(messages, { temp: 0.7, max: 160, ...ph }));
+      const out = await chatComplete(messages, { temp: 0.7, max: 160, ...ph });
       return Response.json({ reply: out.trim() });
     }
 
@@ -58,7 +62,7 @@ Keep EVERY reply to ONE short, natural sentence ending in a question, at or just
       const feedbackLanguage = b.feedbackLanguage || "English";
       const conv = (b.history || []).map(m => `${m.role}: ${m.content}`).join("\n");
       const user = `Here is a short ${b.lang} practice conversation with a ${b.level} learner:\n${conv}\nReturn JSON {"praise": <one warm sentence in ${feedbackLanguage}>, "grammar": <one short tip in ${feedbackLanguage}>, "vocabulary": <one short tip in ${feedbackLanguage}>, "fluency": <one short tip in ${feedbackLanguage}>}.`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true });
+      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, ...ph });
       return Response.json(parseJSON(out));
     }
 

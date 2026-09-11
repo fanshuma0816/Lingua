@@ -124,6 +124,28 @@ alter table public.user_words
   add column if not exists tts_lang text,
   add column if not exists tts_rate numeric,
   add column if not exists tts_voice_role text;
+
+insert into public.profiles (id, email, updated_at)
+select id, email, now()
+from auth.users
+on conflict (id)
+do update set
+  email = excluded.email,
+  updated_at = now();
+
+create or replace view public.user_words_with_email as
+select
+  w.*,
+  p.email
+from public.user_words w
+left join public.profiles p on p.id = w.user_id;
+
+create or replace view public.user_grammar_items_with_email as
+select
+  g.*,
+  p.email
+from public.user_grammar_items g
+left join public.profiles p on p.id = g.user_id;
 ```
 
 Supabase Authentication 的 Redirect URLs 里加上你的站点回调地址，例如：

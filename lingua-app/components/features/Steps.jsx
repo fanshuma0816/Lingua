@@ -587,7 +587,7 @@ function AIWrite({lesson,onDone}){
     setFb("loading"); onDone&&onDone();
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim(),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
+        body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim(),feedbackLanguage:uiLang==="zh"?"Chinese":"English",userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
       if(!r.ok) throw new Error("no api");
       const d=await r.json(); setFb(d); DB.set("aiPracticeFeedback",{question,text:textv.trim(),feedback:d,simulated:false});
     }catch(e){
@@ -660,7 +660,7 @@ function AIChat({lesson,onNext,onDone}){
     abortRef.current=controller;
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         signal:controller.signal,
-        body:JSON.stringify({mode:"chat",stream:true,lang,level,vocab:vwords,topic,grammar,sample,history})});
+        body:JSON.stringify({mode:"chat",stream:true,lang,level,vocab:vwords,topic,grammar,sample,history,userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
       if(!r.ok) throw new Error("no api");
       const ct=r.headers.get("content-type")||"";
       if(r.body && !ct.includes("application/json")){
@@ -707,7 +707,7 @@ function AIChat({lesson,onNext,onDone}){
   async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
     if(mockRef.current){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); return; }
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English"})});
+        body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English",userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
       if(r.ok){ const d=await r.json(); DB.set("aiChatEvaluation",{feedback:d,simulated:false}); if(mountedRef.current) setEvalz(d); } }catch(e){}
   }
 

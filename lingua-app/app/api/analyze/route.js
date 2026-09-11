@@ -2,6 +2,7 @@
 // of analysis (a few sentences or words), so it stays fast and never truncates —
 // unlike the old one-shot enrichment that failed on long texts.
 // Modes: materials | grade | translate | explain | grammar | quiz | focus
+import { randomUUID } from "crypto";
 import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
 import { cleanText } from "../../../lib/text";
 import { cefrIdx, validateForLevel, validateMaterialFit, materialId } from "../../../lib/cefr.mjs";
@@ -33,6 +34,10 @@ export async function POST(req) {
     // Text modes need Vertex AI; the translate mode needs the Cloud API key.
     // Materials can still use the local A1/A2 corpus when live AI is unavailable.
     if (b.mode !== "materials" && !AI.textEnabled && !AI.gcpKey) return new Response(null, { status: 204 });
+    // Each mode below is one independent, one-shot generation (not a turn in a
+    // conversation), so it gets its own AI Observability session and trace.
+    const requestId = randomUUID();
+    const ph = { distinctId: b.userId || undefined, sessionId: requestId, traceId: requestId };
     const lang = b.lang || "the target language";
     const level = b.level || "A2";
 
@@ -106,7 +111,7 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
 
       const sys = "You are a careful language teacher writing short study texts calibrated to a learner's level. Reply ONLY with minified JSON, no prose.";
       const runOnce = async (nonce, extra) => {
-        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: buildPrompt(nonce, extra) }], { json: true, temp: 0.9, max: n === 1 ? 1200 : 2600 });
+        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: buildPrompt(nonce, extra) }], { json: true, temp: 0.9, max: n === 1 ? 1200 : 2600, ...ph });
         const p = parseJSON(out);
         return (Array.isArray(p.materials) ? p.materials : [])
           .filter(m => m && m.text && !hasCjk(m.title) && !hasCjk(m.text));
@@ -201,7 +206,7 @@ Use concrete, specific details, not generic textbook filler. Do not include tran
 Judge the base word in ${lang}, not a translation. Be strict: only truly beginner words are A1.
 Return JSON {"words":[{"word":<word>,"level":<A1|A2|B1|B2|C1>}]} — one object per input word, SAME order.
 Words: ${JSON.stringify(words)}`;
-        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.2, max: 1200 });
+        const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.2, max: 1200, ...ph });
         const p = parseJSON(out);
         const graded = Array.isArray(p.words) ? p.words : [];
         const byWord = {};
@@ -241,7 +246,7 @@ Words: ${JSON.stringify(words)}`;
 Return JSON {"items":[{"word":<word>,"pos":<part of speech in English>,"simpleMeaning":<1-4 very simple ${explanationLanguage} words, as used here>,"detail":<one short ${explanationLanguage} explanation, max 16 words>,"meaning":<same idea as simpleMeaning + detail, concise>,"lemma":<base dictionary form in ${lang}, or null>,"formLabel":<short English form label, e.g. "third-person singular present", or null>,"formExplanation":<one short ${explanationLanguage} explanation of the form, or null>,"verbForms":<for verbs only: {"present":{"firstPerson":{"form":<${lang} first-person form with pronoun>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} second-person form with pronoun>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} third-person singular and plural forms with pronouns, slash-separated if useful>,"note":<short ${explanationLanguage} note>}},"past":{"firstPerson":{"form":<${lang} first-person past form with pronoun>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} second-person past form with pronoun>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} third-person singular and plural past forms with pronouns, slash-separated if useful>,"note":<short ${explanationLanguage} note>}},"presentPerfect":{"firstPerson":{"form":<${lang} first-person present perfect form with pronoun>,"note":<short ${explanationLanguage} note>},"secondPerson":{"form":<${lang} second-person present perfect form with pronoun>,"note":<short ${explanationLanguage} note>},"thirdPersonPlural":{"form":<${lang} third-person singular and plural present perfect forms with pronouns, slash-separated if useful>,"note":<short ${explanationLanguage} note>}}}, or null>,"example":<ONE new, simple example sentence in ${lang} using the word, NOT copied from the context>,"exampleTranslation":<natural ${explanationLanguage} translation of that example sentence>}]} — one object per input word, same order.
 For Dutch verbs, always include lemma, formLabel, formExplanation, and verbForms. In verbForms, rows are tenses and columns are person: present, past, and presentPerfect each contain firstPerson, secondPerson, and thirdPersonPlural. Put the actual learner-facing conjugated word form in every cell. If a cell has multiple common options, use a short slash-separated form. For non-verbs, use null unless there is a very obvious beginner-level form.
 Words:\n${JSON.stringify(items)}`;
-          const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 2600 });
+          const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.4, max: 2600, ...ph });
           const p = parseJSON(out);
           aiItems = Array.isArray(p.items) ? p.items : [];
         } catch (e) { aiItems = []; }
@@ -317,7 +322,7 @@ For A1/A2 learners, if the sentence is very simple, return one useful review poi
 If ${lang} is Dutch and there is a clear Netherlands Dutch vs Belgian Dutch difference relevant to this sentence or examples, mention it briefly in ${feedbackLanguage}. If there is no relevant difference, do not mention Belgium.
 Do not repeat the original sentence as an example.
 Return JSON {"items":[{"point":<short label>,"level":<CEFR level of this grammar point, one of A1/A2/B1/B2/C1>,"explain":<level-specific explanation>,"examples":[{"sentence":<new sentence in ${lang}>,"translation":<translation in ${feedbackLanguage}>}]}]}.`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 1000 });
+      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 1000, ...ph });
       const p = parseJSON(out);
       const basicPattern = /ordinary\s+main[-\s]?clause|main[-\s]?clause\s+v2|main[-\s]?clause\s+word\s+order|basic\s+word\s+order|verb\s*(second|position)|finite verb|subject[-\s]?verb|simple present|v2|主句语序|普通语序|基础语序|动词.*第二|变位动词.*第二|主语.*动词/i;
       const items = (Array.isArray(p.items) ? p.items : [])
@@ -345,7 +350,7 @@ Return JSON {"items":[{"point":<short label>,"level":<CEFR level of this grammar
       const user = `Based on this ${lang} text, write ${n} simple comprehension questions for a ${level} learner.
 Return JSON {"items":[{"q":<question in ${lang}>,"options":[{"t":<option in ${lang}>,"ok":<true for exactly ONE correct option>}]}]} with 4 options each, exactly one correct.
 Text (${lang} sentences):\n${JSON.stringify(src)}`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.5, max: 2000 });
+      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.5, max: 2000, ...ph });
       const p = parseJSON(out);
       const items = (Array.isArray(p.items) ? p.items : []).map(it => ({
         q: it.q || null,
@@ -368,7 +373,7 @@ Use ${feedbackLanguage} for explanations/translations, but keep source sentences
 Return JSON {"vocab":[{"word":<${lang} word or phrase>,"level":<CEFR like A2/B1>,"reason":<short ${feedbackLanguage} reason>}],"grammar":[{"point":<short ${feedbackLanguage} label>,"level":<CEFR>,"reason":<short ${feedbackLanguage} reason>}],"recallSentences":[<exact source sentence from the input>]}.
 Source sentences: ${JSON.stringify(src)}
 Candidate vocabulary: ${JSON.stringify(vocab)}`;
-      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 2200 });
+      const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 2200, ...ph });
       const p = parseJSON(out);
       return Response.json({
         vocab: Array.isArray(p.vocab) ? p.vocab.slice(0, 8) : [],
