@@ -79,7 +79,8 @@ function sampleMaterials(lang,level,goal,duration,topics,avoid=[]){
 async function aiAnalyze(mode,payload,{timeoutMs=0}={}){
   const controller=timeoutMs?new AbortController():null;
   const timer=timeoutMs?setTimeout(()=>controller.abort(),timeoutMs):null;
-  try{ const r=await fetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},signal:controller?.signal,body:JSON.stringify({mode,...payload})});
+  const userId=DB.get("userId",null);
+  try{ const r=await fetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},signal:controller?.signal,body:JSON.stringify({mode,userId,...payload})});
     if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
   finally{ if(timer) clearTimeout(timer); }
 }

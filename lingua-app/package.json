@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@google/genai": "^1.52.0",
+    "@posthog/ai": "^8.11.0",
     "@vercel/analytics": "^2.0.1",
     "next": "14.2.5",
     "posthog-js": "^1.422.5",
+    "posthog-node": "^5.52.1",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },

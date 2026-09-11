@@ -19,7 +19,16 @@
 //   GOOGLE_TTS_DUTCH_FEMALE   override the nl-NL female voice
 //   GOOGLE_TTS_DUTCH_MALE     override the nl-NL male voice
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@posthog/ai/gemini";
+import { PostHog } from "posthog-node";
+
+// PostHog AI Observability (optional). Reuses the same project token/host the
+// client already reads in components/PostHogInit.jsx. Traces stay off, with
+// Gemini calls working exactly as before, when these are unset.
+const POSTHOG_TOKEN = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN || "";
+const posthog = POSTHOG_TOKEN
+  ? new PostHog(POSTHOG_TOKEN, { host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com" })
+  : null;
 
 // Resolve service-account credentials from the environment. Returns a parsed
 // credentials object for Google Auth, or null to let the SDK fall back to
@@ -73,6 +82,7 @@ function getGenAIClient() {
   if (!useApiKey && SERVICE_ACCOUNT) {
     opts.googleAuthOptions = { credentials: SERVICE_ACCOUNT, projectId: AI.project };
   }
+  if (posthog) opts.posthog = posthog;
   _genaiClient = new GoogleGenAI(opts);
   return _genaiClient;
 }
@@ -88,7 +98,7 @@ function stripThink(s) {
   return t.trim();
 }
 
-function buildGeminiRequest(messages, { json = false, temp = 0.6, max = 1200 } = {}) {
+function buildGeminiRequest(messages, { json = false, temp = 0.6, max = 1200, distinctId, sessionId, traceId } = {}) {
   const list = Array.isArray(messages) ? messages : [{ role: "user", content: String(messages || "") }];
   const sys = list.filter(m => m.role === "system").map(m => m.content).join("\n\n").trim();
   const contents = list
@@ -104,26 +114,33 @@ function buildGeminiRequest(messages, { json = false, temp = 0.6, max = 1200 } =
   // for older override models.
   if (!/^gemini-3(?:[.-]|$)/i.test(AI.model) && typeof temp === "number") config.temperature = temp;
 
-  return {
+  const request = {
     model: AI.model,
     contents: contents.length ? contents : [{ role: "user", parts: [{ text: sys || "" }] }],
     config,
   };
+  // AI Observability (no-op when PostHog isn't configured, see `posthog` above).
+  if (posthog) {
+    if (traceId) request.posthogTraceId = traceId;
+    if (sessionId) request.posthogProperties = { $ai_session_id: sessionId };
+    if (distinctId) request.posthogDistinctId = distinctId;
+  }
+  return request;
 }
 
 // Chat/generation via Gemini on Vertex AI. Accepts the same {role, content} message array
 // the rest of the app already uses ("system" → systemInstruction, "assistant" → model).
-export async function geminiComplete(messages, { json = false, temp = 0.6, max = 1200 } = {}) {
+export async function geminiComplete(messages, { json = false, temp = 0.6, max = 1200, distinctId, sessionId, traceId } = {}) {
   let text = "";
-  for await (const chunk of geminiStream(messages, { json, temp, max })) text += chunk;
+  for await (const chunk of geminiStream(messages, { json, temp, max, distinctId, sessionId, traceId })) text += chunk;
   return stripThink(text);
 }
 
-export async function* geminiStream(messages, { json = false, temp = 0.6, max = 1200 } = {}) {
+export async function* geminiStream(messages, { json = false, temp = 0.6, max = 1200, distinctId, sessionId, traceId } = {}) {
   const client = getGenAIClient();
   if (!client) throw new Error("Gemini on Vertex AI not configured (missing GEMINI_API_KEY or Google credentials)");
 
-  const response = await client.models.generateContentStream(buildGeminiRequest(messages, { json, temp, max }));
+  const response = await client.models.generateContentStream(buildGeminiRequest(messages, { json, temp, max, distinctId, sessionId, traceId }));
   for await (const chunk of response) {
     const text = chunk?.text || "";
     if (text) yield text;
