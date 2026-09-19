@@ -3,6 +3,42 @@
 import { DB } from "./storage";
 
 const AUTH_KEY = "authSession";
+const AUTH_SIGNAL_KEY = "authSignal";
+const AUTH_CHANNEL = "lingua-auth";
+
+function announceAuthComplete() {
+  if (typeof window === "undefined") return;
+  const detail = { type: "auth-complete", at: Date.now() };
+  DB.set(AUTH_SIGNAL_KEY, detail);
+  window.dispatchEvent(new CustomEvent("lingua-auth-complete", { detail }));
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(AUTH_CHANNEL);
+    channel.postMessage(detail);
+    channel.close();
+  }
+}
+
+function subscribeAuthChanges(listener) {
+  if (typeof window === "undefined") return () => {};
+  const notify = () => listener?.();
+  const onStorage = (event) => {
+    if (event.key === `lingua:${AUTH_KEY}` || event.key === `lingua:${AUTH_SIGNAL_KEY}`) notify();
+  };
+  const onVisibility = () => { if (document.visibilityState === "visible") notify(); };
+  const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(AUTH_CHANNEL) : null;
+  if (channel) channel.onmessage = (event) => { if (event.data?.type === "auth-complete") notify(); };
+  window.addEventListener("storage", onStorage);
+  window.addEventListener("lingua-auth-complete", notify);
+  window.addEventListener("focus", notify);
+  document.addEventListener("visibilitychange", onVisibility);
+  return () => {
+    channel?.close();
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener("lingua-auth-complete", notify);
+    window.removeEventListener("focus", notify);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
+}
 
 function supabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -133,6 +169,7 @@ async function completeSessionFromHash(hash) {
   const next = { ...session, user };
   DB.set(AUTH_KEY, next);
   if (user?.email) DB.set("email", user.email);
+  announceAuthComplete();
   return next;
 }
 
@@ -153,6 +190,7 @@ async function completeSessionFromTokenHash(tokenHash, type = "email") {
   if (!session) throw new Error("The sign-in link did not return a session.");
   DB.set(AUTH_KEY, session);
   if (session.user?.email) DB.set("email", session.user.email);
+  announceAuthComplete();
   return session;
 }
 
@@ -172,4 +210,4 @@ async function signOut(session) {
   DB.remove("loginNextPath");
 }
 
-export { completeSessionFromHash, completeSessionFromTokenHash, getAuthState, signInWithEmail, signOut, supabaseConfig };
+export { completeSessionFromHash, completeSessionFromTokenHash, getAuthState, signInWithEmail, signOut, subscribeAuthChanges, supabaseConfig };

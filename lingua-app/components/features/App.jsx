@@ -15,7 +15,7 @@ import { UI_TEXT } from "../../config/uiText";
 import { UIContext } from "../../hooks/useUI";
 import { identifyUser, resetAnalytics, trackEvent } from "../../lib/analytics";
 import { stopSpeak } from "../../lib/audio";
-import { getAuthState, signOut } from "../../lib/auth-client";
+import { getAuthState, signOut, subscribeAuthChanges } from "../../lib/auth-client";
 import { scrollToTop } from "../../lib/format";
 import { generateLesson } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
@@ -83,6 +83,17 @@ function App(){
   useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen,step]);
   useEffect(()=>{ const on=()=>setNarrow(window.innerWidth<1200); on(); window.addEventListener("resize",on); return ()=>window.removeEventListener("resize",on); },[]);
   useEffect(()=>{ refreshAuth(); },[]);
+  useEffect(()=>{
+    let checking=false;
+    return subscribeAuthChanges(async()=>{
+      if(checking) return;
+      checking=true;
+      try{
+        const state=await refreshAuth();
+        if(state.session?.accessToken) setAuthPrompt(false);
+      }finally{ checking=false; }
+    });
+  },[]);
   // The learning path (sidebar) stays open by default on desktop; the learner
   // can still collapse it with the toggle. On narrow screens it starts closed.
   useEffect(()=>{ if(typeof window!=="undefined") setPinned(window.innerWidth>=1200); },[]);
@@ -190,7 +201,7 @@ function App(){
         {screen==="progress" && <Progress auth={auth} onLogin={()=>startLogin("/progress")} onStartLearning={()=>navigateTo("input","/")} onResume={resumeLearning}/>}
         {screen==="collection" && <Collection auth={auth} tab={currentRoute.collectionTab} onTabChange={(tab)=>navigateTo("collection",tab==="grammar"?"/collection/grammar":"/collection")} onLogin={()=>startLogin(currentRoute.path)} onStartLearning={()=>navigateTo("input","/")}/>}
       </main>
-      <AuthPrompt open={authPrompt} onClose={()=>setAuthPrompt(false)} onSignIn={()=>startLogin(DB.get("loginNextPath",pathname||"/"))}/>
+      <AuthPrompt open={authPrompt} onClose={()=>setAuthPrompt(false)} returnPath={DB.get("loginNextPath",pathname||"/")}/>
     </div>
     <div className={"scrim"+((pinned&&narrow)?" on":"")} onClick={()=>setPinned(false)}/>
   </UIContext.Provider>);

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Brand, LanguageSwitch } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
-import { getAuthState, signInWithEmail } from "../../lib/auth-client";
+import { getAuthState, signInWithEmail, subscribeAuthChanges } from "../../lib/auth-client";
 import { DB } from "../../lib/storage";
 
 function Login({nextPath="/progress"}){ const {t}=useUI(); const router=useRouter(); const [email,setEmail]=useState(DB.get("email","")); const [status,setStatus]=useState("checking"); const [message,setMessage]=useState(""); const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
@@ -18,7 +18,8 @@ function Login({nextPath="/progress"}){ const {t}=useUI(); const router=useRoute
       setStatus("idle");
     }
     check();
-    return ()=>{cancelled=true;};
+    const unsubscribe=subscribeAuthChanges(check);
+    return ()=>{cancelled=true;unsubscribe();};
   },[nextPath,router]);
   async function sendLink(){
     if(!ok||status==="sending"||status==="checking") return;

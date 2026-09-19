@@ -1,10 +1,33 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Svg } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
+import { signInWithEmail } from "../../lib/auth-client";
+import { DB } from "../../lib/storage";
 
-function AuthPrompt({ open, onClose, onSignIn }) {
+function AuthPrompt({ open, onClose, returnPath }) {
   const { t } = useUI();
+  const [email,setEmail]=useState(()=>DB.get("email",""));
+  const [status,setStatus]=useState("idle");
+  const [message,setMessage]=useState("");
+  const valid=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  useEffect(()=>{ if(open) { setStatus("idle"); setMessage(""); } },[open]);
+  async function sendLink(){
+    if(!valid||status==="sending") return;
+    setStatus("sending"); setMessage("");
+    try{
+      const path=returnPath||(typeof window!=="undefined"?window.location.pathname:"/");
+      DB.set("email",email);
+      DB.set("loginNextPath",path);
+      await signInWithEmail(email,path);
+      setStatus("sent");
+      setMessage(t.saveProgress.linkSent);
+    }catch(e){
+      setStatus("error");
+      setMessage(e?.message||t.loginError);
+    }
+  }
   if (!open) return null;
   return (
     <div className="modal-scrim" role="presentation" onClick={onClose}>
@@ -13,10 +36,13 @@ function AuthPrompt({ open, onClose, onSignIn }) {
         <div className="auth-pop-icon"><Svg n="bookmark" /></div>
         <h2 id="auth-pop-title">{t.authPrompt.title}</h2>
         <p>{t.authPrompt.body}</p>
+        <label className="fld" htmlFor="auth-email">{t.email}</label>
+        <input id="auth-email" className="input" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>
         <div className="auth-pop-actions">
-          <button className="btn btn-primary focusable" onClick={onSignIn}><Svg n="user" /> {t.authPrompt.signIn}</button>
+          <button className="btn btn-primary focusable" disabled={!valid||status==="sending"||status==="sent"} onClick={sendLink}><Svg n="user" /> {status==="sending"?t.saveProgress.sending:(status==="sent"?t.authPrompt.emailSent:t.authPrompt.signIn)}</button>
           <button className="btn btn-outline focusable" onClick={onClose}>{t.authPrompt.keepLearning}</button>
         </div>
+        {message && <div className={"tiny save-status "+(status==="error"?"error":"ok")}>{message}</div>}
       </div>
     </div>
   );

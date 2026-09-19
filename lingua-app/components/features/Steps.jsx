@@ -8,7 +8,7 @@ import { langName } from "../../config/uiText";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
 import { cacheKey, speak, stopSpeak } from "../../lib/audio";
-import { getAuthState, signInWithEmail } from "../../lib/auth-client";
+import { getAuthState, signInWithEmail, subscribeAuthChanges } from "../../lib/auth-client";
 import { fetchCollection, grammarItemKey, removeGrammarFromCollection, removeWordFromCollection, saveGrammarToCollection, saveWordToCollection, wordLemmaKey } from "../../lib/collection";
 import { displayWordInfo } from "../../lib/dutch";
 import { normalizePoint, scrollToTop } from "../../lib/format";
@@ -92,15 +92,40 @@ function VerbForms({info,t,lang}){
   </details>);
 }
 
+function pendingCollectionKey(type,item){
+  if(type==="word") return `word:${String(item?.lang||"").toLowerCase()}:${String(item?.itemKey||item?.lemma||item?.word||"").toLowerCase()}`;
+  return `grammar:${String(item?.lang||"").toLowerCase()}:${String(item?.itemKey||item?.title||"").toLowerCase()}`;
+}
+
 function CollectionSaveButton({type,item,auth,onRequireLogin,saved,onToggle}){
   const {t}=useUI();
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState(false);
   const signedIn=!!auth?.session?.accessToken;
+  const actionKey=pendingCollectionKey(type,item);
+  useEffect(()=>{
+    if(!signedIn||busy) return;
+    const pending=DB.get("pendingCollectionSave",null);
+    if(!pending||pending.key!==actionKey) return;
+    if(saved){ DB.remove("pendingCollectionSave"); return; }
+    if(Date.now()-(pending.createdAt||0)>30*60*1000){ DB.remove("pendingCollectionSave"); return; }
+    let cancelled=false;
+    setBusy(true); setError(false);
+    Promise.resolve(onToggle()).then(()=>{
+      if(cancelled) return;
+      DB.remove("pendingCollectionSave");
+      setBusy(false);
+    }).catch(()=>{ if(!cancelled){setBusy(false);setError(true);} });
+    return ()=>{cancelled=true;};
+  },[signedIn,saved,actionKey]);
   async function click(e){
     e.preventDefault(); e.stopPropagation();
     if(busy) return;
-    if(!signedIn){ onRequireLogin?.(typeof window!=="undefined"?window.location.pathname:"/"); return; }
+    if(!signedIn){
+      DB.set("pendingCollectionSave",{key:actionKey,type,createdAt:Date.now()});
+      onRequireLogin?.(typeof window!=="undefined"?window.location.pathname:"/");
+      return;
+    }
     setBusy(true); setError(false);
     try{
       const wasSaved=saved;
@@ -768,6 +793,7 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
   const [status,setStatus]=useState("idle");
   const [message,setMessage]=useState("");
   const [includePractice,setIncludePractice]=useState(true);
+  const autoSaveRunning=useRef(false);
   const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
   const completedSteps=[...((doneSet&&doneSet.size)?doneSet:new Set(STEPS.map(s=>s.id)))];
   const payload=()=>buildCompletedLessonPayload({lesson,text,userWords:wordList,completedSteps,includePractice});
@@ -783,14 +809,17 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
     let cancelled=false;
     async function maybeSave(){
       const shouldSave=DB.get("pendingSaveAfterLogin",false) || (typeof window!=="undefined"&&window.location.search.includes("save=1"));
-      if(!shouldSave||status==="saving"||status==="saved") return;
+      if(!shouldSave||status==="saving"||status==="saved"||autoSaveRunning.current) return;
       const state=await refreshAuth();
       if(cancelled||!state.session?.accessToken) return;
-      await doSave(state.session.accessToken,true);
+      autoSaveRunning.current=true;
+      try{ await doSave(state.session.accessToken,true); }
+      finally{ autoSaveRunning.current=false; }
     }
     maybeSave();
-    return ()=>{cancelled=true;};
-  },[lesson?.material?.id]);
+    const unsubscribe=subscribeAuthChanges(maybeSave);
+    return ()=>{cancelled=true;unsubscribe();};
+  },[lesson?.material?.id,status]);
 
   async function doSave(accessToken,automatic=false){
     setStatus("saving");
