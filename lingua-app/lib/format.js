@@ -1,5 +1,7 @@
 import { words } from "./text";
 
+const LOADING_ESTIMATE_SECONDS=9;
+
 function progressPct(elapsed,estimate){ return Math.min(92,Math.max(12,Math.round((elapsed/Math.max(1,estimate))*100))); }
 
 function fmtTime(sec){
@@ -50,4 +52,4 @@ function compactQuote(s,max=92){
 
 function clamp(n,min,max){ return Math.max(min,Math.min(max,n)); }
 
-export { clamp, clampToDuration, compactQuote, durationSpec, estimateAudioSeconds, fmtTime, hasCjk, normalizePoint, progressPct, scrollToTop, stableHash };
+export { LOADING_ESTIMATE_SECONDS, clamp, clampToDuration, compactQuote, durationSpec, estimateAudioSeconds, fmtTime, hasCjk, normalizePoint, progressPct, scrollToTop, stableHash };

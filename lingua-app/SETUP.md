@@ -167,6 +167,26 @@ https://你的域名/auth/callback
 http://localhost:3000/auth/callback
 ```
 
+### Outlook / Microsoft Safe Links 的 Magic Link 设置
+
+Outlook 或 Microsoft Defender 可能会在用户点击前预先访问邮件里的链接。Supabase 的 Magic Link 是一次性的，如果邮件直接链接到 `{{ .ConfirmationURL }}`，安全扫描就可能先把它用掉，用户随后会看到“Email link is invalid or has expired”。
+
+请到 Supabase 后台完成以下设置：
+
+1. 打开 **Authentication → URL Configuration**。
+2. 把 **Site URL** 设置为正式站点，例如 `https://app.lingualanguage.site`。
+3. 确认 **Redirect URLs** 包含 `https://app.lingualanguage.site/auth/callback`；本地测试时再保留 `http://localhost:3000/auth/callback`。
+4. 打开 **Authentication → Email Templates → Magic Link**。
+5. 把邮件按钮或链接的 `href` 从直接使用 `{{ .ConfirmationURL }}` 改成：
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email">Continue sign-in</a>
+```
+
+这样邮件安全扫描只会打开 Lingua 的确认页，不会使用 Supabase 的一次性 token。用户在确认页主动点击“Continue sign-in”后，才会完成登录。
+
+保存模板并重新发送一封新的 Magic Link。已经报错或已经使用过的旧链接不能恢复。如果外部邮件服务开启了链接追踪，也请关闭登录邮件的链接追踪。
+
 > Gemini 的服务位置在代码里固定为 `global`，不用再设置 `VERTEX_LOCATION`。
 > 想改密钥，以后在 Vercel 后台点几下即可，不用碰代码。
 > 部署完成后，打开 `你的网址/api/health` 可以逐项检查 Gemini、翻译、语音是否都连通（不会显示密钥，只显示是否正常）。

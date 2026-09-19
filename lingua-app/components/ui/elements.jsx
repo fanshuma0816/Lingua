@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { ICONS } from "../../config/icons";
+import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { speak } from "../../lib/audio";
+import { LOADING_ESTIMATE_SECONDS, progressPct } from "../../lib/format";
 import { spokenTextForLine } from "../../lib/voices";
 
 function Svg({n}){ return <svg className="i" viewBox="0 0 24 24" dangerouslySetInnerHTML={{__html:ICONS[n]||""}}/>; }
@@ -21,6 +23,17 @@ function Loading(){
     <div className="tiny muted" style={{marginTop:16,maxWidth:340,marginLeft:"auto",marginRight:"auto",lineHeight:1.6}}>
       {t.buildingNote}
     </div>
+  </div>);
+}
+
+function LoadingProgress({active,label,className=""}){
+  const {t}=useUI();
+  const elapsed=useElapsed(active);
+  if(!active) return null;
+  const remaining=Math.max(1,LOADING_ESTIMATE_SECONDS-elapsed);
+  return (<div className={`lookup-progress ${className}`.trim()}>
+    <div className="lookup-progress-copy"><span>{label}</span><span>{t.aboutRemaining(remaining)}</span></div>
+    <div className="mini-track subtle"><span style={{width:progressPct(elapsed,LOADING_ESTIMATE_SECONDS)+"%"}}/></div>
   </div>);
 }
 
@@ -67,4 +80,4 @@ function StepHead({eyebrow,title,onSkip,skipLabel}){
   </div>);
 }
 
-export { Brand, CheckIn, LanguageSwitch, Loading, Purpose, Say, SelfRate, Stars, Stat, StepHead, Svg, Teacher };
+export { Brand, CheckIn, LanguageSwitch, Loading, LoadingProgress, Purpose, Say, SelfRate, Stars, Stat, StepHead, Svg, Teacher };

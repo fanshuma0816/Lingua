@@ -1,12 +1,12 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { TTS_OK, speak, stopSpeak } from "../../lib/audio";
-import { estimateAudioSeconds, fmtTime, progressPct } from "../../lib/format";
+import { estimateAudioSeconds, fmtTime } from "../../lib/format";
 import { dialogueSegments, spokenTextForLine, voiceRoleForLine } from "../../lib/voices";
 import { cachedAiAnalyze } from "../../services/api";
+import { LoadingProgress } from "../ui/elements";
 
 function FullPlayer({text,lang,label,sub}){
   const {t}=useUI();
@@ -113,9 +113,6 @@ const SyncReader=forwardRef(function SyncReader({items,lang,level,translation,ra
   const pageCount=Math.max(1,Math.ceil(items.length/pageSize));
   const start=page*pageSize;
   const pageItems=items.slice(start,start+pageSize);
-  const estimateSec=Math.max(8,Math.ceil(items.length*1.6));
-  const elapsed=useElapsed(loadingTr);
-  const remaining=Math.max(1,estimateSec-elapsed);
   useEffect(()=>{ setPage(0); setActive(-1); stopSpeak(); },[items.length]);
   useEffect(()=>{ if(translation) setTrs(items.map(it=>it.tr||null)); },[translation,items.length]);
   useEffect(()=>{ let cancel=false;
@@ -156,12 +153,7 @@ const SyncReader=forwardRef(function SyncReader({items,lang,level,translation,ra
     total:items.length
   }); },[page,pageCount,start,pageItems.length,items.length,onPageStateChange]);
   return (<div>
-    {translation && loadingTr && <div className="status-strip" style={{marginBottom:12}}>
-      <div className="row" style={{justifyContent:"space-between",alignItems:"baseline"}}>
-        <b>{t.translatingTitle}</b><span className="tiny muted">{t.aboutRemaining(remaining)}</span>
-      </div>
-      <div className="mini-track"><span style={{width:progressPct(elapsed,estimateSec)+"%"}}/></div>
-    </div>}
+    <LoadingProgress active={translation&&loadingTr} label={t.translatingTitle} className="lookup-progress-spaced"/>
     {controls!=="external" && <div className="reader-pager">
       <button className="btn btn-outline btn-sm" disabled={page===0} onClick={()=>changePage(page-1)}>← {t.previousPage}</button>
       <span className="tiny muted">{t.pageOf(page+1,pageCount)} · {start+1}-{Math.min(items.length,start+pageItems.length)} / {items.length}</span>

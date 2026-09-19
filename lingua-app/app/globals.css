@@ -364,10 +364,11 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 
 .learning-card-copy{flex:1;min-width:0;overflow-wrap:anywhere}
 .learning-card-actions{flex:0 0 auto}
-.lookup-progress{color:hsl(var(--muted-foreground));font-size:11px;line-height:1.35}
+.lookup-progress{color:hsl(208 76% 30%);font-size:11px;line-height:1.35}
 .lookup-progress-copy{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.lookup-progress .mini-track.subtle{height:2px;margin-top:5px;background:hsl(var(--border)/.55)}
-.lookup-progress .mini-track.subtle>span{background:hsl(var(--muted-foreground)/.48)}
+.lookup-progress .mini-track.subtle{height:2px;margin-top:5px;background:hsl(208 52% 90%)}
+.lookup-progress .mini-track.subtle>span{background:hsl(208 72% 40%)}
+.lookup-progress-spaced{margin-bottom:12px}
 
 /* session learnbar/footnav inside the shell (override the sticky app styles) */
 .main .learnbar{position:static;background:transparent;backdrop-filter:none;border-bottom:none;padding:2px 4px 12px;margin-bottom:0}
@@ -382,6 +383,7 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .auth-pop h2{margin-bottom:8px}
 .auth-pop p{color:hsl(var(--muted-foreground));font-size:14px;line-height:1.55;margin:0 auto 18px;max-width:330px}
 .auth-pop-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.auth-confirm-card{max-width:480px;text-align:center}
 
 .account-page{max-width:720px;margin:0 auto}
 .history-section{margin-top:20px}

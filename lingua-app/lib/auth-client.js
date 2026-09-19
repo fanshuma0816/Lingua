@@ -136,6 +136,26 @@ async function completeSessionFromHash(hash) {
   return next;
 }
 
+async function completeSessionFromTokenHash(tokenHash, type = "email") {
+  const { url, configured } = supabaseConfig();
+  if (!configured || !tokenHash) throw new Error("The sign-in link is incomplete.");
+  const response = await fetch(`${url}/auth/v1/verify`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ token_hash: tokenHash, type }),
+  });
+  const raw = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = raw?.msg || raw?.message || raw?.error_description || raw?.error;
+    throw new Error(detail || "The sign-in link is invalid or has expired.");
+  }
+  const session = normalizeSession(raw, raw?.user || null);
+  if (!session) throw new Error("The sign-in link did not return a session.");
+  DB.set(AUTH_KEY, session);
+  if (session.user?.email) DB.set("email", session.user.email);
+  return session;
+}
+
 async function signOut(session) {
   const current = session || DB.get(AUTH_KEY, null);
   const { url, configured } = supabaseConfig();
@@ -152,4 +172,4 @@ async function signOut(session) {
   DB.remove("loginNextPath");
 }
 
-export { completeSessionFromHash, getAuthState, signInWithEmail, signOut, supabaseConfig };
+export { completeSessionFromHash, completeSessionFromTokenHash, getAuthState, signInWithEmail, signOut, supabaseConfig };

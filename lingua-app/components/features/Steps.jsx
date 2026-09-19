@@ -2,17 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArticleAudio } from "./Player";
-import { CheckIn, Purpose, Say, StepHead, Svg, Teacher } from "../ui/elements";
+import { CheckIn, LoadingProgress, Purpose, Say, StepHead, Svg, Teacher } from "../ui/elements";
 import { LANG_CODE, PARTNER, POS, STEPS, SUPPORT_CHECKOUT_URL } from "../../config/constants";
 import { langName } from "../../config/uiText";
-import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
 import { cacheKey, speak, stopSpeak } from "../../lib/audio";
 import { getAuthState, signInWithEmail } from "../../lib/auth-client";
 import { fetchCollection, grammarItemKey, removeGrammarFromCollection, removeWordFromCollection, saveGrammarToCollection, saveWordToCollection, wordLemmaKey } from "../../lib/collection";
 import { displayWordInfo } from "../../lib/dutch";
-import { normalizePoint, progressPct, scrollToTop } from "../../lib/format";
+import { normalizePoint, scrollToTop } from "../../lib/format";
 import { buildCompletedLessonPayload, saveCompletedLesson } from "../../lib/learning-sync";
 import { fallbackGrammarItems, practiceQuestion } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
@@ -130,8 +129,6 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
   const [loadingTr,setLoadingTr]=useState(false);
   const [grammarByLang,setGrammarByLang]=useState({});
   const [loadingGrammar,setLoadingGrammar]=useState(false);
-  const lookupElapsed=useElapsed(loadingKw);
-  const grammarElapsed=useElapsed(loadingGrammar);
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
   const expl=explByLang[uiLang]||{};
   const grammar=grammarByLang[uiLang]||{};
@@ -292,10 +289,6 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
   const hasGrammarEntry=Object.prototype.hasOwnProperty.call(grammar,gi);
   const grammarPending=!!s&&!hasGrammarEntry;
   const grammarItems=hasGrammarEntry?(grammar[gi]||[]):[];
-  const lookupEstimate=Math.max(6,kw.length*2+2);
-  const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
-  const grammarEstimate=9;
-  const grammarRemaining=Math.max(1,grammarEstimate-grammarElapsed);
 
   if(view==="summary") return (<div>
     <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.summaryTitle} onSkip={onSkip} skipLabel={t.skipStep}/>
@@ -355,14 +348,10 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       <div className={"translation-line grammar-translation"+(!tr&&loadingTr?" loading":"")}>
         {tr?("→ "+tr):(loadingTr?`→ ${t.lineTranslating(gi+1,N)}`:`→ ${t.translationUnavailable}`)}
       </div>
+      <LoadingProgress active={loadingTr&&!tr} label={t.translatingTitle} className="lookup-progress-spaced"/>
 
       <h3 className="lbl">{t.vocabulary}</h3>
-      {loadingKw && <div className="status-strip compact" style={{marginBottom:12}}>
-        <div className="row" style={{justifyContent:"space-between",alignItems:"baseline"}}>
-          <b>{t.lookingUpTitle}</b><span className="tiny muted">{t.aboutRemaining(lookupRemaining)}</span>
-        </div>
-        <div className="mini-track"><span style={{width:progressPct(lookupElapsed,lookupEstimate)+"%"}}/></div>
-      </div>}
+      <LoadingProgress active={loadingKw} label={t.lookingUpTitle} className="lookup-progress-spaced"/>
       {kw.length?kw.map((w,j)=>{ const e=displayWordInfo(w,lang,uiLang,vmap[w.toLowerCase()],expl[w.toLowerCase()]); const parts=meaningParts(e); return (<div className="wcard" key={j}>
         <div className="row learning-card-head" style={{justifyContent:"space-between"}}>
           <span className="row learning-card-copy" style={{gap:9}}><b className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
@@ -383,10 +372,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}
 
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.grammarCoach}</h3>
-      {(loadingGrammar||grammarPending) && <div className="lookup-progress" style={{marginBottom:10}}>
-        <div className="lookup-progress-copy"><span>{t.gram.grammarLoading}</span><span>{t.aboutRemaining(grammarRemaining)}</span></div>
-        <div className="mini-track subtle"><span style={{width:progressPct(grammarElapsed,grammarEstimate)+"%"}}/></div>
-      </div>}
+      <LoadingProgress active={loadingGrammar||grammarPending} label={t.gram.grammarLoading} className="lookup-progress-spaced"/>
       {grammarItems.length?grammarItems.map((g,j)=><div className="grammar-card" key={j}>
         <div className="row learning-card-head" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
           <div className="learning-card-copy"><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
