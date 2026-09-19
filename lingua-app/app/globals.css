@@ -348,6 +348,7 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .icon-btn:hover{background:hsl(var(--accent));color:hsl(var(--foreground))}
 
 .save-mini{height:30px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid hsl(var(--border));background:hsl(var(--background));border-radius:7px;padding:0 8px;color:hsl(var(--muted-foreground));font-size:12px;font-weight:700;white-space:nowrap}
+.save-mini,.saved-pill{flex:0 0 auto}
 .save-mini:hover{background:hsl(var(--accent));color:hsl(var(--foreground))}
 .save-mini.saved{border-color:hsl(var(--primary));background:hsl(var(--primary)/.18);color:hsl(var(--foreground))}
 .save-mini.error{border-color:hsl(0 72% 62%);background:hsl(0 72% 51%/.08);color:hsl(0 72% 43%)}
@@ -355,9 +356,18 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .save-mini svg.i{font-size:14px}
 .saved-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid hsl(var(--primary)/.5);background:hsl(var(--primary)/.14);border-radius:999px;padding:4px 8px;font-size:11.5px;font-weight:700;color:hsl(var(--foreground));white-space:nowrap}
 .saved-pill svg.i{font-size:13px}
-.save-mini.saved:hover{border-color:hsl(0 72% 55%);background:hsl(0 72% 51%/.10);color:hsl(0 72% 43%)}
 .saved-pill-btn{cursor:pointer;transition:.12s}
-.saved-pill-btn:hover{border-color:hsl(0 72% 55%);background:hsl(0 72% 51%/.10);color:hsl(0 72% 43%)}
+@media(hover:hover) and (pointer:fine){
+  .save-mini.saved:hover{border-color:hsl(0 72% 55%);background:hsl(0 72% 51%/.10);color:hsl(0 72% 43%)}
+  .saved-pill-btn:hover{border-color:hsl(0 72% 55%);background:hsl(0 72% 51%/.10);color:hsl(0 72% 43%)}
+}
+
+.learning-card-copy{flex:1;min-width:0;overflow-wrap:anywhere}
+.learning-card-actions{flex:0 0 auto}
+.lookup-progress{color:hsl(var(--muted-foreground));font-size:11px;line-height:1.35}
+.lookup-progress-copy{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.lookup-progress .mini-track.subtle{height:2px;margin-top:5px;background:hsl(var(--border)/.55)}
+.lookup-progress .mini-track.subtle>span{background:hsl(var(--muted-foreground)/.48)}
 
 /* session learnbar/footnav inside the shell (override the sticky app styles) */
 .main .learnbar{position:static;background:transparent;backdrop-filter:none;border-bottom:none;padding:2px 4px 12px;margin-bottom:0}
@@ -564,6 +574,8 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
   .mobile-stack{align-items:stretch;flex-direction:column}
   .mobile-stack>.btn,.mobile-stack>.row,.mobile-stack>.row .btn{width:100%}
   .mobile-stack>.row{display:grid;grid-template-columns:1fr 1fr}
-  .save-mini,.saved-pill{white-space:normal;min-height:36px;height:auto}
+  .learning-card-head{min-width:0}
+  .learning-card-copy{min-width:0}
+  .save-mini,.saved-pill{white-space:nowrap;min-height:36px;height:auto}
   .scanw{padding:3px 5px!important}
 }

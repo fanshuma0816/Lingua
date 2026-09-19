@@ -65,7 +65,7 @@ function GrammarCard({ item, onRemove }) {
           <b>{item.title}</b>
           {item.explanation && <p>{item.explanation}</p>}
         </div>
-        <button className="saved-pill saved-pill-btn focusable" onClick={() => onRemove?.(item)} title={t.collection.removeHint}><Svg n="bookmarkCheck" /> {t.collection.saved}</button>
+        <button className="saved-pill saved-pill-btn focusable" type="button" onClick={() => onRemove?.(item)} title={t.collection.removeHint}><Svg n="bookmarkCheck" /> {t.collection.saved}</button>
       </div>
       {(item.example || item.example_translation) && <div className="grammar-examples">
         <div className="grammar-example-row">

@@ -114,7 +114,7 @@ function CollectionSaveButton({type,item,auth,onRequireLogin,saved,onToggle}){
     }
   }
   const label=error?t.collection.saveError:(busy?(saved?t.collection.removing:t.collection.saving):(saved?t.collection.saved:t.collection.save));
-  return (<button className={"save-mini focusable"+(saved?" saved":"")+(error?" error":"")} onClick={click} title={saved?t.collection.removeHint:label} aria-pressed={saved?"true":"false"}>
+  return (<button className={"save-mini focusable"+(saved?" saved":"")+(error?" error":"")} disabled={busy} onClick={click} title={saved?t.collection.removeHint:label} aria-pressed={saved?"true":"false"} aria-busy={busy?"true":"false"}>
     <Svg n={saved?"bookmarkCheck":"bookmark"}/> <span>{label}</span>
   </button>);
 }
@@ -131,6 +131,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
   const [grammarByLang,setGrammarByLang]=useState({});
   const [loadingGrammar,setLoadingGrammar]=useState(false);
   const lookupElapsed=useElapsed(loadingKw);
+  const grammarElapsed=useElapsed(loadingGrammar);
   useEffect(()=>{ if(gi>=N-1 && onComplete) onComplete(); },[gi,N]);
   const expl=explByLang[uiLang]||{};
   const grammar=grammarByLang[uiLang]||{};
@@ -293,6 +294,8 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
   const grammarItems=hasGrammarEntry?(grammar[gi]||[]):[];
   const lookupEstimate=Math.max(6,kw.length*2+2);
   const lookupRemaining=Math.max(1,lookupEstimate-lookupElapsed);
+  const grammarEstimate=9;
+  const grammarRemaining=Math.max(1,grammarEstimate-grammarElapsed);
 
   if(view==="summary") return (<div>
     <StepHead eyebrow={t.nav.mods.vocabulary} title={t.gram.summaryTitle} onSkip={onSkip} skipLabel={t.skipStep}/>
@@ -318,8 +321,8 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       ); })}
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.patterns}</h3>
       {allGrammarItems.map((g,j)=><div className="grammar-card" key={j}>
-        <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
+        <div className="row learning-card-head" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div className="learning-card-copy"><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
           <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin} saved={isGrammarSaved(grammarCollectionItem(g))} onToggle={()=>toggleGrammarSave(grammarCollectionItem(g))}/>
         </div>
         <div className="grammar-examples">
@@ -361,9 +364,9 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
         <div className="mini-track"><span style={{width:progressPct(lookupElapsed,lookupEstimate)+"%"}}/></div>
       </div>}
       {kw.length?kw.map((w,j)=>{ const e=displayWordInfo(w,lang,uiLang,vmap[w.toLowerCase()],expl[w.toLowerCase()]); const parts=meaningParts(e); return (<div className="wcard" key={j}>
-        <div className="row" style={{justifyContent:"space-between"}}>
-          <span className="row" style={{gap:9}}><b className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
-          <span className="row" style={{gap:8}}><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang} rate={1}/></span></div>
+        <div className="row learning-card-head" style={{justifyContent:"space-between"}}>
+          <span className="row learning-card-copy" style={{gap:9}}><b className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontSize:15}}>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
+          <span className="row learning-card-actions" style={{gap:8}}><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w,e)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang} rate={1}/></span></div>
         {parts.simple ? (<div className="meaning-block">
           <div className="meaning-simple">{parts.simple}</div>
         </div>) : (<div className="meaning-loading">
@@ -380,10 +383,13 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       </div>); }):<div className="tiny muted">{t.gram.noWords}</div>}
 
       <h3 className="lbl" style={{marginTop:16}}>{t.gram.grammarCoach}</h3>
-      {(loadingGrammar||grammarPending) && <div className="tiny muted" style={{marginBottom:8}}>{t.gram.grammarLoading}</div>}
+      {(loadingGrammar||grammarPending) && <div className="lookup-progress" style={{marginBottom:10}}>
+        <div className="lookup-progress-copy"><span>{t.gram.grammarLoading}</span><span>{t.aboutRemaining(grammarRemaining)}</span></div>
+        <div className="mini-track subtle"><span style={{width:progressPct(grammarElapsed,grammarEstimate)+"%"}}/></div>
+      </div>}
       {grammarItems.length?grammarItems.map((g,j)=><div className="grammar-card" key={j}>
-        <div className="row" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
+        <div className="row learning-card-head" style={{justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div className="learning-card-copy"><b>{g.point||t.gram.wordOrder}</b><p>{g.explain}</p></div>
           <CollectionSaveButton type="grammar" item={grammarCollectionItem(g)} auth={auth} onRequireLogin={onRequireLogin} saved={isGrammarSaved(grammarCollectionItem(g))} onToggle={()=>toggleGrammarSave(grammarCollectionItem(g))}/>
         </div>
         <div className="grammar-examples">
