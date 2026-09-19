@@ -51,7 +51,9 @@ function App(){
   useEffect(()=>{ document.documentElement.lang=uiLang==="zh"?"zh-CN":"en"; },[uiLang]);
   useEffect(()=>{
     setUiLangState(DB.get("uiLang","en"));
-    setLesson(DB.get("currentLesson",null));
+    const storedLesson=DB.get("currentLesson",null);
+    if(storedLesson&&!storedLesson.localLessonId){ storedLesson.localLessonId=crypto.randomUUID(); DB.set("currentLesson",storedLesson); }
+    setLesson(storedLesson);
     setText(DB.get("currentText",""));
     setTheme(DB.get("theme","light"));
     setUserWords(DB.get("unknownWords",[])||[]);
@@ -154,10 +156,10 @@ function App(){
   function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
 
   async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
-    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=await r.json(); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
+    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L={...(await r.json()),localLessonId:crypto.randomUUID()}; setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     }
-    catch(e){ const L=generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
+    catch(e){ const L={...generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null),localLessonId:crypto.randomUUID()}; setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
     } }
 

@@ -65,7 +65,11 @@ async function syncProfile(user, env) {
 }
 
 function likelyMissingRichWordColumns(error) {
-  return /lemma|pos|meaning|detail|example|example_translation|audio_key|tts_lang|tts_rate|tts_voice_role|schema cache|column/i.test(String(error?.message || ""));
+  return /item_key|lemma|pos|meaning|detail|example|example_translation|audio_key|tts_lang|tts_rate|tts_voice_role|schema cache|column/i.test(String(error?.message || ""));
+}
+
+function likelyMissingItemKey(error) {
+  return /item_key|schema cache|column|constraint/i.test(String(error?.message || ""));
 }
 
 export async function POST(req) {
@@ -108,6 +112,7 @@ export async function POST(req) {
       };
       const richWordRow = {
         ...wordRow,
+        item_key: shortText(item.itemKey || item.lemma || word, 500),
         lemma: shortText(item.lemma, 120),
         pos: shortText(item.pos, 80),
         meaning: shortText(item.meaning, 600),
@@ -120,13 +125,23 @@ export async function POST(req) {
         tts_voice_role: shortText(item.ttsVoiceRole, 80),
       };
       try {
-        await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,word", {
+        await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,item_key", {
           method: "POST",
           headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
           body: JSON.stringify(richWordRow),
         }, env);
       } catch (e) {
         if (!likelyMissingRichWordColumns(e)) throw e;
+        try {
+          await supabaseWrite(`/rest/v1/user_words?user_id=eq.${encodeURIComponent(user.id)}&lang=eq.${encodeURIComponent(lang)}&word=eq.${encodeURIComponent(word)}`, {
+            method: "PATCH",
+            headers: jsonHeaders(env.serviceKey, { Prefer: "return=minimal" }),
+            body: JSON.stringify(richWordRow),
+          }, env);
+          return Response.json({ ok: true, type: "word", word });
+        } catch (upgradeError) {
+          if (!likelyMissingRichWordColumns(upgradeError)) throw upgradeError;
+        }
         await supabaseWrite("/rest/v1/user_words?on_conflict=user_id,lang,word", {
           method: "POST",
           headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
@@ -138,21 +153,44 @@ export async function POST(req) {
 
     if (type === "grammar") {
       const title = shortText(item.title, 220);
+      const itemKey = shortText(item.itemKey, 500);
       if (!title || !lang) return Response.json({ error: "Missing grammar title or language." }, { status: 400 });
-      await supabaseWrite("/rest/v1/user_grammar_items?on_conflict=user_id,lang,title", {
-        method: "POST",
-        headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
-        body: JSON.stringify({
-          user_id: user.id,
-          title,
-          explanation: shortText(item.explanation, 900),
-          example: shortText(item.example, 500),
-          example_translation: shortText(item.exampleTranslation, 500),
-          lang,
-          level,
-          source_lesson_id: uuidOrNull(item.sourceLessonId),
-        }),
-      }, env);
+      const grammarRow = {
+        user_id: user.id,
+        item_key: itemKey,
+        title,
+        explanation: shortText(item.explanation, 900),
+        example: shortText(item.example, 500),
+        example_translation: shortText(item.exampleTranslation, 500),
+        lang,
+        level,
+        source_lesson_id: uuidOrNull(item.sourceLessonId),
+      };
+      try {
+        await supabaseWrite("/rest/v1/user_grammar_items?on_conflict=user_id,lang,item_key", {
+          method: "POST",
+          headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
+          body: JSON.stringify(grammarRow),
+        }, env);
+      } catch (e) {
+        if (!likelyMissingItemKey(e)) throw e;
+        try {
+          await supabaseWrite(`/rest/v1/user_grammar_items?user_id=eq.${encodeURIComponent(user.id)}&lang=eq.${encodeURIComponent(lang)}&title=eq.${encodeURIComponent(title)}`, {
+            method: "PATCH",
+            headers: jsonHeaders(env.serviceKey, { Prefer: "return=minimal" }),
+            body: JSON.stringify(grammarRow),
+          }, env);
+          return Response.json({ ok: true, type: "grammar" });
+        } catch (upgradeError) {
+          if (!likelyMissingItemKey(upgradeError)) throw upgradeError;
+        }
+        const { item_key: ignoredItemKey, ...legacyRow } = grammarRow;
+        await supabaseWrite("/rest/v1/user_grammar_items?on_conflict=user_id,lang,title", {
+          method: "POST",
+          headers: jsonHeaders(env.serviceKey, { Prefer: "resolution=merge-duplicates,return=minimal" }),
+          body: JSON.stringify(legacyRow),
+        }, env);
+      }
       return Response.json({ ok: true, type: "grammar" });
     }
 

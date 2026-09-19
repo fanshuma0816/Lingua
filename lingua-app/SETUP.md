@@ -114,6 +114,7 @@ alter table public.lesson_sessions
   add column if not exists saved_options jsonb not null default '{}'::jsonb;
 
 alter table public.user_words
+  add column if not exists item_key text,
   add column if not exists lemma text,
   add column if not exists pos text,
   add column if not exists meaning text,
@@ -124,6 +125,17 @@ alter table public.user_words
   add column if not exists tts_lang text,
   add column if not exists tts_rate numeric,
   add column if not exists tts_voice_role text;
+
+alter table public.user_grammar_items
+  add column if not exists item_key text;
+
+create unique index if not exists user_words_stable_item_key
+  on public.user_words (user_id, lang, item_key)
+  where item_key is not null;
+
+create unique index if not exists user_grammar_stable_item_key
+  on public.user_grammar_items (user_id, lang, item_key)
+  where item_key is not null;
 
 insert into public.profiles (id, email, updated_at)
 select id, email, now()

@@ -215,7 +215,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
       <div className="tiny muted" style={{fontWeight:600}}>{t.noSuitableMaterials(level.slice(0,2))}</div>
     </div>}
     {(materials.length>0||generating) && <div className="material-results">
-      <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
+      <div className="row material-results-head" style={{justifyContent:"space-between",marginBottom:10}}>
         <div><h2 style={{margin:0}}>{t.chooseMaterial}</h2><div className="tiny muted">{t.switchAnytime}</div></div>
         <button className="btn btn-primary btn-sm" disabled={!materials.length} onClick={startGenerated}>{t.useThisText} →</button>
       </div>
@@ -241,13 +241,13 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     <button className="btn btn-ghost btn-sm" style={{marginBottom:16}} onClick={()=>setModeRoute(null,"/")}>← {t.back}</button>
     <h1>{t.inputTitle}</h1><p className="sub">{t.inputSub}</p>
     <div className="card card-p">
-      <div className="row" style={{justifyContent:"space-between",marginBottom:10}}>
+      <div className="row input-card-head" style={{justifyContent:"space-between",marginBottom:10}}>
         <label className="fld" style={{margin:0}}>{t.yourText}</label>
         <button className="btn btn-outline btn-sm" onClick={()=>fileRef.current.click()}>{t.uploadTxt}</button>
         <input ref={fileRef} type="file" accept=".txt,.md" onChange={onFile} style={{display:"none"}}/></div>
       <SourceIdeas tips={t.materialTips} hint={t.sourceHint}/>
       <textarea style={{minHeight:220}} value={raw} onChange={e=>setRaw(e.target.value)} placeholder={t.textPlaceholder}/>
-      <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
+      <div className="row input-meta-row" style={{justifyContent:"space-between",marginTop:10}}>
         <span className="tiny muted">{t.cleanNote}</span>
         <span className="tiny" style={{fontWeight:600,color:over?"hsl(0 72% 45%)":"hsl(var(--muted-foreground))"}}>{count.toLocaleString()} / {LIMIT.toLocaleString()} {t.chars}</span></div>
       {shouldSplit && <div className="split-warning">
@@ -308,7 +308,7 @@ function Preview({lesson,text,userWords,onStart,onBack}){
       <h3 className="lbl">{t.vocabulary}</h3>
       <div className="row wrap" style={{gap:7}}>{marked.slice(0,40).map((w,i)=><span key={w+i} className="badge notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>{w}</span>)}</div>
     </div>}
-    <div className="row" style={{justifyContent:"space-between",marginTop:22}}>
+    <div className="row preview-actions" style={{justifyContent:"space-between",marginTop:22}}>
       <button className="btn btn-ghost" onClick={onBack}>← {t.back}</button>
       <button className="btn btn-primary" onClick={onStart}>{t.startLearning} →</button></div>
   </div>);

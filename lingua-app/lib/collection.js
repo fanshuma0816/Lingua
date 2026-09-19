@@ -4,22 +4,22 @@ import { DB } from "./storage";
 import { fallbackWordInfo } from "./dutch";
 
 function wordKey(item) {
-  return `${item?.lang || ""}:${item?.word || ""}`.toLowerCase();
+  return wordLemmaKey(item?.word, item?.lang, item?.lemma);
 }
 
 function grammarKey(item) {
-  return `${item?.lang || ""}:${item?.title || ""}:${item?.example || ""}`.toLowerCase();
+  return grammarItemKey(item);
 }
 
 // Fold inflected forms onto their base form so a word (and its variants) is
 // only ever saved/listed once. Uses the existing Dutch lemma inference; for
 // other languages (or unknown words) it falls back to the lowercased word.
-function wordLemmaKey(word, lang) {
+function wordLemmaKey(word, lang, providedLemma) {
   const w = String(word || "").trim().toLowerCase();
   if (!w) return `${String(lang || "").toLowerCase()}:`;
-  let lemma = w;
+  let lemma = String(providedLemma || "").trim().toLowerCase() || w;
   try {
-    if (lang === "Dutch") {
+    if (!providedLemma && lang === "Dutch") {
       const info = fallbackWordInfo(w, lang, "en");
       if (info && info.lemma) lemma = String(info.lemma).toLowerCase();
     }
@@ -27,9 +27,11 @@ function wordLemmaKey(word, lang) {
   return `${String(lang || "").toLowerCase()}:${lemma}`;
 }
 
-// Match a lesson grammar card to a saved one by language + title.
+// itemKey is locale-independent. Title remains a fallback for existing rows.
 function grammarItemKey(item) {
-  return `${String(item?.lang || "").toLowerCase()}:${String(item?.title || "").trim().toLowerCase()}`;
+  const lang = String(item?.lang || "").toLowerCase();
+  const identity = String(item?.itemKey || item?.item_key || item?.title || "").trim().toLowerCase();
+  return `${lang}:${identity}`;
 }
 
 function mergeCachedWords(words) {
@@ -37,6 +39,7 @@ function mergeCachedWords(words) {
   return (words || []).map((word) => {
     const normalized = {
       ...word,
+      itemKey: word?.itemKey || word?.item_key || null,
       exampleTranslation: word?.exampleTranslation || word?.example_translation || null,
       audioKey: word?.audioKey || word?.audio_key || null,
       ttsLang: word?.ttsLang || word?.tts_lang || word?.lang || null,
@@ -49,7 +52,10 @@ function mergeCachedWords(words) {
 
 function mergeCachedGrammar(grammar) {
   const cached = DB.get("collectionGrammarCards", {}) || {};
-  return (grammar || []).map((item) => ({ ...(cached[grammarKey(item)] || {}), ...item }));
+  return (grammar || []).map((item) => {
+    const normalized = { ...item, itemKey: item?.itemKey || item?.item_key || null };
+    return { ...(cached[grammarKey(normalized)] || {}), ...normalized };
+  });
 }
 
 function rememberWord(item) {

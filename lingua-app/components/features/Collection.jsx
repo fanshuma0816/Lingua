@@ -10,7 +10,7 @@ import { meaningParts } from "../../lib/text";
 function dedupeWords(list) {
   const seen = new Set(), out = [];
   for (const it of (list || [])) {
-    const k = wordLemmaKey(it.word, it.lang);
+    const k = wordLemmaKey(it.word, it.lang, it.lemma);
     if (seen.has(k)) continue;
     seen.add(k); out.push(it);
   }
@@ -38,12 +38,12 @@ function WordCard({ item, onRemove }) {
   const parts = meaningParts(item);
   return (
     <div className="wcard collection-word-card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <span className="row" style={{ gap: 9 }}>
+      <div className="row collection-card-head" style={{ justifyContent: "space-between" }}>
+        <span className="row collection-card-label" style={{ gap: 9 }}>
           <b className="notranslate" translate="no" lang={item.lang === "Dutch" ? "nl" : undefined} style={{ fontSize: 15 }}>{item.word}</b>
           {item.pos && <span className="badge badge-outline">{item.pos}</span>}
         </span>
-        <span className="row" style={{ gap: 8 }}>
+        <span className="row collection-card-actions" style={{ gap: 8 }}>
           <button className="saved-pill saved-pill-btn focusable" onClick={() => onRemove?.(item)} title={t.collection.removeHint}><Svg n="bookmarkCheck" /> {t.collection.saved}</button>
           <Say text={item.word} lang={item.lang} rate={1} />
         </span>
@@ -60,8 +60,8 @@ function GrammarCard({ item, onRemove }) {
   const { t } = useUI();
   return (
     <div className="grammar-card collection-grammar-card">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
+      <div className="row collection-card-head" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div className="collection-card-copy">
           <b>{item.title}</b>
           {item.explanation && <p>{item.explanation}</p>}
         </div>
@@ -120,10 +120,10 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
         await removeGrammarFromCollection(item, token);
         setState((prev) => ({ ...prev, grammar: prev.grammar.filter((g) => g.id !== item.id) }));
       } else {
-        const key = wordLemmaKey(item.word, item.lang);
-        const group = state.words.filter((w) => wordLemmaKey(w.word, w.lang) === key);
-        for (const w of group) { await removeWordFromCollection({ word: w.word, lang: w.lang }, token); }
-        setState((prev) => ({ ...prev, words: prev.words.filter((w) => wordLemmaKey(w.word, w.lang) !== key) }));
+        const key = wordLemmaKey(item.word, item.lang, item.lemma);
+        const group = state.words.filter((w) => wordLemmaKey(w.word, w.lang, w.lemma) === key);
+        for (const w of group) { await removeWordFromCollection({ word: w.word, lang: w.lang, lemma: w.lemma, itemKey: w.itemKey || w.item_key }, token); }
+        setState((prev) => ({ ...prev, words: prev.words.filter((w) => wordLemmaKey(w.word, w.lang, w.lemma) !== key) }));
       }
     } catch (e) {
       setState((prev) => ({ ...prev, error: e?.message || t.collection.loadError }));

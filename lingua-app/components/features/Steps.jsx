@@ -206,18 +206,18 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
     fetchCollection(collectionToken).then(data=>{
       if(cancel) return;
       const keys=new Set(), map={};
-      (data.words||[]).forEach(row=>{ const k=wordLemmaKey(row.word,row.lang); keys.add(k); (map[k]=map[k]||[]).push(row.word); });
+      (data.words||[]).forEach(row=>{ const k=wordLemmaKey(row.word,row.lang,row.lemma); keys.add(k); (map[k]=map[k]||[]).push(row.word); });
       setSavedWords({keys,map});
-      setSavedGrammarKeys(new Set((data.grammar||[]).map(g=>grammarItemKey({title:g.title,lang:g.lang}))));
+      setSavedGrammarKeys(new Set((data.grammar||[]).map(g=>grammarItemKey(g))));
     }).catch(()=>{});
     return ()=>{cancel=true;};
   },[collectionToken]);
   async function toggleWordSave(item){
     if(!collectionToken) return;
-    const key=wordLemmaKey(item.word,item.lang);
+    const key=wordLemmaKey(item.word,item.lang,item.lemma);
     if(savedWords.keys.has(key)){
       const words=savedWords.map[key]||[item.word];
-      for(const w of words){ await removeWordFromCollection({word:w,lang:item.lang},collectionToken); }
+      for(const w of words){ await removeWordFromCollection({word:w,lang:item.lang,lemma:item.lemma,itemKey:item.lemma||w},collectionToken); }
       setSavedWords(prev=>{ const keys=new Set(prev.keys); keys.delete(key); const map={...prev.map}; delete map[key]; return {keys,map}; });
     } else {
       await saveWordToCollection(item,collectionToken);
@@ -235,7 +235,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
       setSavedGrammarKeys(prev=>{ const set=new Set(prev); set.add(key); return set; });
     }
   }
-  const isWordSaved=(w)=>savedWords.keys.has(wordLemmaKey(w,lang));
+  const isWordSaved=(w,e)=>savedWords.keys.has(wordLemmaKey(w,lang,e?.lemma));
   const isGrammarSaved=(item)=>savedGrammarKeys.has(grammarItemKey(item));
   function wordCollectionItem(w,e){
     return {
@@ -258,7 +258,10 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
   }
   function grammarCollectionItem(g){
     const ex=grammarExamples(g)[0]||{};
+    const sourceIndex=Number.isInteger(g?._sourceIndex)?g._sourceIndex:gi;
+    const sourceIdentity=String(sents[sourceIndex]||"").trim().toLowerCase().replace(/\s+/g," ");
     return {
+      itemKey:`sentence:${sourceIdentity}:${sourceIndex}`,
       title:g?.point||t.gram.wordOrder,
       explanation:g?.explain||"",
       example:ex.sentence||"",
@@ -280,8 +283,8 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
     return out;
   })();
   const allGrammarItems=(()=>{ const seen=new Set(), out=[];
-    Object.entries(grammar).sort(([a],[b])=>Number(a)-Number(b)).forEach(([,items])=>{
-      items.forEach(g=>{ const k=(g.point||"")+"|"+(g.explain||""); if(!seen.has(k)){seen.add(k); out.push(g);} });
+    Object.entries(grammar).sort(([a],[b])=>Number(a)-Number(b)).forEach(([index,items])=>{
+      items.forEach(g=>{ const k=(g.point||"")+"|"+(g.explain||""); if(!seen.has(k)){seen.add(k); out.push({...g,_sourceIndex:Number(index)});} });
     });
     return out;
   })();
@@ -301,7 +304,7 @@ function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,on
         <details className="summary-card" key={w}>
           <summary>
             <span className="row" style={{gap:9}}><b>{w}</b><span className="badge badge-outline">{(e&&e.pos)||POS[j%POS.length]}</span></span>
-            <span className="row" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang}/></span>
+            <span className="row summary-card-actions" style={{gap:8}}><span className="meaning-simple inline">{parts.simple||w}</span><CollectionSaveButton type="word" item={wordCollectionItem(w,e)} auth={auth} onRequireLogin={onRequireLogin} saved={isWordSaved(w,e)} onToggle={()=>toggleWordSave(wordCollectionItem(w,e))}/><Say text={w} lang={lang}/></span>
           </summary>
           {parts.detail && <div className="summary-detail">{parts.detail}</div>}
           {(e&&e.lemma&&e.lemma.toLowerCase()!==String(w).toLowerCase()) || e?.formLabel || e?.formExplanation ? <div className="word-form">
@@ -468,7 +471,7 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
       {(withSubs||reveal) ? <div className="bigsent notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{cur}</div> : <div className="bigsent muted" style={{opacity:.4}}>• • •</div>}
       {!withSubs && <button className="btn btn-outline btn-sm" onClick={()=>setReveal(r=>!r)}>{reveal?t.timed.hide:t.timed.reveal}</button>}
     </div>
-    <div className="row" style={{justifyContent:"center",gap:8,marginTop:16}}>
+    <div className="row playback-actions" style={{justifyContent:"center",gap:8,marginTop:16}}>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(1)}>▶ {t.timed.replay}</button>
       <button className="btn btn-outline btn-sm" onClick={()=>playLine(.75)}>▶ {t.timed.slow} 0.75×</button>
     </div>
@@ -601,7 +604,7 @@ function AIWrite({lesson,onDone}){
     <div className="card card-p" style={{marginBottom:14}}><div className="row" style={{gap:10}}>
       <div className="tface">👩‍🏫</div><div style={{fontWeight:500}}>{question}</div></div></div>
     <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={t.aiUse.writePlaceholder(shownLang)}/>
-    <div className="row" style={{justifyContent:"space-between",marginTop:12}}>
+    <div className="row writing-actions" style={{justifyContent:"space-between",marginTop:12}}>
       <span className="tiny muted">{t.aiUse.saved(textv.trim().split(/\s+/).filter(Boolean).length)}</span>
       <button className="btn btn-primary btn-sm" disabled={textv.trim().length<12||fb==="loading"} onClick={getFeedback}>{fb==="loading"?t.aiUse.reading:t.aiUse.feedback}</button></div>
     {fb==="loading" && <div className="card card-p" style={{marginTop:16}}>
@@ -747,7 +750,7 @@ function AIChat({lesson,onNext,onDone}){
         <div className="tiny muted" style={{marginTop:8}}>{t.chat.speakIn(shownLang)}</div>
       </div>) : <div className="tiny muted" style={{marginBottom:6}}>{t.chat.typeIn(shownLang)}</div>}
       <textarea style={{minHeight:56,marginTop:12}} value={draft} onChange={e=>setDraft(e.target.value)} placeholder={t.chat.placeholder(shownLang)}/>
-      <div className="row" style={{justifyContent:"space-between",marginTop:10}}>
+      <div className="row chat-compose-actions" style={{justifyContent:"space-between",marginTop:10}}>
         <span className="tiny muted">{full?t.chat.looksGood+" ✓":t.chat.shortSentence}</span>
         <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>{t.chat.replyTo(partner.name)} →</button></div>
 
@@ -860,19 +863,22 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
 
 function Done({lesson,text,diag,doneSet,onNew,onReview}){
   const {t}=useUI();
+  const feedbackKey=`lessonFeedback:${lesson?.localLessonId||lesson?.material?.id||lesson?.id||"current"}`;
+  const feedbackWasHandled=DB.get(feedbackKey,false);
   const [most,setMost]=useState(null); const [least,setLeast]=useState(null);
   const [feedbackStep,setFeedbackStep]=useState("most");
-  const [feedbackOpen,setFeedbackOpen]=useState(true);
+  const [feedbackOpen,setFeedbackOpen]=useState(!feedbackWasHandled);
   const [devFeedback,setDevFeedback]=useState(()=>DB.get("developmentFeedbackDraft",""));
   const [devFeedbackStatus,setDevFeedbackStatus]=useState("idle");
   const SURVEY_MODS=["understanding","vocabulary","shadowing","recall","using"];
-  useEffect(()=>{ trackEvent("lesson_feedback_opened",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); },[]);
+  useEffect(()=>{ if(feedbackOpen) trackEvent("lesson_feedback_opened",{language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); },[]);
   function captureSurvey(mostV,leastV){
     trackEvent("lesson_feedback",{most_helpful:mostV,least_helpful:leastV,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
   function chooseMost(m){ setMost(m); setFeedbackStep("least"); trackEvent("lesson_feedback_choice_selected",{question:"most_helpful",choice:m,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); }
   function chooseLeast(m){ if(m!==most){ setLeast(m); trackEvent("lesson_feedback_choice_selected",{question:"least_helpful",choice:m,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); } }
-  function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); setFeedbackOpen(false); }
-  function closeSurvey(reason){ trackEvent(reason==="skip"?"lesson_feedback_skipped":"lesson_feedback_closed",{step:feedbackStep,most_helpful:most||null,least_helpful:least||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); setFeedbackOpen(false); }
+  function finishSurvey(){ DB.set(feedbackKey,true); setFeedbackOpen(false); }
+  function submitSurvey(){ if(!most||!least) return; captureSurvey(most,least); finishSurvey(); }
+  function closeSurvey(reason){ trackEvent(reason==="skip"?"lesson_feedback_skipped":"lesson_feedback_closed",{step:feedbackStep,most_helpful:most||null,least_helpful:least||null,language:lesson?.lang,level:(lesson?.level||"").slice(0,2)}); finishSurvey(); }
   useEffect(()=>DB.set("developmentFeedbackDraft",devFeedback),[devFeedback]);
   async function submitDevelopmentFeedback(){
     const text=devFeedback.trim();
@@ -919,7 +925,7 @@ function Done({lesson,text,diag,doneSet,onNew,onReview}){
         <div className="donation-feedback">
           <label className="tiny muted" htmlFor="development-feedback">{t.donation.feedbackLabel}</label>
           <textarea id="development-feedback" value={devFeedback} onChange={e=>{setDevFeedback(e.target.value); if(devFeedbackStatus!=="sending") setDevFeedbackStatus("idle");}} placeholder={t.donation.feedbackPlaceholder}/>
-          <div className="feedback-submit-row">
+          <div className="feedback-submit-row mobile-stack">
             <span className="tiny muted">{t.donation.feedbackPrivacy}</span>
             <button className="btn btn-primary btn-sm" disabled={!feedbackText||feedbackSending} onClick={submitDevelopmentFeedback}>{feedbackSending?t.donation.feedbackSending:t.donation.feedbackSend}</button>
           </div>
@@ -950,7 +956,7 @@ function Done({lesson,text,diag,doneSet,onNew,onReview}){
         const disabled=isLeastStep&&most===m;
         return <button key={m} className={"badge badge-outline feedback-choice"+(selected?" on":"")} disabled={disabled} onClick={()=>isLeastStep?chooseLeast(m):chooseMost(m)}>{t.nav.mods[m]}</button>;
       })}</div>
-      <div className="feedback-actions">
+      <div className="feedback-actions mobile-stack">
         <button className="btn btn-ghost btn-sm" onClick={()=>closeSurvey("skip")}>{t.survey.skip}</button>
         <div className="row" style={{gap:8}}>
           {isLeastStep && <button className="btn btn-outline btn-sm" onClick={()=>setFeedbackStep("most")}>{t.survey.back}</button>}

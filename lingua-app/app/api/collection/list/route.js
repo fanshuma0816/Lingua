@@ -38,14 +38,14 @@ async function readRows(path, env, optional = false) {
 }
 
 async function readWords(userId, env) {
-  const richSelect = "id,word,lang,level,source,source_lesson_id,last_seen_at,lemma,pos,meaning,detail,example,example_translation,audio_key,tts_lang,tts_rate,tts_voice_role";
+  const richSelect = "id,item_key,word,lang,level,source,source_lesson_id,last_seen_at,lemma,pos,meaning,detail,example,example_translation,audio_key,tts_lang,tts_rate,tts_voice_role";
   const basicSelect = "id,word,lang,level,source,source_lesson_id,last_seen_at";
   const richPath = `/rest/v1/user_words?user_id=eq.${userId}&source=eq.collection&select=${richSelect}&order=last_seen_at.desc&limit=200`;
   const basicPath = `/rest/v1/user_words?user_id=eq.${userId}&source=eq.collection&select=${basicSelect}&order=last_seen_at.desc&limit=200`;
   try {
     return await readRows(richPath, env);
   } catch (e) {
-    if (!/lemma|pos|meaning|detail|example|example_translation|audio_key|tts_lang|tts_rate|tts_voice_role|schema cache|column/i.test(String(e?.message || ""))) throw e;
+    if (!/item_key|lemma|pos|meaning|detail|example|example_translation|audio_key|tts_lang|tts_rate|tts_voice_role|schema cache|column/i.test(String(e?.message || ""))) throw e;
     return readRows(basicPath, env);
   }
 }
@@ -70,7 +70,8 @@ export async function GET(req) {
 
     const userId = encodeURIComponent(user.id);
     const words = await readWords(userId, env);
-    const grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
+    let grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,item_key,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
+    if (!grammar.length) grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
 
     return Response.json({
       words: Array.isArray(words) ? words : [],

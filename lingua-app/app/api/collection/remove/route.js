@@ -66,15 +66,29 @@ export async function POST(req) {
 
     if (type === "word") {
       const word = shortText(item.word, 120);
+      const itemKey = shortText(item.itemKey || item.item_key || item.lemma, 500);
       if (!word || !lang) return Response.json({ error: "Missing word or language." }, { status: 400 });
-      await supabaseDelete(`/rest/v1/user_words?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&word=eq.${encodeURIComponent(word)}&source=eq.collection`, env);
+      try {
+        const filter = itemKey ? `item_key=eq.${encodeURIComponent(itemKey)}` : `word=eq.${encodeURIComponent(word)}`;
+        await supabaseDelete(`/rest/v1/user_words?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&${filter}&source=eq.collection`, env);
+      } catch (e) {
+        if (!itemKey || !/item_key|schema cache|column/i.test(String(e?.message || ""))) throw e;
+        await supabaseDelete(`/rest/v1/user_words?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&word=eq.${encodeURIComponent(word)}&source=eq.collection`, env);
+      }
       return Response.json({ ok: true, type: "word", word });
     }
 
     if (type === "grammar") {
       const title = shortText(item.title, 220);
+      const itemKey = shortText(item.itemKey || item.item_key, 500);
       if (!title || !lang) return Response.json({ error: "Missing grammar title or language." }, { status: 400 });
-      await supabaseDelete(`/rest/v1/user_grammar_items?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&title=eq.${encodeURIComponent(title)}`, env);
+      try {
+        const filter = itemKey ? `item_key=eq.${encodeURIComponent(itemKey)}` : `title=eq.${encodeURIComponent(title)}`;
+        await supabaseDelete(`/rest/v1/user_grammar_items?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&${filter}`, env);
+      } catch (e) {
+        if (!itemKey || !/item_key|schema cache|column/i.test(String(e?.message || ""))) throw e;
+        await supabaseDelete(`/rest/v1/user_grammar_items?user_id=eq.${uid}&lang=eq.${encodeURIComponent(lang)}&title=eq.${encodeURIComponent(title)}`, env);
+      }
       return Response.json({ ok: true, type: "grammar", title });
     }
 
