@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { cefrIdx, materialId, validateMaterialFit } from "./cefr.mjs";
 import { cleanText } from "./text.js";
+import { isRepeated } from "./material-history.js";
 
 let corpusCache = null;
 
@@ -48,7 +49,7 @@ function singleStoryCandidates(items) {
   }));
 }
 
-function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRange = [0, Infinity], count = 2, duration, targetMinutes, seed }) {
+function selectTextbookMaterials({ lang, level, topics = [], avoid = [], history = [], difficulty, wordRange = [0, Infinity], count = 2, duration, targetMinutes, seed }) {
   if (lang !== "Dutch" || cefrIdx(level) > cefrIdx("A2")) return [];
   const topic = topics[0] || null;
   const [minWords, maxWords] = wordRange;
@@ -65,7 +66,7 @@ function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRan
   const seenPrimary = new Set();
   const seenPairs = new Set();
   const ranges = [[minWords, maxWords]];
-  if (minWords > 60) ranges.push([35, maxWords]);
+
 
   for (const [lo, hi] of ranges) {
     for (const raw of candidates) {
@@ -74,6 +75,7 @@ function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRan
       const wc = wordCount(text);
       if (wc < lo || wc > hi) continue;
       const id = materialId(text);
+      if (isRepeated({ id, title: raw.title, text }, history)) continue;
       const titleKey = String(raw.title || "").toLowerCase();
       if (seen.has(id) || avoidSet.has(id) || avoidSet.has(titleKey)) continue;
       const primaryKey = String(raw.primaryTitle || raw.title || "").toLowerCase();
@@ -83,7 +85,7 @@ function selectTextbookMaterials({ lang, level, topics = [], avoid = [], wordRan
       const pairKey = String(raw.pairKey || raw.title || "").toLowerCase();
       if (seenPairs.has(pairKey)) continue;
       const fit = validateMaterialFit(text, level);
-      if (!fit.ok) continue;
+      if (!fit.ok || difficulty && fit.analysis.difficultyTier !== difficulty) continue;
       seen.add(id);
       seenPrimary.add(primaryKey);
       seenPairs.add(pairKey);

@@ -22,7 +22,7 @@ function AuthPrompt({ open, onClose, returnPath }) {
       DB.set("loginNextPath",path);
       await signInWithEmail(email,path);
       setStatus("sent");
-      setMessage(t.saveProgress.linkSent);
+      setMessage(t.authPrompt.linkSent);
     }catch(e){
       setStatus("error");
       setMessage(e?.message||t.loginError);
@@ -36,13 +36,15 @@ function AuthPrompt({ open, onClose, returnPath }) {
         <div className="auth-pop-icon"><Svg n="bookmark" /></div>
         <h2 id="auth-pop-title">{t.authPrompt.title}</h2>
         <p>{t.authPrompt.body}</p>
-        <label className="fld" htmlFor="auth-email">{t.email}</label>
-        <input id="auth-email" className="input" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>
+        <div className="auth-pop-field">
+          <label className="fld" htmlFor="auth-email">{t.email}</label>
+          <input id="auth-email" className="input" type="email" autoComplete="email" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>
+        </div>
+        {message && <div className={"tiny save-status auth-pop-status "+(status==="error"?"error":"ok")} role="status">{message}</div>}
         <div className="auth-pop-actions">
           <button className="btn btn-primary focusable" disabled={!valid||status==="sending"||status==="sent"} onClick={sendLink}><Svg n="user" /> {status==="sending"?t.saveProgress.sending:(status==="sent"?t.authPrompt.emailSent:t.authPrompt.signIn)}</button>
           <button className="btn btn-outline focusable" onClick={onClose}>{t.authPrompt.keepLearning}</button>
         </div>
-        {message && <div className={"tiny save-status "+(status==="error"?"error":"ok")}>{message}</div>}
       </div>
     </div>
   );

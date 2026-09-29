@@ -7,6 +7,7 @@ import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
 import { cleanText } from "../../../lib/text";
 import { cefrIdx, validateForLevel, validateMaterialFit, materialId } from "../../../lib/cefr.mjs";
 import { selectTextbookMaterials } from "../../../lib/material-corpus";
+import { generateDutchMaterials } from "../../../lib/material-validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -46,6 +47,14 @@ export async function POST(req) {
       const duration = b.duration || "25-35 min";
       const spec = durationSpec(duration);
       const goal = b.goal || "General fluency";
+      if (lang === "Dutch") {
+        const result = await generateDutchMaterials({ level, difficulty: b.difficulty, goal, spec,
+          topics: Array.isArray(b.topics) ? b.topics : [], count: b.count,
+          history: Array.isArray(b.history) ? b.history : [], avoid: Array.isArray(b.avoid) ? b.avoid : [], seed: b.nonce,
+        }, { selectCorpus: selectTextbookMaterials, complete: (messages, options) => chatComplete(messages, { ...options, ...ph }), parse: parseJSON, enabled: AI.textEnabled });
+        console.log("[analyze:materials]", JSON.stringify({ requestId: ph.traceId, requestedLevel: level, count: result.materials.length, errors: result.errors }));
+        return Response.json(result);
+      }
       const topics = (Array.isArray(b.topics) ? b.topics : []).filter(Boolean).slice(0, 1);
       const n = Math.min(2, Math.max(1, Number(b.count) || 2));
       const tier = ["comfortable", "balanced"].includes(b.tier) ? b.tier : null;

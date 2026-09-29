@@ -354,6 +354,8 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .save-mini.error{border-color:hsl(0 72% 62%);background:hsl(0 72% 51%/.08);color:hsl(0 72% 43%)}
 .save-mini:disabled{cursor:default}
 .save-mini svg.i{font-size:14px}
+.collection-save-control{display:inline-grid;justify-items:center;gap:4px;flex:0 0 auto}
+.collection-save-error{max-width:170px;color:hsl(0 72% 43%);font-size:10.5px;font-weight:600;line-height:1.25;text-align:center;white-space:normal}
 .saved-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid hsl(var(--primary)/.5);background:hsl(var(--primary)/.14);border-radius:999px;padding:4px 8px;font-size:11.5px;font-weight:700;color:hsl(var(--foreground));white-space:nowrap}
 .saved-pill svg.i{font-size:13px}
 .saved-pill-btn{cursor:pointer;transition:.12s}
@@ -382,7 +384,10 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .auth-pop-icon{width:42px;height:42px;border-radius:10px;background:hsl(var(--primary)/.18);color:hsl(var(--foreground));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:20px}
 .auth-pop h2{margin-bottom:8px}
 .auth-pop p{color:hsl(var(--muted-foreground));font-size:14px;line-height:1.55;margin:0 auto 18px;max-width:330px}
-.auth-pop-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.auth-pop-field{text-align:left}
+.auth-pop-status{margin:10px 0 0}
+.auth-pop-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+.auth-pop-actions .btn{min-height:40px}
 .auth-confirm-card{max-width:480px;text-align:center}
 
 .account-page{max-width:720px;margin:0 auto}
@@ -479,6 +484,7 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .save-status.ok{color:hsl(var(--success))}
 .save-status.error{color:hsl(0 72% 43%)}
 .save-hint{margin-top:10px}
+.save-card .save-option + .save-hint{margin-bottom:18px}
 .donation-feedback{margin-top:16px;padding-top:14px;border-top:1px solid hsl(var(--border));text-align:left}
 .donation-feedback label{display:block;margin-bottom:7px}
 .donation-feedback textarea{min-height:74px;font-size:13px}

@@ -21,6 +21,8 @@ import { generateLesson } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
 import { clearLineTr } from "../../lib/trcache";
 import { cachedAiAnalyze } from "../../services/api";
+import { prepareImport } from "../../lib/text-chunks";
+import { rememberMaterial } from "../../lib/material-history";
 
 function stepPath(index){ const s=STEPS[Math.max(0,Math.min(STEPS.length-1,index))]; return "/learn/"+STEP_SLUG[s.mod]; }
 
@@ -157,7 +159,7 @@ function App(){
   function reviewSession(){ resetSession(); trackEvent("learning_session_started",{session_type:"review",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
   function go(id){ const idx=stepIndex(id); if(idx<0) return; goStep(idx); }
   function onContinue(){ const cur=STEPS[step]; trackEvent("learning_step_completed",{step_id:cur.id,module_id:cur.mod,step_number:step+1}); setDoneSet(prev=>new Set(prev).add(cur.id));
-    if(step===STEPS.length-1){ trackEvent("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { goStep(step+1); } }
+    if(step===STEPS.length-1){ if(lesson?.lang==="Dutch") rememberMaterial({...lesson.material,text},"completed"); saveChunkProgress(lesson,"completed"); trackEvent("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { goStep(step+1); } }
   function onSkip(){ const cur=STEPS[step]; trackEvent("learning_step_skipped",{step_id:cur.id,module_id:cur.mod,step_number:step+1});
     if(step===STEPS.length-1){ navigateTo("done","/done"); } else { goStep(step+1); } }
   function onPrev(){ goStep(Math.max(0,step-1)); }
@@ -166,12 +168,34 @@ function App(){
   function scanDone(list){ const arr=Array.isArray(list)?list:[]; setUserWords(arr); DB.set("unknownWords",arr); setLesson(cur=>cur?{...cur,userWords:arr}:cur); trackEvent("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
   function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
 
-  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
-    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L={...(await r.json()),localLessonId:crypto.randomUUID()}; setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
-      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
+  function saveChunkProgress(current, status){
+    if(!current?.importDocumentId) return;
+    const key="importDocument:"+current.importDocumentId;
+    const doc=DB.get(key,null); if(!doc) return;
+    DB.set(key,{...doc,chunks:doc.chunks.map((chunk,index)=>index===current.importChunkIndex?{...chunk,status:chunk.status==="completed"?"completed":status}:chunk)});
+  }
+  function saveLoadedLesson(result,d){
+    const {sourceDocument,...L}=result;
+    if(sourceDocument){
+      const key="importDocument:"+sourceDocument.id, prior=DB.get(key,null);
+      DB.set(key,{...sourceDocument,chunks:sourceDocument.chunks.map((chunk,index)=>({...chunk,status:prior?.chunks?.[index]?.id===chunk.id?prior.chunks[index].status:chunk.status}))});
     }
-    catch(e){ const L={...generateLesson(d.text,d.lang,d.level,d.goal,d.targetMin||null,d.material||null),localLessonId:crypto.randomUUID()}; setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
-      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?{...cur,focus:f}:cur); });
+    const actualText=L.text||d.text;
+    setText(actualText); DB.set("currentText",actualText);
+    if(L.lang==="Dutch") rememberMaterial({...L.material,text:actualText},"started");
+    saveChunkProgress(L,"started");
+    return L;
+  }
+  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
+    try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=saveLoadedLesson({...(await r.json()),localLessonId:crypto.randomUUID()},d); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
+      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?.localLessonId===L.localLessonId?{...cur,focus:f}:cur); });
+    }
+    catch(e){
+      const sourceDocument=d.lang==="Dutch"&&!d.material?prepareImport(d.text,{level:d.level,targetMin:d.targetMin,difficulty:d.difficulty}):null;
+      const actualText=sourceDocument?sourceDocument.text:d.text;
+      const L=saveLoadedLesson({...generateLesson(actualText,d.lang,d.level,d.goal,d.targetMin||null,d.material||null),text:actualText,
+        ...(sourceDocument?{sourceDocument,importDocumentId:sourceDocument.id,importChunkId:sourceDocument.selectedChunkId,importChunkIndex:sourceDocument.selectedChunkIndex}:{}),localLessonId:crypto.randomUUID()},d); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
+      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?.localLessonId===L.localLessonId?{...cur,focus:f}:cur); });
     } }
 
   if(screen==="login") return (<UIContext.Provider value={{uiLang,setUiLang,t}}>

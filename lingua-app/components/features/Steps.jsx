@@ -92,55 +92,40 @@ function VerbForms({info,t,lang}){
   </details>);
 }
 
-function pendingCollectionKey(type,item){
-  if(type==="word") return `word:${String(item?.lang||"").toLowerCase()}:${String(item?.itemKey||item?.lemma||item?.word||"").toLowerCase()}`;
-  return `grammar:${String(item?.lang||"").toLowerCase()}:${String(item?.itemKey||item?.title||"").toLowerCase()}`;
-}
-
 function CollectionSaveButton({type,item,auth,onRequireLogin,saved,onToggle}){
   const {t}=useUI();
-  const [busy,setBusy]=useState(false);
-  const [error,setError]=useState(false);
+  const [action,setAction]=useState("idle");
+  const [errorAction,setErrorAction]=useState("");
   const signedIn=!!auth?.session?.accessToken;
-  const actionKey=pendingCollectionKey(type,item);
-  useEffect(()=>{
-    if(!signedIn||busy) return;
-    const pending=DB.get("pendingCollectionSave",null);
-    if(!pending||pending.key!==actionKey) return;
-    if(saved){ DB.remove("pendingCollectionSave"); return; }
-    if(Date.now()-(pending.createdAt||0)>30*60*1000){ DB.remove("pendingCollectionSave"); return; }
-    let cancelled=false;
-    setBusy(true); setError(false);
-    Promise.resolve(onToggle()).then(()=>{
-      if(cancelled) return;
-      DB.remove("pendingCollectionSave");
-      setBusy(false);
-    }).catch(()=>{ if(!cancelled){setBusy(false);setError(true);} });
-    return ()=>{cancelled=true;};
-  },[signedIn,saved,actionKey]);
   async function click(e){
     e.preventDefault(); e.stopPropagation();
-    if(busy) return;
+    if(action!=="idle") return;
     if(!signedIn){
-      DB.set("pendingCollectionSave",{key:actionKey,type,createdAt:Date.now()});
+      DB.remove("pendingCollectionSave");
       onRequireLogin?.(typeof window!=="undefined"?window.location.pathname:"/");
       return;
     }
-    setBusy(true); setError(false);
+    const nextAction=saved?"removing":"saving";
+    setAction(nextAction); setErrorAction("");
     try{
       const wasSaved=saved;
       await onToggle?.();
       if(!wasSaved) trackEvent("collection_item_saved",{item_type:type,language:item?.lang,level:(item?.level||"").slice(0,2)});
     }catch(err){
-      setError(true);
+      setErrorAction(nextAction);
     }finally{
-      setBusy(false);
+      setAction("idle");
     }
   }
-  const label=error?t.collection.saveError:(busy?(saved?t.collection.removing:t.collection.saving):(saved?t.collection.saved:t.collection.save));
-  return (<button className={"save-mini focusable"+(saved?" saved":"")+(error?" error":"")} disabled={busy} onClick={click} title={saved?t.collection.removeHint:label} aria-pressed={saved?"true":"false"} aria-busy={busy?"true":"false"}>
-    <Svg n={saved?"bookmarkCheck":"bookmark"}/> <span>{label}</span>
-  </button>);
+  const busy=action!=="idle";
+  const label=action==="saving"?t.collection.saving:(action==="removing"?t.collection.removing:(saved?t.collection.saved:t.collection.save));
+  const errorMessage=errorAction==="saving"?t.collection.saveFailed:(errorAction==="removing"?t.collection.removeFailed:"");
+  return (<span className="collection-save-control">
+    <button className={"save-mini focusable"+(saved?" saved":"")+(errorAction?" error":"")} disabled={busy} onClick={click} title={errorMessage||(saved?t.collection.removeHint:label)} aria-pressed={saved?"true":"false"} aria-busy={busy?"true":"false"}>
+      <Svg n={saved?"bookmarkCheck":"bookmark"}/> <span>{label}</span>
+    </button>
+    {errorMessage && <span className="collection-save-error" role="status">{errorMessage}</span>}
+  </span>);
 }
 
 function GrammarStep({lesson,auth,onRequireLogin,onComplete,onContinue,onSkip,onPrev}){

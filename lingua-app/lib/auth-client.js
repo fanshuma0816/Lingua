@@ -169,6 +169,7 @@ async function completeSessionFromHash(hash) {
   const next = { ...session, user };
   DB.set(AUTH_KEY, next);
   if (user?.email) DB.set("email", user.email);
+  DB.remove("pendingCollectionSave");
   announceAuthComplete();
   return next;
 }
@@ -190,6 +191,7 @@ async function completeSessionFromTokenHash(tokenHash, type = "email") {
   if (!session) throw new Error("The sign-in link did not return a session.");
   DB.set(AUTH_KEY, session);
   if (session.user?.email) DB.set("email", session.user.email);
+  DB.remove("pendingCollectionSave");
   announceAuthComplete();
   return session;
 }
@@ -207,6 +209,7 @@ async function signOut(session) {
   }
   DB.remove(AUTH_KEY);
   DB.remove("pendingSaveAfterLogin");
+  DB.remove("pendingCollectionSave");
   DB.remove("loginNextPath");
 }
 
