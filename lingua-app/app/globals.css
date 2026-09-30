@@ -116,6 +116,7 @@
   .verb-table th,.verb-table td{padding:8px 10px;text-align:left;border-bottom:1px solid hsl(var(--border));vertical-align:top}
   .verb-table tr:last-child td{border-bottom:0}
   .verb-table th{font-size:11px;text-transform:uppercase;color:hsl(var(--muted-foreground));letter-spacing:0;font-weight:700}
+  .verb-table th:first-child,.verb-table td:first-child{width:118px;min-width:118px;white-space:nowrap}
   .verb-table th:not(:first-child),.verb-table td:not(:first-child){min-width:112px}
   .verb-tense-cell{font-weight:600;color:hsl(var(--foreground))}
   .verb-form-cell{font-weight:700;color:hsl(var(--foreground));white-space:nowrap}
@@ -233,6 +234,15 @@
   .bubble{max-width:82%;padding:10px 13px;border-radius:13px;font-size:14px;line-height:1.5}
   .bubble.ai{background:hsl(var(--secondary));align-self:flex-start;border-bottom-left-radius:4px}
   .bubble.me{background:hsl(var(--primary));color:hsl(var(--primary-foreground));align-self:flex-end;border-bottom-right-radius:4px}
+  .chat-transcript-card{margin-top:14px;padding:14px;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--card))}
+  .chat-transcript-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:13px}
+  .chat-turn-feedback{display:grid;gap:5px;margin-top:12px;padding:12px;border-radius:10px;background:hsl(var(--background));font-size:13.5px;line-height:1.5}
+  .chat-feedback-summary{margin-top:10px;line-height:1.5}
+  .writing-task{display:grid;gap:12px}
+  .writing-points{margin:9px 0 0;padding-left:19px;color:hsl(var(--muted-foreground));font-size:13px;line-height:1.5}
+  .writing-points li{margin-bottom:4px}
+  .writing-starters{display:flex;flex-wrap:wrap;gap:7px;padding-top:11px;border-top:1px solid hsl(var(--border))}
+  .writing-starters button{cursor:pointer;font:inherit}
   .gbar{height:30px;border-radius:8px;background:hsl(var(--secondary));overflow:hidden;position:relative}
   .gbar>span{position:absolute;left:0;top:0;bottom:0;border-radius:8px;transition:width .8s ease}
   .gbar .before{background:hsl(240 5% 72%)} .gbar .after{background:hsl(var(--success))}
@@ -364,15 +374,17 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
   .saved-pill-btn:hover{border-color:hsl(0 72% 55%);background:hsl(0 72% 51%/.10);color:hsl(0 72% 43%)}
 }
 
-/* Recall: graduated retrieval, answer differences, and lesson evidence. */
-.recall-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
-.recall-levels span{border:1px solid hsl(var(--border));border-radius:10px;padding:9px 12px;color:hsl(var(--muted-foreground));font-size:13px;text-align:center}
-.recall-levels span.on{border-color:hsl(var(--primary));background:hsl(var(--primary)/.1);color:hsl(var(--foreground));font-weight:700}
-.recall-levels span.done{border-color:hsl(var(--success)/.45);background:hsl(var(--success)/.08);color:hsl(var(--success))}
+/* Recall: graduated retrieval and answer differences. */
+.recall-level-tabs{display:flex;width:100%;margin:14px 0}
+.recall-level-tabs .tab{flex:1;font-size:14px;padding:10px 14px}
 .recall-card{margin-top:10px}
 .recall-mode-label{display:inline-flex;margin:16px 0 8px;padding:4px 9px;border-radius:999px;background:hsl(var(--secondary));font-size:12px;font-weight:700}
 .recall-listen{display:flex;margin:10px 0 14px}
 .recall-prompt{font-size:20px;line-height:1.65;font-weight:600;margin:10px 0 20px;padding:16px;border-radius:12px;background:hsl(var(--secondary))}
+.recall-blank-group{display:inline-flex;align-items:flex-end;gap:7px;margin:0 5px;vertical-align:baseline}
+.recall-word-blank{display:inline-block;width:var(--blank-size);min-width:34px;height:1.1em;border-bottom:2px solid currentColor}
+.recall-answer-input{border:0;background:hsl(var(--secondary));box-shadow:none}
+.recall-answer-input:focus{box-shadow:0 0 0 2px hsl(var(--ring));background:hsl(var(--background))}
 .recall-check-actions{justify-content:space-between;margin-top:12px}
 .recall-feedback{margin-top:16px;padding:14px;border-radius:12px;border:1px solid hsl(var(--border))}
 .recall-feedback.accepted{border-color:hsl(var(--success)/.45);background:hsl(var(--success)/.07)}
@@ -388,23 +400,17 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .recall-diff-words .missing{background:hsl(var(--warm)/.18);border-bottom:2px solid hsl(var(--warm))}
 .recall-category-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .recall-result-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:14px}
-.recall-reference{margin-top:14px;padding:13px;border-radius:10px;background:hsl(var(--secondary))}
-.recall-evidence-card{text-align:left}
-.recall-evidence-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
-.recall-evidence-stats div{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:10px;background:hsl(var(--secondary));text-align:center}
-.recall-evidence-stats b{font-size:24px}
-.recall-evidence-stats span{font-size:12px;color:hsl(var(--muted-foreground))}
-.recall-evidence-section{margin-top:16px}
-.recall-evidence-section h3{font-size:13px;margin:0 0 8px}
-.recall-review-item{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid hsl(var(--border))}
-.recall-review-item span{text-align:right}
+.recall-revealed-answer{margin-top:14px;padding:14px;border-radius:12px;background:hsl(var(--secondary))}
+.recall-revealed-line{font-size:17px;font-weight:600;line-height:1.65}
+.recall-focus-phrase{display:inline;border:0;border-bottom:2px solid hsl(var(--primary));background:hsl(var(--primary)/.18);color:inherit;border-radius:4px;padding:1px 3px;font:inherit;line-height:inherit}
+.recall-revealed-tools{justify-content:space-between;margin-top:8px}
+.recall-learning-point{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:7px 9px;margin-top:10px;padding-top:10px;border-top:1px solid hsl(var(--border))}
+.recall-learning-point p{grid-column:1/-1;margin:0;color:hsl(var(--muted-foreground));font-size:13px;line-height:1.5}
 
 @media(max-width:640px){
   .recall-diff-line{grid-template-columns:1fr}
-  .recall-evidence-stats{grid-template-columns:1fr}
-  .recall-evidence-stats div{flex-direction:row;align-items:center;justify-content:space-between;text-align:left}
-  .recall-review-item{flex-direction:column}
-  .recall-review-item span{text-align:left}
+  .recall-level-tabs .tab{padding:9px 7px;font-size:12.5px}
+  .recall-blank-group{gap:5px}
 }
 
 .learning-card-copy{flex:1;min-width:0;overflow-wrap:anywhere}

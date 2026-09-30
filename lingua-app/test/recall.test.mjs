@@ -25,8 +25,18 @@ test("fallback plan uses exact phrases and mixes in dictation",()=>{
   ];
   const items=recall.buildFallbackRecallPlan(sentences,["trein","rekening"],3);
   assert.equal(items.length,3);
-  items.forEach(item=>assert.ok(item.sourceSentence.includes(item.targetPhrase)));
+  items.forEach(item=>{
+    assert.ok(item.sourceSentence.includes(item.targetPhrase));
+    assert.equal(item.hiddenWords.length,item.targetPhrase.trim().split(/\s+/).length);
+    assert.equal(item.clozeBefore+item.targetPhrase+item.clozeAfter,item.sourceSentence);
+  });
   assert.ok(items.some(item=>item.clozeType==="dictation"));
+});
+
+test("fallback without marked words keeps a modal pattern together",()=>{
+  const [item]=recall.buildFallbackRecallPlan(["Voor sommige scholen moet je je kind al inschrijven als ze baby zijn."],[],1);
+  assert.equal(item.targetPhrase,"moet je je kind al inschrijven");
+  assert.equal(item.hiddenWords.length,6);
 });
 
 test("mastery distinguishes independent, supported, developing, and review",()=>{

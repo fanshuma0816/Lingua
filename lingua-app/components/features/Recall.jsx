@@ -5,7 +5,7 @@ import { Purpose, Say, StepHead, Teacher } from "../ui/elements";
 import { LANG_CODE } from "../../config/constants";
 import { useUI } from "../../hooks/useUI";
 import { speak, stopSpeak } from "../../lib/audio";
-import { compareRecallAnswer, masteryForRecallItem, mergeRecallPlan, summarizeRecall } from "../../lib/recall";
+import { compareRecallAnswer, masteryForRecallItem, mergeRecallPlan, normalizeRecallText } from "../../lib/recall";
 import { DB } from "../../lib/storage";
 import { cachedAiAnalyze } from "../../services/api";
 
@@ -29,6 +29,32 @@ function RecallFeedback({result,t}){
   </div>;
 }
 
+function recallLearningPoint(item,lesson,t){
+  const phrase=normalizeRecallText(item.targetPhrase);
+  const vocab=(lesson.focus?.vocab||[]).find(entry=>phrase.includes(normalizeRecallText(entry.word)));
+  if(vocab) return {kind:t.recall.pointExpression,title:vocab.word||item.targetPhrase,body:vocab.reason||t.recall.expressionExplanation};
+  if(/\b(moet|moeten|kan|kunnen|wil|willen|mag|mogen|zal|zullen)\b/i.test(item.targetPhrase)){
+    return {kind:t.recall.pointGrammar,title:t.recall.modalTitle,body:t.recall.modalExplanation};
+  }
+  if(/\b(omdat|als|dat|terwijl|hoewel|wanneer)\b/i.test(item.targetPhrase)){
+    return {kind:t.recall.pointGrammar,title:t.recall.subclauseTitle,body:t.recall.subclauseExplanation};
+  }
+  return {kind:t.recall.pointExpression,title:item.targetPhrase,body:t.recall.expressionExplanation};
+}
+
+function RevealedAnswer({item,lesson,t,open,onToggle}){
+  const sentence=item.sourceSentence;
+  const at=sentence.indexOf(item.targetPhrase);
+  const point=recallLearningPoint(item,lesson,t);
+  return <div className="recall-revealed-answer">
+    <div className="recall-revealed-line notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>
+      {at>=0?<>{sentence.slice(0,at)}<button className="recall-focus-phrase" onClick={onToggle}>{item.targetPhrase}</button>{sentence.slice(at+item.targetPhrase.length)}</>:sentence}
+    </div>
+    <div className="row recall-revealed-tools"><Say text={item.sourceSentence} lang={lesson.lang}/><button className="btn btn-ghost btn-sm" onClick={onToggle}>{t.recall.whyTested}</button></div>
+    {open&&<div className="recall-learning-point"><span className="badge badge-outline">{point.kind}</span><b>{point.title}</b><p>{point.body}</p></div>}
+  </div>;
+}
+
 function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false}){
   const {t,uiLang}=useUI();
   const lessonId=lesson?.localLessonId||lesson?.material?.id||lesson?.id||"current";
@@ -41,12 +67,14 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
   const filteredItems=reviewOnly?initialItems.filter(item=>["developing","review"].includes(masteryForRecallItem(item))):initialItems;
   const [items,setItems]=useState(filteredItems.length?filteredItems:initialItems);
   const [stage,setStage]=useState(reviewOnly?"sentence":(stored?.lessonId===lessonId?stored.stage||"cloze":"cloze"));
-  const [idx,setIdx]=useState(reviewOnly?0:(stored?.lessonId===lessonId?stored.idx||0:0));
+  const [idxByStage,setIdxByStage]=useState(()=>stored?.lessonId===lessonId&&stored.idxByStage?stored.idxByStage:{cloze:stored?.stage==="cloze"?stored?.idx||0:0,sentence:stored?.stage==="sentence"?stored?.idx||0:0});
   const [draft,setDraft]=useState("");
   const [feedback,setFeedback]=useState(null);
   const [checking,setChecking]=useState(false);
   const [listening,setListening]=useState(false);
+  const [pointOpen,setPointOpen]=useState(false);
   const recRef=useRef(null);
+  const idx=Math.max(0,Math.min(items.length-1,idxByStage[stage]||0));
   const item=items[idx]||items[0];
 
   useEffect(()=>{
@@ -64,10 +92,10 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
   },[lessonId,uiLang]);
 
   useEffect(()=>{
-    DB.set("recallState",{version:2,lessonId,stage,idx,items});
+    DB.set("recallState",{version:2,lessonId,stage,idx,idxByStage,items});
     const answers={}; items.forEach((entry,i)=>{ const attempt=entry.fullSentenceAttempts?.at(-1); if(attempt?.answer) answers[i]=attempt.answer; });
     DB.set("recallAnswers",answers);
-  },[lessonId,stage,idx,items]);
+  },[lessonId,stage,idx,idxByStage,items]);
   useEffect(()=>()=>stopMic(),[]);
 
   if(!item) return <div><StepHead eyebrow={t.nav.mods.recall} title={t.recall.title} onSkip={onSkip} skipLabel={t.skipStep}/><Teacher>{t.recall.noItems}</Teacher></div>;
@@ -76,8 +104,17 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
   const currentAttempts=stage==="cloze"?(item.attempts||[]):(item.fullSentenceAttempts||[]);
   const hasResult=!!feedback;
   const revealed=stage==="cloze"?!!item.revealedCloze:!!item.revealedSentence;
+  const clozeComplete=items.every(entry=>(entry.attempts||[]).length>0);
+  const hiddenWords=item.hiddenWords?.length?item.hiddenWords:(item.targetPhrase.match(/[\p{L}\p{N}][\p{L}\p{N}'’\-]*/gu)||[]);
+  const phraseAt=item.sourceSentence.indexOf(item.targetPhrase);
+  const clozeBefore=item.clozeBefore??(phraseAt>=0?item.sourceSentence.slice(0,phraseAt):"");
+  const clozeAfter=item.clozeAfter??(phraseAt>=0?item.sourceSentence.slice(phraseAt+item.targetPhrase.length):"");
 
   function updateCurrent(updater){ setItems(current=>current.map((entry,i)=>i===idx?updater(entry):entry)); }
+  function setStageIndex(next){ setIdxByStage(current=>({...current,[stage]:Math.max(0,Math.min(items.length-1,next))})); }
+  function switchStage(next){
+    stopMic(); setFeedback(null); setDraft(""); setPointOpen(false); setStage(next);
+  }
   function stopMic(){ if(recRef.current){ try{recRef.current.stop(); }catch(e){} recRef.current=null; } setListening(false); }
   const SR=typeof window!=="undefined"&&(window.SpeechRecognition||window.webkitSpeechRecognition);
   function startMic(){
@@ -110,17 +147,17 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
     setFeedback(compareRecallAnswer(draft,stage==="cloze"?item.targetPhrase:item.sourceSentence,{sentence:stage==="sentence"}));
   }
 
-  function retry(){ setFeedback(null); setDraft(""); }
+  function retry(){ setFeedback(null); setDraft(""); setPointOpen(false); }
   function advance(){
-    stopMic(); setFeedback(null); setDraft("");
-    if(idx<total-1){ setIdx(i=>i+1); return; }
-    if(stage==="cloze"){ setStage("sentence"); setIdx(0); return; }
+    stopMic(); setFeedback(null); setDraft(""); setPointOpen(false);
+    if(idx<total-1){ setStageIndex(idx+1); return; }
+    if(stage==="cloze"){ setStage("sentence"); return; }
     onComplete?.(); onContinue?.();
   }
   function back(){
-    stopMic(); setFeedback(null); setDraft("");
-    if(idx>0){ setIdx(i=>i-1); return; }
-    if(stage==="sentence"&&!reviewOnly){ setStage("cloze"); setIdx(total-1); return; }
+    stopMic(); setFeedback(null); setDraft(""); setPointOpen(false);
+    if(idx>0){ setStageIndex(idx-1); return; }
+    if(stage==="sentence"&&!reviewOnly){ setStage("cloze"); return; }
     onPrev?.();
   }
 
@@ -128,9 +165,9 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
     <StepHead eyebrow={t.nav.mods.recall} title={reviewOnly?t.recall.reviewTitle:t.recall.title} onSkip={onSkip} skipLabel={t.skipStep}/>
     <Teacher>{stage==="cloze"?t.recall.clozeTeacher:t.recall.sentenceTeacher}</Teacher>
     <Purpose>{stage==="cloze"?t.recall.clozePurpose:t.recall.sentencePurpose}</Purpose>
-    <div className="recall-levels" aria-label={t.recall.levelProgress}>
-      <span className={stage==="cloze"?"on":"done"}>1 · {t.recall.levelCloze}</span>
-      <span className={stage==="sentence"?"on":""}>2 · {t.recall.levelSentence}</span>
+    <div className="tabs recall-level-tabs" aria-label={t.recall.levelProgress}>
+      <button className={"tab"+(stage==="cloze"?" on":"")} onClick={()=>switchStage("cloze")}>1 · {t.recall.levelCloze} {clozeComplete?"✓":""}</button>
+      <button className={"tab"+(stage==="sentence"?" on":"")} onClick={()=>switchStage("sentence")}>2 · {t.recall.levelSentence}</button>
     </div>
     <div className="card card-p recall-card">
       <div className="row" style={{justifyContent:"space-between"}}>
@@ -141,13 +178,15 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
         <div className="recall-mode-label">{item.clozeType==="dictation"?t.recall.dictation:t.recall.blindCloze}</div>
         {item.clozeType==="dictation"&&<button className="btn btn-outline recall-listen" onClick={()=>speak(item.sourceSentence,lesson.lang)}>▶ {t.recall.listen}</button>}
         {item.clozeType!=="dictation"&&item.translation&&<div className="translation-line">{item.translation}</div>}
-        <div className="recall-prompt notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>{item.clozeText}</div>
+        {!revealed?<div className="recall-prompt notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>
+          <span>{clozeBefore}</span><span className="recall-blank-group" aria-label={t.recall.blankCount(hiddenWords.length)}>{hiddenWords.map((word,index)=><span className="recall-word-blank" style={{"--blank-size":Math.max(3,Math.min(10,word.length))+"ch"}} key={`${word}-${index}`}/>)}</span><span>{clozeAfter}</span>
+        </div>:<RevealedAnswer item={item} lesson={lesson} t={t} open={pointOpen} onToggle={()=>setPointOpen(value=>!value)}/>}
       </>:<>
         <h3 className="lbl">{t.recall.meaningCue}</h3>
         <div className="translation-line">{item.translation||t.recall.rebuildCue}</div>
       </>}
       <h3 className="lbl">{stage==="cloze"?t.recall.missingExpression:t.recall.yourDutch}</h3>
-      <textarea value={draft} onChange={e=>{setDraft(e.target.value); if(feedback)setFeedback(null);}} style={{minHeight:stage==="cloze"?58:96}} placeholder={stage==="cloze"?t.recall.clozePlaceholder:t.recall.placeholder}/>
+      <textarea className="recall-answer-input" value={draft} onChange={e=>{setDraft(e.target.value); if(feedback)setFeedback(null);}} style={{minHeight:stage==="cloze"?58:96}} placeholder={stage==="cloze"?t.recall.clozePlaceholder:t.recall.placeholder}/>
       <div className="row recall-check-actions">
         {stage==="sentence"&&SR?<button className={"btn btn-sm "+(listening?"btn-primary":"btn-outline")} onClick={listening?stopMic:startMic}>🎤 {t.recall.speak}</button>:<span/>}
         <button className="btn btn-primary btn-sm" disabled={!draft.trim()||checking} onClick={check}>{checking?t.recall.checking:t.recall.check}</button>
@@ -158,42 +197,10 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
         {!feedback.accepted&&!revealed&&<button className="btn btn-ghost btn-sm" onClick={reveal}>{t.recall.showAnswer}</button>}
         {(feedback.accepted||revealed)&&<button className="btn btn-primary btn-sm" onClick={advance}>{idx<total-1?t.recall.next:stage==="cloze"?t.recall.nextLevel:t.continue} →</button>}
       </div>}
-      {revealed&&<div className="recall-reference">
-        <h3 className="lbl">{t.recall.reference}</h3>
-        <div className="notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>{stage==="cloze"?item.targetPhrase:item.sourceSentence}</div>
-        <Say text={item.sourceSentence} lang={lesson.lang}/>
-      </div>}
+      {revealed&&stage==="sentence"&&<RevealedAnswer item={item} lesson={lesson} t={t} open={pointOpen} onToggle={()=>setPointOpen(value=>!value)}/>}
     </div>
     <div className="sent-nav"><button className="btn btn-ghost btn-sm" onClick={back}>← {t.back}</button></div>
   </div>;
 }
 
-function RecallEvidence({lesson}){
-  const {t}=useUI();
-  const lessonId=lesson?.localLessonId||lesson?.material?.id||lesson?.id||"current";
-  const state=DB.get("recallState",null);
-  if(state?.lessonId!==lessonId||!Array.isArray(state.items)||!state.items.length) return null;
-  const summary=summarizeRecall(state.items);
-  return <div className="done-card recall-evidence-card">
-    <div className="done-card-title">{t.recallEvidence.title}</div>
-    <p className="done-card-note">{t.recallEvidence.subtitle}</p>
-    <div className="recall-evidence-stats">
-      <div><b>{summary.counts.independent}</b><span>{t.recallEvidence.independent}</span></div>
-      <div><b>{summary.counts.supported}</b><span>{t.recallEvidence.supported}</span></div>
-      <div><b>{summary.counts.developing+summary.counts.review}</b><span>{t.recallEvidence.toReview}</span></div>
-    </div>
-    {!!summary.mastered.length&&<section className="recall-evidence-section">
-      <h3>{t.recallEvidence.learned}</h3>
-      <div className="row wrap" style={{gap:6}}>{summary.mastered.map(text=><span className="badge" key={text}>{text}</span>)}</div>
-    </section>}
-    {!!summary.review.length&&<section className="recall-evidence-section review">
-      <h3>{t.recallEvidence.reviewTitle}</h3>
-      {summary.review.map(entry=><div className="recall-review-item" key={entry.id}>
-        <b className="notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>{entry.target}</b>
-        <span className="tiny muted">{entry.categories.length?entry.categories.map(key=>t.recall.categories[key]).filter(Boolean).join(" · "):t.recallEvidence.needsPractice}</span>
-      </div>)}
-    </section>}
-  </div>;
-}
-
-export { RecallEvidence, RecallFeedback, RecallStep };
+export { RecallFeedback, RecallStep };

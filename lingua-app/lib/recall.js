@@ -96,10 +96,17 @@ function phraseFromSentence(sentence,userWords=[]){
   if(!matches.length) return "";
   const wanted=new Set((userWords||[]).map(normalizeRecallText));
   let pivot=matches.findIndex(m=>wanted.has(normalizeRecallText(m[0])));
-  if(pivot<0) pivot=Math.max(0,Math.floor(matches.length/2)-1);
-  const size=Math.min(matches.length>=5?4:Math.max(2,matches.length),6);
-  let start=Math.max(0,pivot-1);
-  start=Math.min(start,Math.max(0,matches.length-size));
+  let size=Math.min(matches.length,4);
+  let start=0;
+  if(pivot>=0){
+    size=Math.min(matches.length,3);
+    start=Math.min(pivot,Math.max(0,matches.length-size));
+  }else{
+    const modal=matches.findIndex(match=>/^(moet|moeten|kan|kunnen|wil|willen|mag|mogen|zal|zullen)$/i.test(match[0]));
+    const connector=matches.findIndex(match=>/^(omdat|als|dat|terwijl|hoewel|wanneer)$/i.test(match[0]));
+    if(modal>=0){ start=modal; size=Math.min(6,matches.length-start); }
+    else if(connector>=0){ start=connector; size=Math.min(5,matches.length-start); }
+  }
   const end=Math.min(matches.length,start+size);
   const from=matches[start].index;
   const last=matches[end-1];
@@ -110,12 +117,18 @@ function makeRecallItem(sentence,index,userWords=[],overrides={}){
   const targetPhrase=String(overrides.targetPhrase||phraseFromSentence(sentence,userWords)).trim();
   const at=targetPhrase?sentence.indexOf(targetPhrase):-1;
   const clozeText=at>=0?sentence.slice(0,at)+"_____"+sentence.slice(at+targetPhrase.length):sentence;
+  const clozeBefore=at>=0?sentence.slice(0,at):sentence;
+  const clozeAfter=at>=0?sentence.slice(at+targetPhrase.length):"";
+  const hiddenWords=wordMatches(targetPhrase).map(match=>match[0]);
   return {
     id:`recall-${index}-${normalizeRecallText(sentence).slice(0,24).replace(/\s/g,"-")}`,
     sourceSentence:sentence,
     translation:overrides.translation||"",
     targetPhrase,
     clozeText,
+    clozeBefore,
+    clozeAfter,
+    hiddenWords,
     clozeType:overrides.clozeType||(index%3===2?"dictation":"blind"),
     attempts:[],
     fullSentenceAttempts:[],

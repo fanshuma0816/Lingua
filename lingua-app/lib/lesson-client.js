@@ -7,16 +7,26 @@ import { cleanText, contextFor, pickVocab, sentencesOf, words } from "./text";
 function practiceQuestion(lesson,shownLang,uiLang){
   const sents=lesson.sents||[];
   const fullText=(sents||[]).join(" ").toLowerCase();
+  const generated=lesson.focus?.writingTask;
+  if(generated?.situation&&generated?.goal){
+    const role=generated.role?(uiLang==="zh"?`你的身份：${generated.role}。`:`Your role: ${generated.role}.`):"";
+    const recipient=generated.recipient?(uiLang==="zh"?`写给：${generated.recipient}。`:`You are writing to ${generated.recipient}.`):"";
+    return {
+      prompt:[generated.situation,role,recipient,generated.goal].filter(Boolean).join(" "),
+      points:Array.isArray(generated.points)?generated.points.slice(0,3):[],
+      starters:Array.isArray(generated.starters)?generated.starters.slice(0,3):[],
+    };
+  }
   const scene=writingScene(fullText,uiLang);
   const easy=levelIdx(lesson.level)<=1;
-  if(uiLang==="zh"){
-    return easy
-      ? `${scene.zh} 请用 ${shownLang} 写 2–3 个短句：你需要什么、你会选择什么，或者你接下来会说什么。`
-      : `${scene.zh} 请用 ${shownLang} 写 3–5 句：先写发生了什么，再补一句你的看法、选择或类似经历。`;
-  }
-  return easy
-    ? `${scene.en} Write 2–3 short ${shownLang} sentences about what you need, what you choose, or what you say next.`
-    : `${scene.en} Write 3–5 ${shownLang} sentences: first say what is happening, then add your opinion, choice, or a similar experience.`;
+  const local=uiLang==="zh"?scene.zh:scene.en;
+  return {
+    prompt:uiLang==="zh"
+      ? `${local.situation} ${local.goal} 请用 ${shownLang} 写 ${easy?"2–3 个短句":"3–5 句"}。`
+      : `${local.situation} ${local.goal} Write ${easy?"2–3 short":"3–5"} ${shownLang} sentences.`,
+    points:local.points,
+    starters:scene.starters,
+  };
 }
 
 function writingScene(text,uiLang){
@@ -24,35 +34,37 @@ function writingScene(text,uiLang){
   const match=(re)=>re.test(t);
   const scenes=[
     [/\b(supermarkt|brood|melk|appels|rijst|kassa)\b/i,
-      "You are at the supermarket with Mila. She is buying bread, milk, apples, and rice.",
-      "想象你和 Mila 在超市。她正在买面包、牛奶、苹果和米。"],
+      {situation:"You are shopping with Mila for the items in the text.",goal:"Send her a short message to agree what to buy.",points:["Name two things you need.","Say which item you choose.","Ask one practical question."]},
+      {situation:"你正在和 Mila 按照文本里的清单购物。",goal:"请给她写一条短消息，商量要买什么。",points:["说出两样需要的东西。","说明你选择哪一样。","问一个实际问题。"]},["We hebben … nodig.","Ik kies …","Zullen we …?"]],
     [/\b(thuis|koffie|raam|pauze)\b/i,
-      "Someone is working at home and takes a short coffee break by the open window.",
-      "想象有人在家工作，十点做咖啡、打开窗户，短暂休息一下。"],
+      {situation:"You are working at home in the situation from the text.",goal:"Tell a colleague how you organise your break.",points:["Say when you take a break.","Say what you do.","Explain why it helps."]},
+      {situation:"你正在经历文本里的居家工作场景。",goal:"请告诉同事你会怎样安排休息。",points:["说明何时休息。","说明你会做什么。","解释这为什么有帮助。"]},["Om … uur …","Tijdens mijn pauze …","Dat helpt omdat …"]],
     [/\b(bibliotheek|boek|taalgroep)\b/i,
-      "Someone is at the library choosing a book and noticing a language group.",
-      "想象有人在图书馆选书，也看到一个语言小组的信息。"],
+      {situation:"You are at the library from the text and notice the language group.",goal:"Write to a friend about whether you want to join.",points:["Mention the book or group.","Say what interests you.","Suggest a next step."]},
+      {situation:"你来到文本里的图书馆，也看到了语言小组的信息。",goal:"请写信告诉朋友你是否想参加。",points:["提到书或语言小组。","说明哪里吸引你。","建议下一步怎么做。"]},["Ik heb … gezien.","Ik wil graag …","Ga je mee?"]],
     [/\b(dokter|assistente?|afspraak|moe)\b/i,
-      "Someone calls the doctor's office and gets an appointment for later today.",
-      "想象有人打电话给诊所，并约到了今天晚些时候的时间。"],
+      {situation:"You need the doctor's appointment described in the text.",goal:"Write what you would say to the assistant.",points:["Describe the problem briefly.","Ask for an appointment.","Confirm the time."]},
+      {situation:"你需要预约文本里提到的医生。",goal:"请写下你会怎样和诊所助理说明。",points:["简短说明问题。","提出预约请求。","确认时间。"]},["Ik voel me …","Kan ik een afspraak …?","Dus om … uur?"]],
     [/\b(pasta|tomaten|kaas|koken|water)\b/i,
-      "Two friends are cooking a simple meal together.",
-      "想象两个朋友正在一起做一顿简单的饭。"],
+      {situation:"You are cooking the meal from the text with a friend.",goal:"Divide the tasks in a short message.",points:["Say what you will prepare.","Ask your friend to do one thing.","Mention what happens next."]},
+      {situation:"你正和朋友一起做文本里的那顿饭。",goal:"请用一条短消息分配任务。",points:["说明你会准备什么。","请朋友做一件事。","说明接下来做什么。"]},["Ik maak …","Kun jij …?","Daarna …"]],
     [/\b(school|bericht|zoon|agenda|les)\b/i,
-      "A parent receives a school message and needs to adjust the day.",
-      "想象一位家长收到学校通知，需要调整当天安排。"],
+      {situation:"You are the parent in the school situation from the text.",goal:"Reply to the school with a clear plan.",points:["Refer to the school message.","Say what you can or cannot do.","Ask or confirm the next step."]},
+      {situation:"你是文本里收到学校通知的家长。",goal:"请回复学校，说明你的具体安排。",points:["提到学校通知。","说明你能做或不能做什么。","询问或确认下一步。"]},["Bedankt voor het bericht.","Ik kan …","Klopt het dat …?"]],
     [/\b(trein|station|reizigers|reizen)\b/i,
-      "Someone is planning or taking a train trip and thinking about the journey.",
-      "想象有人正在计划或乘坐火车，关注这段行程。"],
+      {situation:"You are planning the train journey from the text.",goal:"Message a travel companion with the plan.",points:["Mention the departure time or station.","Say what you prefer.","Ask for confirmation."]},
+      {situation:"你正在计划文本里的火车行程。",goal:"请给同行者发消息说明安排。",points:["提到出发时间或车站。","说明你的选择。","请对方确认。"]},["De trein vertrekt …","Ik wil liever …","Is dat goed?"]],
     [/\b(weekend|markt|cadeau|station|koffie)\b/i,
-      "Two people are making simple weekend plans together.",
-      "想象两个人正在一起安排周末计划。"],
+      {situation:"You are making the weekend plan from the text with a friend.",goal:"Suggest a concrete plan and invite a response.",points:["Suggest one activity.","Give a time or place.","Ask what your friend prefers."]},
+      {situation:"你正和朋友安排文本里的周末活动。",goal:"请提出一个具体计划，并请对方回应。",points:["建议一项活动。","给出时间或地点。","询问朋友更喜欢什么。"]},["Zullen we …?","We kunnen om …","Wat vind jij?"]],
   ];
   const found=scenes.find(([re])=>match(re));
-  if(found) return {en:found[1],zh:found[2]};
-  return uiLang==="zh"
-    ? {en:"The text describes a small everyday situation.",zh:"这段文本描述了一个日常小场景。"}
-    : {en:"The text describes a small everyday situation.",zh:"这段文本描述了一个日常小场景。"};
+  if(found) return {en:found[1],zh:found[2],starters:found[3]};
+  return {
+    en:{situation:"Use the everyday situation from the text.",goal:"Write a message to someone involved in it.",points:["Mention one concrete detail from the text.","Say what you need, think or choose.","Add a question or next step."]},
+    zh:{situation:"请使用文本里的日常场景。",goal:"给场景中的一个人写一条消息。",points:["提到文本里的一个具体细节。","说明你的需要、想法或选择。","补充一个问题或下一步。"]},
+    starters:["In de tekst …","Ik denk dat …","Wat vind jij?"],
+  };
 }
 
 function recommendLevel(text,sents){ const ws=words(text); if(!ws.length) return LEVELS[1];

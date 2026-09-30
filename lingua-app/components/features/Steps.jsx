@@ -19,7 +19,6 @@ import { STOP, grammarExamples, meaningParts, words } from "../../lib/text";
 import { getLineTr, setLineTr } from "../../lib/trcache";
 import { spokenTextForLine, voiceRoleForLine } from "../../lib/voices";
 import { cachedAiAnalyze, chatFallback } from "../../services/api";
-import { RecallEvidence } from "./Recall";
 
 // Quick scan — the learner taps words they don't know straight in the text.
 // All words look the same (no difficulty hints, no CEFR badges); the marked
@@ -508,7 +507,8 @@ function AIWrite({lesson,onDone}){
   const {lang,level,vocab,sents,focus}=lesson;
   const focusWords=(focus&&Array.isArray(focus.vocab)?focus.vocab.map(x=>x.word).filter(Boolean):[]);
   const shownLang=langName(t,lang);
-  const question=practiceQuestion(lesson,shownLang,uiLang);
+  const writingTask=practiceQuestion(lesson,shownLang,uiLang);
+  const question=[writingTask.prompt,...writingTask.points].join("\n");
   const [textv,setTextv]=useState(DB.get("aiPractice","")); const [fb,setFb]=useState(null); // null | "loading" | {real} | "mock"
   useEffect(()=>DB.set("aiPractice",textv),[textv]);
   async function getFeedback(){
@@ -524,11 +524,16 @@ function AIWrite({lesson,onDone}){
       DB.set("aiPracticeFeedback",{question,text:textv.trim(),feedback:null,simulated:true});
     }
   }
+  function useStarter(starter){ setTextv(value=>value.trim()?`${value.trim()} ${starter}`:starter); }
   const real=fb && fb!=="loading" && fb!=="mock";
   return (<div>
     <div className="row wrap" style={{gap:7,marginBottom:14}}>{(focusWords.length?focusWords:vocab.slice(0,8).map(v=>v.word)).slice(0,8).map(w=><span key={w} className="badge notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{w}</span>)}</div>
-    <div className="card card-p" style={{marginBottom:14}}><div className="row" style={{gap:10}}>
-      <div className="tface">👩‍🏫</div><div style={{fontWeight:500}}>{question}</div></div></div>
+    <div className="card card-p writing-task" style={{marginBottom:14}}><div className="row" style={{gap:10,alignItems:"flex-start"}}>
+      <div className="tface">👩‍🏫</div><div><div style={{fontWeight:500}}>{writingTask.prompt}</div>
+        {!!writingTask.points.length&&<ul className="writing-points">{writingTask.points.map((point,index)=><li key={index}>{point}</li>)}</ul>}
+      </div></div>
+      {!!writingTask.starters.length&&<div className="writing-starters">{writingTask.starters.map(starter=><button type="button" className="badge notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} key={starter} onClick={()=>useStarter(starter)}>{starter}</button>)}</div>}
+    </div>
     <textarea style={{minHeight:130}} value={textv} onChange={e=>setTextv(e.target.value)} placeholder={t.aiUse.writePlaceholder(shownLang)}/>
     <div className="row writing-actions" style={{justifyContent:"space-between",marginTop:12}}>
       <span className="tiny muted">{t.aiUse.saved(textv.trim().split(/\s+/).filter(Boolean).length)}</span>
@@ -567,14 +572,19 @@ function AIChat({lesson,onNext,onDone}){
   const sample=(sents||[]).slice(0,8).join(" ");
   const partner=PARTNER[lang]||PARTNER._;
   const fallback=chatFallback(lang,vwords[0],sents[0]);
-  const [msgs,setMsgs]=useState([]); const [draft,setDraft]=useState("");
-  const [busy,setBusy]=useState(false); const [turns,setTurns]=useState(0);
-  const [speaking,setSpeaking]=useState(false);
-  const [done,setDone]=useState(false); const [evalz,setEvalz]=useState(null); const [listening,setListening]=useState(false);
-  const mockRef=useRef(false); const recRef=useRef(null); const wantRef=useRef(false); const silenceRef=useRef(null);
-  const mountedRef=useRef(false); const abortRef=useRef(null);
   const MAX_TURNS=5;
+  const storedTranscript=DB.get("aiChatTranscript",[]);
+  const storedEvaluation=DB.get("aiChatEvaluation",null);
+  const initialMessages=Array.isArray(storedTranscript)?storedTranscript:[];
+  const initialTurns=initialMessages.filter(message=>message.who==="me").length;
+  const [msgs,setMsgs]=useState(initialMessages); const [draft,setDraft]=useState("");
+  const [busy,setBusy]=useState(false); const [turns,setTurns]=useState(initialTurns);
+  const [speaking,setSpeaking]=useState(false);
+  const [done,setDone]=useState(initialTurns>=MAX_TURNS||!!storedEvaluation); const [evalz,setEvalz]=useState(storedEvaluation?.feedback||null); const [evaluating,setEvaluating]=useState(false); const [evaluationUnavailable,setEvaluationUnavailable]=useState(!!storedEvaluation?.simulated); const [listening,setListening]=useState(false);
+  const mockRef=useRef(false); const recRef=useRef(null); const wantRef=useRef(false); const silenceRef=useRef(null);
+  const mountedRef=useRef(false); const abortRef=useRef(null); const transcriptRef=useRef(null);
   useEffect(()=>{ DB.set("aiChatTranscript",msgs); },[msgs]);
+  useEffect(()=>{ const node=transcriptRef.current; if(node) node.scrollTop=node.scrollHeight; },[msgs,busy]);
 
   function sayAI(line){
     if(!mountedRef.current) return;
@@ -609,15 +619,18 @@ function AIChat({lesson,onNext,onDone}){
     }catch(e){ return null; }
     finally{ if(abortRef.current===controller) abortRef.current=null; }
   }
-  useEffect(()=>{ (async()=>{
+  useEffect(()=>{
     mountedRef.current=true;
-    setBusy(true);
-    const reply=await aiReply([],partial=>{ if(!mountedRef.current) return; mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
-    if(!mountedRef.current) return;
-    if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); sayAI(reply); }
-    else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
-    setBusy(false);
-  })(); return ()=>{ mountedRef.current=false; if(abortRef.current) abortRef.current.abort(); stopSpeak(); stopMic(); }; },[]);
+    if(!initialMessages.length){ (async()=>{
+      setBusy(true);
+      const reply=await aiReply([],partial=>{ if(!mountedRef.current) return; mockRef.current=false; setMsgs([{who:"ai",t:partial}]); });
+      if(!mountedRef.current) return;
+      if(reply){ mockRef.current=false; setMsgs([{who:"ai",t:reply}]); sayAI(reply); }
+      else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
+      setBusy(false);
+    })(); }
+    return ()=>{ mountedRef.current=false; if(abortRef.current) abortRef.current.abort(); stopSpeak(); stopMic(); };
+  },[]);
 
   const full=draft.trim().split(/\s+/).filter(Boolean).length>=3;
   function toHistory(list){ return list.map(m=>({role:m.who==="ai"?"assistant":"user",content:m.t})); }
@@ -633,11 +646,14 @@ function AIChat({lesson,onNext,onDone}){
     recRef.current=r; try{ r.start(); setListening(true); armSilence(); }catch(e){ setListening(false); } }
   function stopMic(){ wantRef.current=false; clearSilence(); if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
-  async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:turns+1,used_fallback:mockRef.current}); setDone(true); onDone&&onDone();
-    if(mockRef.current){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); return; }
+  async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:list.filter(message=>message.who==="me").length,used_fallback:mockRef.current}); setDone(true); onDone&&onDone(); setEvaluating(true);
+    if(mockRef.current){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); setEvaluationUnavailable(true); setEvaluating(false); return; }
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English",userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
-      if(r.ok){ const d=await r.json(); DB.set("aiChatEvaluation",{feedback:d,simulated:false}); if(mountedRef.current) setEvalz(d); } }catch(e){}
+      if(r.ok){ const d=await r.json(); DB.set("aiChatEvaluation",{feedback:d,simulated:false}); if(mountedRef.current) setEvalz(d); }
+      else { DB.set("aiChatEvaluation",{feedback:null,simulated:true}); if(mountedRef.current) setEvaluationUnavailable(true); }
+    }catch(e){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); if(mountedRef.current) setEvaluationUnavailable(true); }
+    finally{ if(mountedRef.current) setEvaluating(false); }
   }
 
   async function send(){ if(!full||busy) return; stopMic();
@@ -669,6 +685,11 @@ function AIChat({lesson,onNext,onDone}){
       </div>
     </div>
 
+    {!!msgs.length&&<div className="chat-transcript-card">
+      <div className="chat-transcript-head"><b>{t.chat.transcript}</b><span className="tiny muted">{turns} / {MAX_TURNS}</span></div>
+      <div className="chat" ref={transcriptRef}>{msgs.map((message,index)=><div key={index} className={"bubble "+message.who+" notranslate"} translate="no" lang={lang==="Dutch"?"nl":undefined}>{message.t||"…"}</div>)}</div>
+    </div>}
+
     {!done ? (<div style={{marginTop:16}}>
       {SR ? (<div style={{textAlign:"center"}}>
         <button className={"btn "+(listening?"btn-primary":"btn-outline")} style={{fontSize:17,padding:"14px 26px",borderRadius:999}}
@@ -679,17 +700,21 @@ function AIChat({lesson,onNext,onDone}){
       <div className="row chat-compose-actions" style={{justifyContent:"space-between",marginTop:10}}>
         <span className="tiny muted">{full?t.chat.looksGood+" ✓":t.chat.shortSentence}</span>
         <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>{t.chat.replyTo(partner.name)} →</button></div>
-
-      {msgs.length>1 && <details style={{marginTop:14}}><summary className="tiny muted" style={{cursor:"pointer"}}>{t.chat.showTranscript}</summary>
-        <div className="chat" style={{marginTop:8}}>{msgs.map((m,i)=>(<div key={i} className={"bubble "+m.who+" notranslate"} translate="no" lang={lang==="Dutch"?"nl":undefined}>{m.t}</div>))}</div></details>}
     </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
-        <h3 className="lbl">{t.chat.feedbackTitle(!evalz)}</h3>
-        {evalz ? (<div>
+        <h3 className="lbl">{t.chat.feedbackTitle(!evalz&&!evaluating)}</h3>
+        {evaluating?<div className="muted">{t.chat.evaluating}</div>:evalz ? (<div>
           <div style={{marginBottom:8}}>🎉 {evalz.praise}</div>
-          <div style={{marginBottom:6}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{evalz.grammar}</span></div>
-          <div style={{marginBottom:6}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{evalz.vocabulary}</span></div>
-          <div>✅ <b>{t.chat.fluency}.</b> <span className="muted">{evalz.fluency}</span></div>
-        </div>) : (<div className="muted">{t.chat.mockDone(shownLang)}</div>)}
+          {Array.isArray(evalz.turnFeedback)&&evalz.turnFeedback.map((entry,index)=><div className="chat-turn-feedback" key={index}>
+            <div><b>{t.chat.youSaid}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{entry.userText}</span></div>
+            {entry.whatWorked&&<div className="muted">✓ <b>{t.chat.whatWorked}:</b> {entry.whatWorked}</div>}
+            {entry.correctedText&&entry.correctedText!==entry.userText&&<div><b>{t.chat.corrected}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{entry.correctedText}</span></div>}
+            {entry.explanation&&<div className="muted">{entry.explanation}</div>}
+            {entry.betterReply&&<div><b>{t.chat.tryThis}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{entry.betterReply}</span></div>}
+          </div>)}
+          {!evalz.turnFeedback&&<><div style={{marginBottom:6}}>✅ <b>{t.aiUse.grammar}.</b> <span className="muted">{evalz.grammar}</span></div><div style={{marginBottom:6}}>✅ <b>{t.aiUse.vocab}.</b> <span className="muted">{evalz.vocabulary}</span></div><div>✅ <b>{t.chat.fluency}.</b> <span className="muted">{evalz.fluency}</span></div></>}
+          {evalz.focusNext&&<div className="chat-feedback-summary"><b>{t.chat.focusNext}:</b> {evalz.focusNext}</div>}
+          {evalz.practiceSuggestion&&<div className="chat-feedback-summary"><b>{t.chat.practiceSuggestion}:</b> {evalz.practiceSuggestion}</div>}
+        </div>) : (<div className="muted">{evaluationUnavailable?t.chat.feedbackUnavailable:t.chat.mockDone(shownLang)}</div>)}
         {onNext && <div style={{marginTop:14,textAlign:"right"}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>}
       </div>)}
   </div>);
@@ -846,7 +871,6 @@ function Done({lesson,text,diag,doneSet,onNew,onReview}){
       <div className="done-emoji">🎉</div>
       <h1 className="done-h1">{t.done.title()}</h1>
       <p className="done-sub">{t.done.sub(STEPS.length)}</p>
-      <RecallEvidence lesson={lesson}/>
       <SaveProgressCard lesson={lesson} text={text} wordList={saveWordList} doneSet={doneSet}/>
       <div className="done-card donation-card">
         <div className="done-card-title">{t.donation.title}</div>
