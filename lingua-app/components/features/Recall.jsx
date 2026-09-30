@@ -9,49 +9,43 @@ import { buildRecallStagePlan, compareRecallAnswer, masteryForRecallItem, normal
 import { DB } from "../../lib/storage";
 import { cachedAiAnalyze } from "../../services/api";
 
-function DiffLine({label,segments=[]}){
-  return <div className="recall-diff-line"><span className="tiny muted">{label}</span><div className="recall-diff-words">
-    {segments.map((part,index)=><span className={part.status} key={`${part.token}-${index}`}>{part.token}</span>)}
-  </div></div>;
-}
-
-function RecallFeedback({result,t}){
-  if(!result) return null;
-  const categories=(result.categories||[]).filter(key=>t.recall.categories[key]);
-  return <div className={"recall-feedback "+(result.accepted?"accepted":"needs-work")}>
-    <div className="recall-feedback-title">{result.accepted?t.recall.feedbackCorrect:t.recall.feedbackImprove}</div>
-    {result.shortFeedback&&<p>{result.shortFeedback}</p>}
-    {result.diff&&<div className="recall-diff">
-      <DiffLine label={t.recall.youWrote} segments={result.diff.actual}/>
-    </div>}
-    {!!categories.length&&<div className="recall-category-list">{categories.map(key=><span className="badge badge-outline" key={key}>{t.recall.categories[key]}</span>)}</div>}
-  </div>;
-}
-
 function recallLearningPoint(item,lesson,t){
   const phrase=normalizeRecallText(item.targetPhrase);
   const vocab=(lesson.focus?.vocab||[]).find(entry=>phrase.includes(normalizeRecallText(entry.word)));
-  if(vocab) return {kind:t.recall.pointExpression,title:vocab.word||item.targetPhrase,body:vocab.reason||t.recall.expressionExplanation};
+  if(vocab) return {label:t.recall.phraseToRemember,kind:t.recall.pointExpression,title:vocab.word||item.targetPhrase,body:vocab.reason||t.recall.expressionExplanation};
   if(/\b(moet|moeten|kan|kunnen|wil|willen|mag|mogen|zal|zullen)\b/i.test(item.targetPhrase)){
-    return {kind:t.recall.pointGrammar,title:t.recall.modalTitle,body:t.recall.modalExplanation};
+    return {label:t.recall.grammarToNotice,kind:t.recall.pointGrammar,title:t.recall.modalTitle,body:t.recall.modalExplanation};
   }
   if(/\b(omdat|als|dat|terwijl|hoewel|wanneer)\b/i.test(item.targetPhrase)){
-    return {kind:t.recall.pointGrammar,title:t.recall.subclauseTitle,body:t.recall.subclauseExplanation};
+    return {label:t.recall.grammarToNotice,kind:t.recall.pointGrammar,title:t.recall.subclauseTitle,body:t.recall.subclauseExplanation};
   }
-  return {kind:t.recall.pointExpression,title:item.targetPhrase,body:t.recall.expressionExplanation};
+  return {label:t.recall.phraseToRemember,kind:t.recall.pointExpression,title:item.targetPhrase,body:t.recall.expressionExplanation};
 }
 
-function AnswerReview({item,lesson,t}){
+function RecallFeedback({result,item,lesson,t,onEdit,onNext,nextLabel}){
+  if(!result) return null;
+  const categories=(result.categories||[]).filter(key=>t.recall.categories[key]);
   const sentence=item.sourceSentence;
   const at=sentence.indexOf(item.targetPhrase);
   const point=recallLearningPoint(item,lesson,t);
-  return <div className="recall-revealed-answer">
-    <div className="tiny muted recall-answer-label">{t.recall.correctAnswer}</div>
-    <div className="recall-revealed-line notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>
-      {at>=0?<>{sentence.slice(0,at)}<span className="recall-focus-phrase">{item.targetPhrase}</span>{sentence.slice(at+item.targetPhrase.length)}</>:sentence}
+  return <div className={"recall-feedback "+(result.accepted?"accepted":"needs-work")} role="status">
+    <div className="recall-feedback-title">{result.accepted?t.recall.feedbackCorrect:t.recall.feedbackImprove}</div>
+    {result.shortFeedback&&<p>{result.shortFeedback}</p>}
+    <div className="recall-correct-answer">
+      <div className="row recall-answer-heading">
+        <span className="tiny muted recall-answer-label">{t.recall.correctAnswer}</span>
+        <Say text={item.sourceSentence} lang={lesson.lang}/>
+      </div>
+      <div className="recall-revealed-line notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>
+        {at>=0?<>{sentence.slice(0,at)}<span className="recall-focus-phrase">{item.targetPhrase}</span>{sentence.slice(at+item.targetPhrase.length)}</>:sentence}
+      </div>
     </div>
-    <div className="row recall-revealed-tools"><Say text={item.sourceSentence} lang={lesson.lang}/></div>
-    <div className="recall-learning-point"><span className="recall-learning-label">{t.recall.learningTip}</span><span className="badge badge-outline">{point.kind}</span><b>{point.title}</b><p>{point.body}</p></div>
+    {!!categories.length&&<div className="recall-category-list">{categories.map(key=><span className="badge badge-outline" key={key}>{t.recall.categories[key]}</span>)}</div>}
+    <div className="recall-learning-point"><span className="recall-learning-label">{point.label}</span><span className="badge badge-outline">{point.kind}</span><b>{point.title}</b><p>{point.body}</p></div>
+    <div className="recall-result-actions">
+      {!result.accepted&&<button className="btn btn-outline btn-sm" onClick={onEdit}>{t.recall.editAnswer}</button>}
+      <button className="btn btn-primary btn-sm" onClick={onNext}>{nextLabel} →</button>
+    </div>
   </div>;
 }
 
@@ -81,6 +75,7 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
   const [checking,setChecking]=useState(false);
   const [listening,setListening]=useState(false);
   const recRef=useRef(null);
+  const answerRef=useRef(null);
   const stageItems=itemsByStage[stage]||[];
   const idx=Math.max(0,Math.min(Math.max(0,stageItems.length-1),idxByStage[stage]||0));
   const item=stageItems[idx];
@@ -145,7 +140,10 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
     setFeedback(result); setChecking(false);
   }
 
-  function retry(){ setFeedback(null); setDraft(""); }
+  function editAnswer(){
+    setFeedback(null);
+    requestAnimationFrame(()=>{ answerRef.current?.focus(); answerRef.current?.select(); });
+  }
   function advance(){
     stopMic(); setFeedback(null); setDraft("");
     if(idx<total-1){ setStageIndex(idx+1); return; }
@@ -176,27 +174,22 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
         <div className="recall-mode-label">{item.clozeType==="dictation"?t.recall.dictation:t.recall.blindCloze}</div>
         {item.clozeType==="dictation"&&<button className="btn btn-outline recall-listen" onClick={()=>speak(item.sourceSentence,lesson.lang)}>▶ {t.recall.listen}</button>}
         {item.clozeType!=="dictation"&&item.translation&&<div className="translation-line">{item.translation}</div>}
-        {!hasResult&&<div className="recall-prompt notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>
+        <div className="recall-prompt notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>
           <span>{clozeBefore}</span><span className="recall-blank-group" aria-label={t.recall.blankCount(hiddenWords.length)}>{hiddenWords.map((word,index)=><span className="recall-word-blank" style={{"--blank-size":Math.max(3,Math.min(10,word.length))+"ch"}} key={`${word}-${index}`}/>)}</span><span>{clozeAfter}</span>
-        </div>}
+        </div>
       </>:<div className="recall-cue-section">
         <h3 className="lbl">{t.recall.meaningCue}</h3>
         <div className="translation-line">{item.translation||t.recall.rebuildCue}</div>
       </div>}
-      {!hasResult&&<div className="recall-answer-section">
+      <div className="recall-answer-section">
         <h3 className="lbl">{stage==="cloze"?t.recall.missingExpression:t.recall.yourDutch}</h3>
-        <textarea className="recall-answer-input" value={draft} onChange={e=>{setDraft(e.target.value); if(feedback)setFeedback(null);}} style={{minHeight:stage==="cloze"?58:96}} placeholder={stage==="cloze"?t.recall.clozePlaceholder:t.recall.placeholder}/>
-      </div>}
-      {!hasResult&&<div className="row recall-check-actions">
+        <textarea ref={answerRef} className={"recall-answer-input"+(feedback?(feedback.accepted?" accepted":" needs-work"):"")} aria-invalid={feedback&&!feedback.accepted?"true":undefined} value={draft} onChange={e=>{setDraft(e.target.value); if(feedback)setFeedback(null);}} style={{minHeight:stage==="cloze"?58:96}} placeholder={stage==="cloze"?t.recall.clozePlaceholder:t.recall.placeholder}/>
+      </div>
+      <div className="row recall-check-actions">
         {stage==="sentence"&&SR?<button className={"btn btn-sm "+(listening?"btn-primary":"btn-outline")} onClick={listening?stopMic:startMic}>🎤 {t.recall.speak}</button>:<span/>}
-        <button className="btn btn-primary btn-sm" disabled={!draft.trim()||checking} onClick={check}>{checking?t.recall.checking:t.recall.check}</button>
-      </div>}
-      <RecallFeedback result={feedback} t={t}/>
-      {hasResult&&<AnswerReview item={item} lesson={lesson} t={t}/>}
-      {hasResult&&<div className="recall-result-actions">
-        {!feedback.accepted&&<button className="btn btn-outline btn-sm" onClick={retry}>{t.recall.tryAgain}</button>}
-        <button className="btn btn-primary btn-sm" onClick={advance}>{idx<total-1?t.recall.next:stage==="cloze"?t.recall.nextLevel:t.continue} →</button>
-      </div>}
+        <button className="btn btn-primary btn-sm" disabled={!draft.trim()||checking||hasResult} onClick={check}>{checking?t.recall.checking:(hasResult?t.recall.checked:t.recall.check)}</button>
+      </div>
+      <RecallFeedback result={feedback} item={item} lesson={lesson} t={t} onEdit={editAnswer} onNext={advance} nextLabel={idx<total-1?t.recall.next:stage==="cloze"?t.recall.nextLevel:t.continue}/>
     </div>}
     <div className="sent-nav"><button className="btn btn-ghost btn-sm" onClick={back}>← {t.back}</button></div>
   </div>;

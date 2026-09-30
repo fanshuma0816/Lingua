@@ -389,35 +389,32 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .recall-prompt{font-size:20px;line-height:1.65;font-weight:600;margin:10px 0 20px;padding:16px;border-radius:12px;background:hsl(var(--secondary))}
 .recall-blank-group{display:inline-flex;align-items:flex-end;gap:7px;margin:0 5px;vertical-align:baseline}
 .recall-word-blank{display:inline-block;width:var(--blank-size);min-width:34px;height:1.1em;border-bottom:2px solid currentColor}
-.recall-answer-input{border:0;background:hsl(var(--secondary));box-shadow:none}
+.recall-answer-input{border:1px solid transparent;background:hsl(var(--secondary));box-shadow:none;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease}
 .recall-answer-input:focus{box-shadow:0 0 0 2px hsl(var(--ring));background:hsl(var(--background))}
+.recall-answer-input.needs-work{border-color:hsl(var(--warm)/.65);background:hsl(var(--warm)/.05)}
+.recall-answer-input.accepted{border-color:hsl(var(--success)/.55);background:hsl(var(--success)/.05)}
 .recall-check-actions{justify-content:space-between;margin-top:12px}
-.recall-feedback{margin-top:16px;padding:14px;border-radius:12px;border:1px solid hsl(var(--border))}
+.recall-feedback{margin-top:16px;padding:16px;border-radius:12px;border:1px solid hsl(var(--border));animation:recallFeedbackIn .2s ease-out both}
+@keyframes recallFeedbackIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .recall-feedback.accepted{border-color:hsl(var(--success)/.45);background:hsl(var(--success)/.07)}
 .recall-feedback.needs-work{border-color:hsl(var(--warm)/.5);background:hsl(var(--warm)/.07)}
-.recall-feedback-title{font-weight:700;margin-bottom:9px}
-.recall-feedback p{margin:4px 0 10px}
-.recall-diff{display:grid;gap:8px}
-.recall-diff-line{display:grid;grid-template-columns:78px 1fr;gap:8px;align-items:start}
-.recall-diff-words{display:flex;flex-wrap:wrap;gap:4px}
-.recall-diff-words span{padding:2px 5px;border-radius:5px}
-.recall-diff-words .correct{background:hsl(var(--success)/.12)}
-.recall-diff-words .extra{background:hsl(0 72% 52%/.12);text-decoration:line-through}
-.recall-diff-words .missing{background:hsl(var(--warm)/.18);border-bottom:2px solid hsl(var(--warm))}
-.recall-category-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.recall-result-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:14px}
-.recall-revealed-answer{margin-top:14px;padding:14px;border-radius:12px;background:hsl(var(--secondary))}
-.recall-answer-label{margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.recall-feedback-title{font-weight:700;margin-bottom:12px}
+.recall-feedback>p{margin:4px 0 10px}
+.recall-correct-answer{padding:12px;border-radius:10px;background:hsl(var(--background)/.72)}
+.recall-answer-heading{justify-content:space-between;gap:12px;margin-bottom:5px}
+.recall-answer-label{font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .recall-revealed-line{font-size:17px;font-weight:600;line-height:1.65}
 .recall-focus-phrase{display:inline;border-bottom:2px solid hsl(var(--primary));background:hsl(var(--primary)/.18);border-radius:4px;padding:1px 3px}
-.recall-revealed-tools{justify-content:flex-start;margin-top:8px}
+.recall-category-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .recall-learning-point{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:7px 9px;margin-top:12px;padding-top:12px;border-top:1px solid hsl(var(--border))}
 .recall-learning-label{grid-column:1/-1;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:hsl(var(--muted-foreground))}
 .recall-learning-point p{grid-column:1/-1;margin:0;color:hsl(var(--muted-foreground));font-size:13px;line-height:1.5}
+.recall-result-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:14px}
 
 @media(max-width:640px){
-  .recall-diff-line{grid-template-columns:1fr}
   .recall-blank-group{gap:5px}
+  .recall-answer-heading{align-items:flex-start;flex-direction:column}
+  .recall-result-actions .btn{flex:1}
 }
 
 .learning-card-copy{flex:1;min-width:0;overflow-wrap:anywhere}
