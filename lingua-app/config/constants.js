@@ -26,7 +26,7 @@ const STEPS=[
   {id:"understanding",mod:"understanding",kind:"understand",min:6},
   {id:"vocabulary",mod:"vocabulary",kind:"grammar",min:8},
   {id:"shadowing",mod:"shadowing",kind:"shadow",min:8},
-  {id:"recall",mod:"recall",kind:"recall",min:4},
+  {id:"recall",mod:"recall",kind:"recall",min:7},
   {id:"using",mod:"using",kind:"using",min:6},
 ];
 
@@ -41,7 +41,7 @@ const PLAN_BLOCKS=[
   {name:"Understanding",icon:"📖",items:["Sentence-by-sentence meaning"],min:6},
   {name:"Vocabulary & Grammar",icon:"🔍",items:["Your words + key patterns"],min:8},
   {name:"Shadowing",icon:"🗣️",items:["Read along / hidden challenge"],min:8},
-  {name:"Recall",icon:"🧠",items:["Recall from meaning"],min:4},
+  {name:"Recall",icon:"🧠",items:["Expression fill + full sentence"],min:7},
   {name:"Using",icon:"💬",items:["Write & talk with AI"],min:6},
 ];
 

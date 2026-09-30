@@ -19,6 +19,7 @@ import { STOP, grammarExamples, meaningParts, words } from "../../lib/text";
 import { getLineTr, setLineTr } from "../../lib/trcache";
 import { spokenTextForLine, voiceRoleForLine } from "../../lib/voices";
 import { cachedAiAnalyze, chatFallback } from "../../services/api";
+import { RecallEvidence } from "./Recall";
 
 // Quick scan — the learner taps words they don't know straight in the text.
 // All words look the same (no difficulty hints, no CEFR badges); the marked
@@ -484,83 +485,6 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
   </div>);
 }
 
-function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev}){
-  const {t,uiLang}=useUI();
-  const {lang,level,sents,focus}=lesson;
-  // Recall focuses on the sentences carrying the most of the learner's own
-  // unknown words — at most three.
-  const userWords=new Set(((lesson.userWords&&lesson.userWords.length?lesson.userWords:DB.get("unknownWords",[]))||[]).map(w=>String(w).toLowerCase()));
-  function unknownCount(s){ let c=0; const seen=new Set(); words(s).forEach(w=>{ const k=w.toLowerCase(); if(userWords.has(k)&&!seen.has(k)){seen.add(k); c++;} }); return c; }
-  const ranked=userWords.size
-    ? sents.map((s,i)=>({s,i,c:unknownCount(s)})).filter(x=>x.c>0).sort((a,b)=>b.c-a.c).map(x=>x.s)
-    : [];
-  const base=ranked.length?ranked
-    :(focus&&Array.isArray(focus.recallSentences)&&focus.recallSentences.length?focus.recallSentences:sents.filter(s=>s.length<180));
-  const list=(base.length?base:sents.slice(0,Math.min(3,sents.length))).slice(0,3);
-  const [idx,setIdx]=useState(0);
-  const [answers,setAnswers]=useState(()=>DB.get("recallAnswers",{}));
-  const [shown,setShown]=useState(()=>DB.get("recallShown",{}));
-  const [trs,setTrs]=useState({});
-  const [loading,setLoading]=useState(false);
-  const [listening,setListening]=useState(false);
-  const recRef=useRef(null);
-  const cur=list[idx]||"";
-  const doneCount=Object.keys(shown).filter(k=>shown[k]).length;
-  useEffect(()=>{ DB.set("recallAnswers",answers); },[answers]);
-  useEffect(()=>{ DB.set("recallShown",shown); if(doneCount>=list.length&&onComplete) onComplete(); },[shown,doneCount,list.length]);
-  useEffect(()=>{ let cancel=false;
-    const missing=list.map((s,i)=>({s,i})).filter(x=>!trs[x.i]);
-    if(!missing.length) return;
-    setLoading(true);
-    cachedAiAnalyze("translate",{sentences:missing.map(x=>x.s),lang,level,translationLanguage:"English"}).then(d=>{
-      if(cancel) return; setLoading(false);
-      if(d&&Array.isArray(d.translations)) setTrs(prev=>{ const next={...prev}; missing.forEach((m,i)=>{next[m.i]=d.translations[i]||m.s;}); return next; });
-    });
-    return ()=>{cancel=true;};
-  },[list.length,uiLang]);
-  const SR=typeof window!=="undefined" && (window.SpeechRecognition||window.webkitSpeechRecognition);
-  function startMic(){ if(!SR) return; stopSpeak(); const r=new SR(); r.lang=LANG_CODE[lang]||"nl-NL"; r.interimResults=false; r.maxAlternatives=1;
-    r.onresult=e=>setAnswers(a=>({...a,[idx]:((a[idx]||"")+" "+e.results[0][0].transcript).trim()}));
-    r.onend=()=>setListening(false); r.onerror=()=>setListening(false); recRef.current=r; try{r.start();setListening(true);}catch(e){setListening(false);} }
-  function stopMic(){ if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
-  useEffect(()=>()=>stopMic(),[]);
-  const answer=(answers[idx]||"").trim();
-  const canCheck=answer.split(/\s+/).filter(Boolean).length>=2;
-  function check(){ if(!canCheck) return; setShown(s=>({...s,[idx]:true})); }
-  function move(next){ stopMic(); setIdx(Math.max(0,Math.min(list.length-1,next))); }
-  return (<div>
-    <StepHead eyebrow={t.nav.mods.recall} title={t.recall.title} onSkip={onSkip} skipLabel={t.skipStep}/>
-    <Teacher>{t.recall.teacher}</Teacher>
-    <Purpose>{t.recall.purpose}</Purpose>
-    <div className="card card-p">
-      <div className="row" style={{justifyContent:"space-between",marginBottom:12}}>
-        <span className="badge badge-outline">{t.recall.progress(idx+1,list.length)}</span>
-        <div className="track" style={{width:160}}><span style={{width:((doneCount||0)/Math.max(1,list.length)*100)+"%"}}/></div>
-      </div>
-      <h3 className="lbl">{t.recall.englishCue}</h3>
-      <div className="translation-line" style={{marginBottom:16}}>{loading&&!trs[idx]?t.translatingTitle:trs[idx]}</div>
-      <h3 className="lbl">{t.recall.yourDutch}</h3>
-      <textarea style={{minHeight:88}} value={answers[idx]||""} onChange={e=>setAnswers(a=>({...a,[idx]:e.target.value}))} placeholder={t.recall.placeholder}/>
-      <div className="row" style={{justifyContent:"space-between",marginTop:12}}>
-        {SR ? <button className={"btn btn-sm "+(listening?"btn-primary":"btn-outline")} onClick={listening?stopMic:startMic}>🎤 {t.recall.speak}</button> : <span className="tiny muted">{t.recall.tryFirst}</span>}
-        <button className="btn btn-primary btn-sm" disabled={!canCheck} onClick={check}>{t.recall.check}</button>
-      </div>
-      {shown[idx] && <div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
-        <h3 className="lbl">{t.recall.original}</h3>
-        <div className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined} style={{fontWeight:600}}>{cur}</div>
-        <div style={{marginTop:10}}><Say text={cur} lang={lang} rate={1} voiceRole={voiceRoleForLine(cur,idx,list)}/></div>
-      </div>}
-    </div>
-    <div className="sent-nav">
-      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ if(idx===0){ onPrev&&onPrev(); } else move(idx-1); }}>← {idx===0?t.previous:t.back}</button>
-      {idx<list.length-1
-        ? <button className="btn btn-primary btn-sm focusable" onClick={()=>move(idx+1)}>{t.gram.next} →</button>
-        : <button className="btn btn-primary btn-sm focusable" onClick={onContinue}>{t.continue} →</button>}
-    </div>
-    <div className="tiny muted" style={{textAlign:"center",marginTop:10}}>{doneCount>=list.length?t.recall.done:t.recall.tryFirst}</div>
-  </div>);
-}
-
 function PracticeAI({lesson,onComplete,onSkip}){
   const {t}=useUI();
   const [tab,setTab]=useState("chat");
@@ -922,6 +846,7 @@ function Done({lesson,text,diag,doneSet,onNew,onReview}){
       <div className="done-emoji">🎉</div>
       <h1 className="done-h1">{t.done.title()}</h1>
       <p className="done-sub">{t.done.sub(STEPS.length)}</p>
+      <RecallEvidence lesson={lesson}/>
       <SaveProgressCard lesson={lesson} text={text} wordList={saveWordList} doneSet={doneSet}/>
       <div className="done-card donation-card">
         <div className="done-card-title">{t.donation.title}</div>
@@ -973,4 +898,4 @@ function Done({lesson,text,diag,doneSet,onNew,onReview}){
   </>);
 }
 
-export { AIChat, AIWrite, Done, GrammarStep, PracticeAI, QuickScan, RecallStep, Shadowing };
+export { AIChat, AIWrite, Done, GrammarStep, PracticeAI, QuickScan, Shadowing };

@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { SyncReader } from "./Player";
-import { GrammarStep, PracticeAI, RecallStep, Shadowing } from "./Steps";
+import { GrammarStep, PracticeAI, Shadowing } from "./Steps";
+import { RecallStep } from "./Recall";
 import { Brand, CheckIn, Purpose, StepHead, Svg, Teacher } from "../ui/elements";
 import { MODULES, STEPS, TOTAL_MIN, stepIndex } from "../../config/constants";
 import { langName } from "../../config/uiText";

@@ -23,6 +23,7 @@ import { clearLineTr } from "../../lib/trcache";
 import { cachedAiAnalyze } from "../../services/api";
 import { prepareImport } from "../../lib/text-chunks";
 import { rememberMaterial } from "../../lib/material-history";
+import { buildFallbackRecallPlan } from "../../lib/recall";
 
 function stepPath(index){ const s=STEPS[Math.max(0,Math.min(STEPS.length-1,index))]; return "/learn/"+STEP_SLUG[s.mod]; }
 
@@ -165,8 +166,17 @@ function App(){
   function onPrev(){ goStep(Math.max(0,step-1)); }
 
   // Quick scan → Preview
-  function scanDone(list){ const arr=Array.isArray(list)?list:[]; setUserWords(arr); DB.set("unknownWords",arr); setLesson(cur=>cur?{...cur,userWords:arr}:cur); trackEvent("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
-  function scanSkip(){ setUserWords([]); DB.set("unknownWords",[]); setLesson(cur=>cur?{...cur,userWords:[]}:cur); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
+  function setRecallWords(arr){
+    setUserWords(arr); DB.set("unknownWords",arr);
+    setLesson(cur=>{
+      if(!cur) return cur;
+      const next={...cur,userWords:arr,recallPlan:{items:buildFallbackRecallPlan(cur.sents||[],arr,3)}};
+      DB.set("currentLesson",next);
+      return next;
+    });
+  }
+  function scanDone(list){ const arr=Array.isArray(list)?list:[]; setRecallWords(arr); trackEvent("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
+  function scanSkip(){ setRecallWords([]); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
 
   function saveChunkProgress(current, status){
     if(!current?.importDocumentId) return;
@@ -186,7 +196,7 @@ function App(){
     saveChunkProgress(L,"started");
     return L;
   }
-  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.set("recallShown",{}); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
+  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.remove("recallShown"); DB.remove("recallState"); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=saveLoadedLesson({...(await r.json()),localLessonId:crypto.randomUUID()},d); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
       cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?.localLessonId===L.localLessonId?{...cur,focus:f}:cur); });
     }
