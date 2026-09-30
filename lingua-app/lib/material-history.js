@@ -18,12 +18,15 @@ export function isRepeated(material, history = [], now = Date.now()) {
   const sig = materialSignature(material.text);
   return activeHistory(history, now).some(r => {
     if (r.id && r.id === material.id || r.fingerprint === sig.fingerprint) return true;
+    if(r.sourceArticleId && r.sourceArticleId===material.sourceArticleId && r.sourceVersion===material.sourceVersion && r.sourceRange && material.sourceRange){
+      const overlap=Math.min(r.sourceRange.end,material.sourceRange.end)-Math.max(r.sourceRange.start,material.sourceRange.start);
+      if(overlap>0)return true;
+    }
     if (r.legacy && normalizedText(r.title) === normalizedText(material.title) && material.title) return true;
     const other = new Set(r.shingles || []);
     if (other.size < 8 || sig.shingles.length < 8) return false;
     const shared = sig.shingles.filter(x => other.has(x)).length;
-    return shared / Math.min(other.size, sig.shingles.length) >= 0.80
-      && Math.min(other.size, sig.shingles.length) / Math.max(other.size, sig.shingles.length) >= 0.80;
+    return shared / Math.min(other.size, sig.shingles.length) >= 0.80;
   });
 }
 export function recordMaterial(history, material, status = "shown", now = Date.now()) {
@@ -33,6 +36,9 @@ export function recordMaterial(history, material, status = "shown", now = Date.n
   const order = { shown: 0, started: 1, completed: 2 };
   const record = { ...previous, ...sig, id: material.id || materialId(material.text || ""),
     title: material.title || previous.title || null, language: material.language || "Dutch",
+    sourceArticleId:material.sourceArticleId||previous.sourceArticleId||null,
+    sourceVersion:material.sourceVersion||previous.sourceVersion||null,
+    sourceRange:material.sourceRange||previous.sourceRange||null,
     status: (order[previous.status] ?? -1) > order[status] ? previous.status : status,
     updatedAt: now };
   return [record, ...history.filter((_, i) => i !== index)];

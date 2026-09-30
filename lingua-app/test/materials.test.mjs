@@ -84,11 +84,12 @@ test('legacy history migration persists instead of resetting cooldown',()=>{
  const first=readMaterialHistory();assert.equal(first.length,2);assert.deepEqual(readMaterialHistory(),first);
  delete globalThis.localStorage;
 });
-test('A1/A2 corpus does not silently shrink requested length or repeat completed material',()=>{
- assert.equal(selectTextbookMaterials({lang:'Dutch',level:'A2',wordRange:[77,173]}).length,0);
- const initial=selectTextbookMaterials({lang:'Dutch',level:'A2',wordRange:[34,81],count:20});assert(initial.length>0);
+test('curated corpus returns matching length and never repeats the selected completed chunk',()=>{
+ const initial=selectTextbookMaterials({lang:'Dutch',level:'A2',wordRange:[77,173],count:2});
+ assert.equal(initial.length,2);assert(initial.every(m=>m.wordCount>=77&&m.wordCount<=173));
  let history=[];for(const m of initial)history=recordMaterial(history,m,'completed');
- assert.equal(selectTextbookMaterials({lang:'Dutch',level:'A2',history,wordRange:[34,81]}).length,0);
+ const next=selectTextbookMaterials({lang:'Dutch',level:'A2',history,wordRange:[34,81]});
+ assert.equal(next.length,2);for(const m of next)assert(!isRepeated(m,history));
 });
 test('B1/B2 use AI directly; no corpus/sample fallback when unavailable',async()=>{
  for(const level of ['B1','B2']){
@@ -114,10 +115,13 @@ test('generation transport failures do not fall back or start difficulty repairs
  const result=await generateDutchMaterials({level:'B2',spec,count:1},dependencies(ai));
  assert.equal(result.materials.length,0);assert.equal(result.errors[0].code,'generation_failed');assert.equal(calls,1);
 });
-test('independent assessment must have evidence and match requested difficulty',()=>{
- assert(!validateGeneratedMaterial(story.text,'B2',review(story,{evidence:'invented unrelated quotation'})).ok);
- assert(!validateGeneratedMaterial(story.text,'B2',review(story,{tier:'comfortable'})).ok);
- assert(validateGeneratedMaterial(story.text,'B2',review(story,{tier:'comfortable'}),'comfortable').ok);
+test('appropriate comfortable materials and optional assessment metadata do not cause rejection',()=>{
+ assert(validateGeneratedMaterial(story.text,'B2',review(story,{evidence:'different formatting'})).ok);
+ assert(validateGeneratedMaterial(story.text,'B2',review(story,{tier:'comfortable'})).ok);
+ assert(validateGeneratedMaterial(story.text,'B2',review(story,{tier:'comfortable'}),'balanced').ok);
+ assert(validateGeneratedMaterial(story.text,'B2',review(story,{evidence:undefined,vocabulary:undefined})).ok);
+ assert(!validateGeneratedMaterial(story.text,'B2',review(story,{language:'English'})).ok);
+ assert(!validateGeneratedMaterial(story.text,'B2',review(story,{level:'A1'})).ok);
 });
 test('lesson API and local import preparation use exactly the same selected chunk',async()=>{
  const text=Array.from({length:40},(_,i)=>`Paragraaf ${i}. Vandaag ga ik naar school en daarna naar huis. Ik lees daar een boek en drink thee.`).join('\n\n');
@@ -137,4 +141,51 @@ test('generated materials bypass long-document splitting and retain validated me
 test('subtitle text immediately before the next timeline is preserved',()=>{
  const input='00:00:01.000 --> 00:00:02.000\nIk lees een boek.\n00:00:02.000 --> 00:00:03.000\nDaarna drink ik thee.';
  assert.equal(cleanText(input),'Ik lees een boek.\nDaarna drink ik thee.');
+});
+
+
+test('default preference is absent, not a mandatory balanced gate',async()=>{
+ let generationPrompt='';
+ const result=await generateDutchMaterials({level:'B2',spec,count:1},dependencies({complete:async messages=>{
+   if(messages[0].content.startsWith('Independently'))return {reviews:[review(story,{tier:'comfortable'})]};
+   generationPrompt=messages[1].content;return {materials:[story]};
+ }}));
+ assert.equal(result.materials.length,1);assert.equal(result.materials[0].difficultyTier,'comfortable');
+ assert.equal(result.diagnostics.requestedDifficulty,null);assert(generationPrompt.includes('easier or richer is acceptable'));
+});
+test('assessment timeout retains only a locally fitting Dutch candidate',async()=>{
+ const result=await generateDutchMaterials({level:'B2',spec,count:1},dependencies({complete:async messages=>{
+  if(messages[0].content.startsWith('Independently'))throw new Error('timeout');return {materials:[story]};
+ }}));
+ assert.equal(result.materials.length,1);assert.equal(result.materials[0].levelSource,'local-estimate');
+ assert(result.errors.some(e=>e.code==='assessment_timeout'));
+ const easy='Ik ga naar huis. Ik eet brood en drink thee. Mijn vriend komt ook. Wij lezen een boek samen.';
+ assert(!validateGeneratedMaterial(easy,'B2',null).ok);
+});
+test('assessment parse errors and provider errors are distinguishable and sanitized',async()=>{
+ let calls=0;
+ const deps={...dependencies({complete:async()=>++calls===1?JSON.stringify({materials:[story]}):'{broken'}),parse:JSON.parse};
+ const result=await generateDutchMaterials({level:'B2',spec,count:1},deps);
+ assert.equal(result.materials.length,1);assert(result.errors.some(e=>e.code==='assessment_parse_failed'));
+ const failed=await generateDutchMaterials({level:'B2',spec,count:1},dependencies({complete:async()=>{const e=new Error('private credential must not leak');e.status=401;throw e;}}));
+ assert.equal(failed.errors[0].providerReason,'authentication');assert(!JSON.stringify(failed).includes('private credential'));
+});
+test('generation JSON failures have their own stage and a bounded repair',async()=>{
+ let calls=0;
+ const result=await generateDutchMaterials({level:'B2',spec,count:1},{...dependencies({complete:async()=>{calls++;return '{bad';}}),parse:JSON.parse});
+ assert.equal(calls,2);assert.equal(result.materials.length,0);assert(result.errors.every(e=>e.code==='generation_parse_failed'));
+});
+test('partial success survives failure of the repair request',async()=>{
+ let generations=0;
+ const result=await generateDutchMaterials({level:'B2',spec,count:2},dependencies({complete:async messages=>{
+  if(messages[0].content.startsWith('Independently'))return {reviews:[review(story)]};
+  if(++generations>1)throw new Error('network');return {materials:[story]};
+ }}));
+ assert.equal(result.materials.length,1);assert(result.errors.some(e=>e.code==='generation_failed'));
+});
+test('the real assessment deadline path preserves a fitting candidate',async()=>{
+ const result=await generateDutchMaterials({level:'B2',spec,count:1},{...dependencies({complete:async messages=>{
+  if(messages[0].content.startsWith('Independently'))return new Promise(()=>{});return {materials:[story]};
+ }}),budgetMs:1200});
+ assert.equal(result.materials.length,1);assert(result.errors.some(e=>e.code==='assessment_timeout'));
 });

@@ -55,7 +55,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(LEVELS.includes(savedLevel)?savedLevel:LEVELS[LEVELS.length-1]); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
   const [durationIdx,setDurationIdx]=useState(1);
   const [topicIdx,setTopicIdx]=useState(null);
-  const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>(savedLang!=="Dutch"||(m.lang==="Dutch"&&m.targetUserLevel===savedLevel.slice(0,2)))&&!String(m?.duration||"").includes("45-60")&&!String(m?.title||"").includes(" + ")&&(!Array.isArray(m?.parts)||m.parts.length<=1)));
+  const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>(savedLang!=="Dutch"||(m.lang==="Dutch"&&m.targetUserLevel===savedLevel.slice(0,2)&&m.recommendationVersion===2))&&!String(m?.duration||"").includes("45-60")&&!String(m?.title||"").includes(" + ")&&(!Array.isArray(m?.parts)||m.parts.length<=1)));
   const [selectedMaterial,setSelectedMaterial]=useState(()=>DB.get("genSelected",0));
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
@@ -131,7 +131,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
         const recentlyUsed=recentTitles.current.includes(key)||(raw.title&&recentTitles.current.includes(raw.title));
         if(lang==="Dutch" ? isRepeated({...raw,text,id:key},history.current) : recentlyUsed&&source!=="sample-fill") continue;
         const i=collected.length;
-        const one={...raw,lang,text,id:key,resultSource:raw.resultSource||"sample",duration:raw.duration||selectedDuration,targetMinutes:raw.targetMinutes||spec.target,
+        const one={...raw,lang,text,id:key,...(lang==="Dutch"?{recommendationVersion:2}:{}),resultSource:raw.resultSource||"sample",duration:raw.duration||selectedDuration,targetMinutes:raw.targetMinutes||spec.target,
           targetUserLevel:raw.targetUserLevel||fit?.analysis.targetUserLevel,
           validatedTextLevel:raw.validatedTextLevel||fit?.analysis.validatedTextLevel,
           level:raw.level||fit?.analysis.validatedTextLevel,
@@ -143,11 +143,11 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
         collected.push(one);
       }
     };
-    const avoid=lang==="Dutch" ? activeHistory(history.current).flatMap(m=>[m.id,m.title]).filter(Boolean) : [...recentTitles.current].slice(0,12);
+    const avoid=lang==="Dutch" ? activeHistory(history.current).flatMap(m=>m.sourceArticleId?[m.id]:[m.id,m.title]).filter(Boolean) : [...recentTitles.current].slice(0,12);
     const nonce=Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8);
-    const payload={lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:MATERIAL_COUNT};
+    const payload={lang,level,goal,duration:selectedDuration,topics,avoid,nonce,count:MATERIAL_COUNT,...(lang==="Dutch"?{difficulty:null}:{})};
     const d=lang==="Dutch" ? await requestDutchMaterials({...payload,history:activeHistory(history.current)}) : await aiAnalyze("materials",payload,{timeoutMs:22000});
-    if(lang==="Dutch") DB.set("lastMaterialGeneration",{at:Date.now(),level,count:d?.materials?.length||0,errors:d?.errors||[]});
+    if(lang==="Dutch") DB.set("lastMaterialGeneration",{at:Date.now(),level,count:d?.materials?.length||0,errors:d?.errors||[],requestId:d?.requestId||null,diagnostics:d?.diagnostics||null});
     if(currentContext.current!==requestContext){setGenerating(false);return;}
     addMaterials(d&&Array.isArray(d.materials)?d.materials:[],"ai");
     if(collected.length){
@@ -181,6 +181,9 @@ function InputScreen({onNext,initialMode=null,onRouteChange}){
     // Pass the stored material analysis forward so card = preview = diagnosis.
     const material={ id:m.id||cefrMaterialId(text), title:m.title||null, source:m.source||null,
       parts:Array.isArray(m.parts)?m.parts:[],
+      level:m.level,levelSource:m.levelSource,estimatedTextLevel:m.estimatedTextLevel,
+      sourceArticleId:m.sourceArticleId,sourceVersion:m.sourceVersion,sourceRange:m.sourceRange,coordinateSpace:m.coordinateSpace,
+      corpusVersion:m.corpusVersion,
       targetUserLevel:m.targetUserLevel||level.slice(0,2), validatedTextLevel:m.validatedTextLevel||m.level||level.slice(0,2),
       difficultyTier:m.difficultyTier||null, hardWordRatio:m.hardWordRatio??null,
       vocabularyAnnotations:Array.isArray(m.vocabularyAnnotations)?m.vocabularyAnnotations:[], estimatedLessonTime:targetMin };

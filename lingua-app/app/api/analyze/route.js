@@ -52,8 +52,8 @@ export async function POST(req) {
           topics: Array.isArray(b.topics) ? b.topics : [], count: b.count,
           history: Array.isArray(b.history) ? b.history : [], avoid: Array.isArray(b.avoid) ? b.avoid : [], seed: b.nonce,
         }, { selectCorpus: selectTextbookMaterials, complete: (messages, options) => chatComplete(messages, { ...options, ...ph }), parse: parseJSON, enabled: AI.textEnabled });
-        console.log("[analyze:materials]", JSON.stringify({ requestId: ph.traceId, requestedLevel: level, count: result.materials.length, errors: result.errors }));
-        return Response.json(result);
+        console.log("[analyze:materials]", JSON.stringify({ requestId: ph.traceId, requestedLevel: level, count: result.materials.length, errors: result.errors, diagnostics: result.diagnostics }));
+        return Response.json({ ...result, requestId: ph.traceId });
       }
       const topics = (Array.isArray(b.topics) ? b.topics : []).filter(Boolean).slice(0, 1);
       const n = Math.min(2, Math.max(1, Number(b.count) || 2));
