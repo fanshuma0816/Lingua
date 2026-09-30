@@ -807,7 +807,7 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
   const busy=status==="saving"||status==="sending";
   return (<div className="done-card save-card">
     <div className="done-card-title">{status==="saved"?t.saveProgress.savedTitle:t.saveProgress.title}</div>
-    <p className="done-card-note">{status==="saved"?t.saveProgress.savedBody:t.saveProgress.body(wordList.length)}</p>
+    {status==="saved" && <p className="done-card-note">{t.saveProgress.savedBody}</p>}
     {status!=="saved" && <label className="save-option">
       <input type="checkbox" checked={includePractice} onChange={e=>setIncludePractice(e.target.checked)} />
       <span>{t.saveProgress.includePractice}</span>
@@ -821,7 +821,6 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
       <Svg n={status==="saved"?"check":"book"}/> {status==="saving"?t.saveProgress.saving:(status==="saved"?t.saveProgress.savedButton:(signedIn?t.saveProgress.save:t.saveProgress.saveWithLogin))}
     </button>}
     {message && <div className={"tiny save-status "+(status==="error"?"error":status==="saved"||status==="sent"?"ok":"")}>{message}</div>}
-    {!signedIn && status!=="saved" && status!=="auth" && status!=="sent" && <div className="tiny muted save-hint">{t.saveProgress.noPassword}</div>}
   </div>);
 }
 
