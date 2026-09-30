@@ -39,6 +39,22 @@ test("fallback without marked words keeps a modal pattern together",()=>{
   assert.equal(item.hiddenWords.length,6);
 });
 
+test("expression and full-sentence stages use different source sentences",()=>{
+  const sentences=["Zin een.","Zin twee.","Zin drie.","Zin vier.","Zin vijf.","Zin zes."];
+  const plan=recall.buildRecallStagePlan(sentences,[],[],3);
+  assert.equal(plan.cloze.length,3);
+  assert.equal(plan.sentence.length,3);
+  const clozeSources=new Set(plan.cloze.map(item=>item.sourceSentence));
+  assert.ok(plan.sentence.every(item=>!clozeSources.has(item.sourceSentence)));
+});
+
+test("short texts split available sentences instead of repeating them",()=>{
+  const plan=recall.buildRecallStagePlan(["Een.","Twee.","Drie.","Vier."],[],[],3);
+  assert.equal(plan.cloze.length,2);
+  assert.equal(plan.sentence.length,2);
+  assert.equal(new Set([...plan.cloze,...plan.sentence].map(item=>item.sourceSentence)).size,4);
+});
+
 test("mastery distinguishes independent, supported, developing, and review",()=>{
   const base={attempts:[],fullSentenceAttempts:[],revealedSentence:false};
   assert.equal(recall.masteryForRecallItem({...base,fullSentenceAttempts:[{accepted:true}]}),"independent");

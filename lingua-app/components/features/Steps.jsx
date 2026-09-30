@@ -484,11 +484,11 @@ function Shadowing({sents,lang,onSkip,onPrev,onContinue}){
   </div>);
 }
 
-function PracticeAI({lesson,onComplete,onSkip}){
+function PracticeAI({lesson,onFinish,onPrev,onSkip}){
   const {t}=useUI();
   const [tab,setTab]=useState("chat");
-  const [wrote,setWrote]=useState(false); const [talked,setTalked]=useState(false);
-  useEffect(()=>{ if(wrote&&talked&&onComplete) onComplete(); },[wrote,talked]);
+  const [wrote,setWrote]=useState(()=>!!DB.get("aiPracticeFeedback",null));
+  const [talked,setTalked]=useState(()=>!!DB.get("aiChatEvaluation",null));
   return (<div>
     <StepHead eyebrow={t.nav.mods.using} title={t.aiUse.title} onSkip={onSkip} skipLabel={t.skipStep}/>
     <Teacher>{t.aiUse.teacher}</Teacher>
@@ -497,8 +497,13 @@ function PracticeAI({lesson,onComplete,onSkip}){
       <button className={"tab"+(tab==="chat"?" on":"")} onClick={()=>{stopSpeak();setTab("chat");}}>{t.aiUse.chatTab} {talked?"✓":""}</button>
       <button className={"tab"+(tab==="write"?" on":"")} onClick={()=>{stopSpeak();setTab("write");}}>{t.aiUse.writeTab} {wrote?"✓":""}</button>
     </div>
-    {tab==="chat" ? <AIChat lesson={lesson} onNext={()=>{stopSpeak();setTab("write");}} onDone={()=>setTalked(true)}/> : <AIWrite lesson={lesson} onDone={()=>setWrote(true)}/>}
+    {tab==="chat" ? <AIChat lesson={lesson} onDone={()=>setTalked(true)}/> : <AIWrite lesson={lesson} onDone={()=>setWrote(true)}/>}
     <div className="tiny muted" style={{marginTop:12}}>{t.aiUse.unlock}</div>
+    <div className="sent-nav using-nav">
+      <button className="btn btn-ghost btn-sm focusable" onClick={()=>{ stopSpeak(); if(tab==="write") setTab("chat"); else onPrev?.(); }}>← {tab==="write"?t.aiUse.chatTab:t.previous}</button>
+      {tab==="chat"&&talked&&<button className="btn btn-primary btn-sm focusable" onClick={()=>{stopSpeak();setTab("write");}}>{t.aiUse.nextTalk} →</button>}
+      {tab==="write"&&talked&&wrote&&<button className="btn btn-primary btn-sm focusable" onClick={onFinish}>{t.finish} ✓</button>}
+    </div>
   </div>);
 }
 
@@ -513,7 +518,7 @@ function AIWrite({lesson,onDone}){
   useEffect(()=>DB.set("aiPractice",textv),[textv]);
   async function getFeedback(){
     trackEvent("writing_feedback_requested",{language:lang,level:level.slice(0,2),word_count:textv.trim().split(/\s+/).filter(Boolean).length});
-    setFb("loading"); onDone&&onDone();
+    setFb("loading");
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim(),feedbackLanguage:uiLang==="zh"?"Chinese":"English",userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
@@ -522,7 +527,7 @@ function AIWrite({lesson,onDone}){
     }catch(e){
       setFb("mock");
       DB.set("aiPracticeFeedback",{question,text:textv.trim(),feedback:null,simulated:true});
-    }
+    }finally{ onDone&&onDone(); }
   }
   function useStarter(starter){ setTextv(value=>value.trim()?`${value.trim()} ${starter}`:starter); }
   const real=fb && fb!=="loading" && fb!=="mock";
@@ -561,7 +566,7 @@ function AIWrite({lesson,onDone}){
   </div>);
 }
 
-function AIChat({lesson,onNext,onDone}){
+function AIChat({lesson,onDone}){
   const {t,uiLang}=useUI();
   const {lang,level,vocab,topics,grammarFocus,sents,focus}=lesson;
   const shownLang=langName(t,lang);
@@ -629,6 +634,7 @@ function AIChat({lesson,onNext,onDone}){
       else { mockRef.current=true; setMsgs([{who:"ai",t:fallback[0]}]); sayAI(fallback[0]); }
       setBusy(false);
     })(); }
+    else if(initialTurns>=MAX_TURNS&&!storedEvaluation) finish(initialMessages);
     return ()=>{ mountedRef.current=false; if(abortRef.current) abortRef.current.abort(); stopSpeak(); stopMic(); };
   },[]);
 
@@ -646,14 +652,14 @@ function AIChat({lesson,onNext,onDone}){
     recRef.current=r; try{ r.start(); setListening(true); armSilence(); }catch(e){ setListening(false); } }
   function stopMic(){ wantRef.current=false; clearSilence(); if(recRef.current){ try{recRef.current.stop();}catch(e){} recRef.current=null; } setListening(false); }
 
-  async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:list.filter(message=>message.who==="me").length,used_fallback:mockRef.current}); setDone(true); onDone&&onDone(); setEvaluating(true);
-    if(mockRef.current){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); setEvaluationUnavailable(true); setEvaluating(false); return; }
+  async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:list.filter(message=>message.who==="me").length,used_fallback:mockRef.current}); setDone(true); setEvaluating(true);
+    if(mockRef.current){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); setEvaluationUnavailable(true); setEvaluating(false); onDone&&onDone(); return; }
     try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English",userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
       if(r.ok){ const d=await r.json(); DB.set("aiChatEvaluation",{feedback:d,simulated:false}); if(mountedRef.current) setEvalz(d); }
       else { DB.set("aiChatEvaluation",{feedback:null,simulated:true}); if(mountedRef.current) setEvaluationUnavailable(true); }
     }catch(e){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); if(mountedRef.current) setEvaluationUnavailable(true); }
-    finally{ if(mountedRef.current) setEvaluating(false); }
+    finally{ if(mountedRef.current) setEvaluating(false); onDone&&onDone(); }
   }
 
   async function send(){ if(!full||busy) return; stopMic();
@@ -702,7 +708,11 @@ function AIChat({lesson,onNext,onDone}){
         <button className="btn btn-primary btn-sm" disabled={!full||busy} onClick={send}>{t.chat.replyTo(partner.name)} →</button></div>
     </div>) : (<div className="card card-p" style={{marginTop:14,background:"hsl(var(--secondary))"}}>
         <h3 className="lbl">{t.chat.feedbackTitle(!evalz&&!evaluating)}</h3>
-        {evaluating?<div className="muted">{t.chat.evaluating}</div>:evalz ? (<div>
+        {evaluating?<div className="conversation-evaluation-progress">
+          <div className="muted">{t.chat.evaluating}</div>
+          <div className="tiny muted">{t.chat.evaluatingDetail(turns)}</div>
+          <div className="track" aria-label={t.chat.evaluating} style={{overflow:"hidden"}}><span className="indet"/></div>
+        </div>:evalz ? (<div>
           <div style={{marginBottom:8}}>🎉 {evalz.praise}</div>
           {Array.isArray(evalz.turnFeedback)&&evalz.turnFeedback.map((entry,index)=><div className="chat-turn-feedback" key={index}>
             <div><b>{t.chat.youSaid}:</b> <span className="notranslate" translate="no" lang={lang==="Dutch"?"nl":undefined}>{entry.userText}</span></div>
@@ -715,7 +725,6 @@ function AIChat({lesson,onNext,onDone}){
           {evalz.focusNext&&<div className="chat-feedback-summary"><b>{t.chat.focusNext}:</b> {evalz.focusNext}</div>}
           {evalz.practiceSuggestion&&<div className="chat-feedback-summary"><b>{t.chat.practiceSuggestion}:</b> {evalz.practiceSuggestion}</div>}
         </div>) : (<div className="muted">{evaluationUnavailable?t.chat.feedbackUnavailable:t.chat.mockDone(shownLang)}</div>)}
-        {onNext && <div style={{marginTop:14,textAlign:"right"}}><button className="btn btn-primary btn-sm" onClick={onNext}>{t.aiUse.nextTalk} →</button></div>}
       </div>)}
   </div>);
 }

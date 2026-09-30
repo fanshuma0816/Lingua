@@ -154,6 +154,29 @@ function mergeRecallPlan(sentences,userWords,planned,max=3){
   return valid.slice(0,max).map((item,index)=>makeRecallItem(item.sourceSentence,index,userWords,item));
 }
 
+function buildRecallStagePlan(sentences,userWords=[],planned=[],max=3){
+  const unique=[...new Set((sentences||[]).map(String).filter(Boolean))];
+  if(!unique.length) return {cloze:[],sentence:[]};
+  const clozeCount=Math.min(max,Math.ceil(unique.length/2));
+  const plannedItems=mergeRecallPlan(unique,userWords,planned,clozeCount);
+  const cloze=[];
+  for(const item of plannedItems){
+    if(!cloze.some(entry=>entry.sourceSentence===item.sourceSentence)) cloze.push(item);
+  }
+  if(cloze.length<clozeCount){
+    const used=new Set(cloze.map(item=>item.sourceSentence));
+    const fill=buildFallbackRecallPlan(unique.filter(sentence=>!used.has(sentence)),userWords,clozeCount-cloze.length);
+    cloze.push(...fill.map((item,index)=>({...item,id:`cloze-${index}-${item.id}`})));
+  }
+  const used=new Set(cloze.map(item=>item.sourceSentence));
+  const sentenceSources=unique.filter(sentence=>!used.has(sentence)).slice(0,max);
+  const sentence=sentenceSources.map((source,index)=>{
+    const item=makeRecallItem(source,index,userWords,{clozeType:"sentence"});
+    return {...item,id:`sentence-${item.id}`};
+  });
+  return {cloze:cloze.slice(0,clozeCount),sentence};
+}
+
 function masteryForRecallItem(item){
   const full=item.fullSentenceAttempts||[];
   const lastFull=full[full.length-1];
@@ -179,4 +202,4 @@ function summarizeRecall(items=[]){
   return {total:items.length,counts,mastered:[...new Set(mastered)],review};
 }
 
-export { buildFallbackRecallPlan, compareRecallAnswer, diffRecallTokens, makeRecallItem, masteryForRecallItem, mergeRecallPlan, normalizeRecallText, recallTokens, summarizeRecall };
+export { buildFallbackRecallPlan, buildRecallStagePlan, compareRecallAnswer, diffRecallTokens, makeRecallItem, masteryForRecallItem, mergeRecallPlan, normalizeRecallText, recallTokens, summarizeRecall };

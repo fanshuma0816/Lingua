@@ -22,7 +22,7 @@ function SessionView({lesson,text,step,auth,onRequireLogin,onPrev,onContinue,onS
   const stepMin=Math.max(1,Math.round(S.min*((lesson.estMin||TOTAL_MIN)/TOTAL_MIN)));
   const last=step===STEPS.length-1;
   const internalContinue=(S.kind==="grammar"||S.kind==="recall");
-  const hideFoot=(S.kind==="grammar"||S.kind==="recall"||S.kind==="shadow");
+  const hideFoot=(S.kind==="grammar"||S.kind==="recall"||S.kind==="shadow"||S.kind==="using");
   const readerControls=S.kind==="understand";
   const expectedReaderPageCount=Math.max(1,Math.ceil(((lesson&&lesson.sents)||[]).length/5));
   const effectiveReaderPage=readerControls&&readerPage.pageCount===1&&expectedReaderPageCount>1
@@ -65,7 +65,7 @@ function StepBody({step,lesson,text,auth,onRequireLogin,onContinue,onSkip,onPrev
     case "grammar": return <GrammarStep lesson={lesson} auth={auth} onRequireLogin={onRequireLogin} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
     case "shadow":  return <Shadowing key="shadow" sents={sents} lang={lang} onSkip={onSkip} onPrev={onPrev} onContinue={onContinue}/>;
     case "recall":  return <RecallStep lesson={lesson} onComplete={()=>{}} onContinue={onContinue} onSkip={onSkip} onPrev={onPrev}/>;
-    default:        return <PracticeAI lesson={lesson} onComplete={()=>{}} onSkip={onSkip}/>;
+    default:        return <PracticeAI lesson={lesson} onFinish={onContinue} onPrev={onPrev} onSkip={onSkip}/>;
   }
 }
 

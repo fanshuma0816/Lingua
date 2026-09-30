@@ -5,7 +5,7 @@ import { Purpose, Say, StepHead, Teacher } from "../ui/elements";
 import { LANG_CODE } from "../../config/constants";
 import { useUI } from "../../hooks/useUI";
 import { speak, stopSpeak } from "../../lib/audio";
-import { compareRecallAnswer, masteryForRecallItem, mergeRecallPlan, normalizeRecallText } from "../../lib/recall";
+import { buildRecallStagePlan, compareRecallAnswer, masteryForRecallItem, normalizeRecallText } from "../../lib/recall";
 import { DB } from "../../lib/storage";
 import { cachedAiAnalyze } from "../../services/api";
 
@@ -58,14 +58,22 @@ function RevealedAnswer({item,lesson,t,open,onToggle}){
 function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false}){
   const {t,uiLang}=useUI();
   const lessonId=lesson?.localLessonId||lesson?.material?.id||lesson?.id||"current";
-  const baseItems=useMemo(()=>{
-    const plan=mergeRecallPlan(lesson.sents||[],lesson.userWords||DB.get("unknownWords",[]),lesson.recallPlan?.items||lesson.recallPlan||[],3);
-    return plan.map(item=>({...item,translation:item.translation||(lesson.watch||[]).find(x=>x.s===item.sourceSentence)?.tr||""}));
+  const baseItemsByStage=useMemo(()=>{
+    const plan=buildRecallStagePlan(lesson.sents||[],lesson.userWords||DB.get("unknownWords",[]),lesson.recallPlan?.items||lesson.recallPlan||[],3);
+    return Object.fromEntries(Object.entries(plan).map(([key,entries])=>[key,entries.map(item=>({...item,translation:item.translation||(lesson.watch||[]).find(x=>x.s===item.sourceSentence)?.tr||""}))]));
   },[lessonId,lesson.recallPlan]);
   const stored=useMemo(()=>DB.get("recallState",null),[lessonId]);
-  const initialItems=stored?.lessonId===lessonId&&Array.isArray(stored.items)&&stored.items.length?stored.items:baseItems;
-  const filteredItems=reviewOnly?initialItems.filter(item=>["developing","review"].includes(masteryForRecallItem(item))):initialItems;
-  const [items,setItems]=useState(filteredItems.length?filteredItems:initialItems);
+  const initialItemsByStage=useMemo(()=>{
+    if(stored?.lessonId===lessonId&&stored.version>=3&&stored.itemsByStage) return stored.itemsByStage;
+    if(stored?.lessonId===lessonId&&Array.isArray(stored.items)){
+      const legacy=new Map(stored.items.map(item=>[item.sourceSentence,item]));
+      return {...baseItemsByStage,cloze:baseItemsByStage.cloze.map(item=>legacy.has(item.sourceSentence)?{...item,...legacy.get(item.sourceSentence)}:item)};
+    }
+    return baseItemsByStage;
+  },[lessonId,stored,baseItemsByStage]);
+  const initialSentenceItems=initialItemsByStage.sentence||[];
+  const reviewSentenceItems=reviewOnly?initialSentenceItems.filter(item=>["developing","review"].includes(masteryForRecallItem(item))):initialSentenceItems;
+  const [itemsByStage,setItemsByStage]=useState({...initialItemsByStage,cloze:initialItemsByStage.cloze||[],sentence:reviewSentenceItems.length?reviewSentenceItems:initialSentenceItems});
   const [stage,setStage]=useState(reviewOnly?"sentence":(stored?.lessonId===lessonId?stored.stage||"cloze":"cloze"));
   const [idxByStage,setIdxByStage]=useState(()=>stored?.lessonId===lessonId&&stored.idxByStage?stored.idxByStage:{cloze:stored?.stage==="cloze"?stored?.idx||0:0,sentence:stored?.stage==="sentence"?stored?.idx||0:0});
   const [draft,setDraft]=useState("");
@@ -74,44 +82,44 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
   const [listening,setListening]=useState(false);
   const [pointOpen,setPointOpen]=useState(false);
   const recRef=useRef(null);
-  const idx=Math.max(0,Math.min(items.length-1,idxByStage[stage]||0));
-  const item=items[idx]||items[0];
+  const stageItems=itemsByStage[stage]||[];
+  const idx=Math.max(0,Math.min(Math.max(0,stageItems.length-1),idxByStage[stage]||0));
+  const item=stageItems[idx];
 
   useEffect(()=>{
-    if(!items.length||items.every(x=>x.translation)) return;
+    const allItems=Object.values(itemsByStage).flat();
+    if(!allItems.length||allItems.every(x=>x.translation)) return;
     let cancelled=false;
-    const missing=items.filter(x=>!x.translation);
+    const missing=allItems.filter(x=>!x.translation);
     cachedAiAnalyze("translate",{sentences:missing.map(x=>x.sourceSentence),lang:lesson.lang,level:lesson.level,translationLanguage:uiLang==="zh"?"Chinese":"English"}).then(data=>{
       if(cancelled||!Array.isArray(data?.translations)) return;
-      setItems(current=>current.map(entry=>{
-        const at=missing.findIndex(x=>x.id===entry.id);
-        return at>=0?{...entry,translation:data.translations[at]||entry.translation}:entry;
-      }));
+      setItemsByStage(current=>Object.fromEntries(Object.entries(current).map(([key,entries])=>[key,entries.map(entry=>{
+          const at=missing.findIndex(x=>x.id===entry.id);
+          return at>=0?{...entry,translation:data.translations[at]||entry.translation}:entry;
+        })])));
     });
     return()=>{cancelled=true;};
   },[lessonId,uiLang]);
 
   useEffect(()=>{
-    DB.set("recallState",{version:2,lessonId,stage,idx,idxByStage,items});
-    const answers={}; items.forEach((entry,i)=>{ const attempt=entry.fullSentenceAttempts?.at(-1); if(attempt?.answer) answers[i]=attempt.answer; });
+    DB.set("recallState",{version:3,lessonId,stage,idx,idxByStage,itemsByStage});
+    const answers={}; (itemsByStage.sentence||[]).forEach((entry,i)=>{ const attempt=entry.fullSentenceAttempts?.at(-1); if(attempt?.answer) answers[i]=attempt.answer; });
     DB.set("recallAnswers",answers);
-  },[lessonId,stage,idx,idxByStage,items]);
+  },[lessonId,stage,idx,idxByStage,itemsByStage]);
   useEffect(()=>()=>stopMic(),[]);
 
-  if(!item) return <div><StepHead eyebrow={t.nav.mods.recall} title={t.recall.title} onSkip={onSkip} skipLabel={t.skipStep}/><Teacher>{t.recall.noItems}</Teacher></div>;
-
-  const total=items.length;
-  const currentAttempts=stage==="cloze"?(item.attempts||[]):(item.fullSentenceAttempts||[]);
+  const total=stageItems.length;
+  const currentAttempts=stage==="cloze"?(item?.attempts||[]):(item?.fullSentenceAttempts||[]);
   const hasResult=!!feedback;
-  const revealed=stage==="cloze"?!!item.revealedCloze:!!item.revealedSentence;
-  const clozeComplete=items.every(entry=>(entry.attempts||[]).length>0);
-  const hiddenWords=item.hiddenWords?.length?item.hiddenWords:(item.targetPhrase.match(/[\p{L}\p{N}][\p{L}\p{N}'’\-]*/gu)||[]);
-  const phraseAt=item.sourceSentence.indexOf(item.targetPhrase);
-  const clozeBefore=item.clozeBefore??(phraseAt>=0?item.sourceSentence.slice(0,phraseAt):"");
-  const clozeAfter=item.clozeAfter??(phraseAt>=0?item.sourceSentence.slice(phraseAt+item.targetPhrase.length):"");
+  const revealed=stage==="cloze"?!!item?.revealedCloze:!!item?.revealedSentence;
+  const clozeComplete=(itemsByStage.cloze||[]).every(entry=>(entry.attempts||[]).length>0);
+  const hiddenWords=item?.hiddenWords?.length?item.hiddenWords:(item?.targetPhrase?.match(/[\p{L}\p{N}][\p{L}\p{N}'’\-]*/gu)||[]);
+  const phraseAt=item?item.sourceSentence.indexOf(item.targetPhrase):-1;
+  const clozeBefore=item?(item.clozeBefore??(phraseAt>=0?item.sourceSentence.slice(0,phraseAt):"")):"";
+  const clozeAfter=item?(item.clozeAfter??(phraseAt>=0?item.sourceSentence.slice(phraseAt+item.targetPhrase.length):"")):"";
 
-  function updateCurrent(updater){ setItems(current=>current.map((entry,i)=>i===idx?updater(entry):entry)); }
-  function setStageIndex(next){ setIdxByStage(current=>({...current,[stage]:Math.max(0,Math.min(items.length-1,next))})); }
+  function updateCurrent(updater){ setItemsByStage(current=>({...current,[stage]:(current[stage]||[]).map((entry,i)=>i===idx?updater(entry):entry)})); }
+  function setStageIndex(next){ setIdxByStage(current=>({...current,[stage]:Math.max(0,Math.min(stageItems.length-1,next))})); }
   function switchStage(next){
     stopMic(); setFeedback(null); setDraft(""); setPointOpen(false); setStage(next);
   }
@@ -151,7 +159,7 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
   function advance(){
     stopMic(); setFeedback(null); setDraft(""); setPointOpen(false);
     if(idx<total-1){ setStageIndex(idx+1); return; }
-    if(stage==="cloze"){ setStage("sentence"); return; }
+    if(stage==="cloze"&&(itemsByStage.sentence||[]).length){ setStage("sentence"); return; }
     onComplete?.(); onContinue?.();
   }
   function back(){
@@ -166,10 +174,10 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
     <Teacher>{stage==="cloze"?t.recall.clozeTeacher:t.recall.sentenceTeacher}</Teacher>
     <Purpose>{stage==="cloze"?t.recall.clozePurpose:t.recall.sentencePurpose}</Purpose>
     <div className="tabs recall-level-tabs" aria-label={t.recall.levelProgress}>
-      <button className={"tab"+(stage==="cloze"?" on":"")} onClick={()=>switchStage("cloze")}>1 · {t.recall.levelCloze} {clozeComplete?"✓":""}</button>
-      <button className={"tab"+(stage==="sentence"?" on":"")} onClick={()=>switchStage("sentence")}>2 · {t.recall.levelSentence}</button>
+      <button className={"tab"+(stage==="cloze"?" on":"")} onClick={()=>switchStage("cloze")}>{t.recall.levelCloze} {clozeComplete?"✓":""}</button>
+      <button className={"tab"+(stage==="sentence"?" on":"")} onClick={()=>switchStage("sentence")}>{t.recall.levelSentence}</button>
     </div>
-    <div className="card card-p recall-card">
+    {!item?<div className="card card-p recall-card"><Teacher>{t.recall.noItems}</Teacher></div>:<div className="card card-p recall-card">
       <div className="row" style={{justifyContent:"space-between"}}>
         <span className="badge badge-outline">{t.recall.progress(idx+1,total)}</span>
         <span className="tiny muted">{t.recall.attempt(Math.max(1,currentAttempts.length+(hasResult?0:1)))}</span>
@@ -181,12 +189,14 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
         {!revealed?<div className="recall-prompt notranslate" translate="no" lang={lesson.lang==="Dutch"?"nl":undefined}>
           <span>{clozeBefore}</span><span className="recall-blank-group" aria-label={t.recall.blankCount(hiddenWords.length)}>{hiddenWords.map((word,index)=><span className="recall-word-blank" style={{"--blank-size":Math.max(3,Math.min(10,word.length))+"ch"}} key={`${word}-${index}`}/>)}</span><span>{clozeAfter}</span>
         </div>:<RevealedAnswer item={item} lesson={lesson} t={t} open={pointOpen} onToggle={()=>setPointOpen(value=>!value)}/>}
-      </>:<>
+      </>:<div className="recall-cue-section">
         <h3 className="lbl">{t.recall.meaningCue}</h3>
         <div className="translation-line">{item.translation||t.recall.rebuildCue}</div>
-      </>}
-      <h3 className="lbl">{stage==="cloze"?t.recall.missingExpression:t.recall.yourDutch}</h3>
-      <textarea className="recall-answer-input" value={draft} onChange={e=>{setDraft(e.target.value); if(feedback)setFeedback(null);}} style={{minHeight:stage==="cloze"?58:96}} placeholder={stage==="cloze"?t.recall.clozePlaceholder:t.recall.placeholder}/>
+      </div>}
+      <div className="recall-answer-section">
+        <h3 className="lbl">{stage==="cloze"?t.recall.missingExpression:t.recall.yourDutch}</h3>
+        <textarea className="recall-answer-input" value={draft} onChange={e=>{setDraft(e.target.value); if(feedback)setFeedback(null);}} style={{minHeight:stage==="cloze"?58:96}} placeholder={stage==="cloze"?t.recall.clozePlaceholder:t.recall.placeholder}/>
+      </div>
       <div className="row recall-check-actions">
         {stage==="sentence"&&SR?<button className={"btn btn-sm "+(listening?"btn-primary":"btn-outline")} onClick={listening?stopMic:startMic}>🎤 {t.recall.speak}</button>:<span/>}
         <button className="btn btn-primary btn-sm" disabled={!draft.trim()||checking} onClick={check}>{checking?t.recall.checking:t.recall.check}</button>
@@ -198,7 +208,7 @@ function RecallStep({lesson,onComplete,onContinue,onSkip,onPrev,reviewOnly=false
         {(feedback.accepted||revealed)&&<button className="btn btn-primary btn-sm" onClick={advance}>{idx<total-1?t.recall.next:stage==="cloze"?t.recall.nextLevel:t.continue} →</button>}
       </div>}
       {revealed&&stage==="sentence"&&<RevealedAnswer item={item} lesson={lesson} t={t} open={pointOpen} onToggle={()=>setPointOpen(value=>!value)}/>}
-    </div>
+    </div>}
     <div className="sent-nav"><button className="btn btn-ghost btn-sm" onClick={back}>← {t.back}</button></div>
   </div>;
 }

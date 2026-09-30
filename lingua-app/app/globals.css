@@ -238,6 +238,8 @@
   .chat-transcript-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:13px}
   .chat-turn-feedback{display:grid;gap:5px;margin-top:12px;padding:12px;border-radius:10px;background:hsl(var(--background));font-size:13.5px;line-height:1.5}
   .chat-feedback-summary{margin-top:10px;line-height:1.5}
+  .conversation-evaluation-progress{display:grid;gap:8px;padding:4px 0}
+  .conversation-evaluation-progress .track{margin-top:4px}
   .writing-task{display:grid;gap:12px}
   .writing-points{margin:9px 0 0;padding-left:19px;color:hsl(var(--muted-foreground));font-size:13px;line-height:1.5}
   .writing-points li{margin-bottom:4px}
@@ -375,9 +377,13 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 }
 
 /* Recall: graduated retrieval and answer differences. */
-.recall-level-tabs{display:flex;width:100%;margin:14px 0}
-.recall-level-tabs .tab{flex:1;font-size:14px;padding:10px 14px}
+.recall-level-tabs{margin:14px 0}
 .recall-card{margin-top:10px}
+.recall-card>.row:first-child{margin-bottom:18px}
+.recall-cue-section{display:grid;gap:8px;margin-top:4px}
+.recall-cue-section .lbl,.recall-answer-section .lbl{margin:0}
+.recall-cue-section .translation-line{margin:0;line-height:1.55}
+.recall-answer-section{display:grid;gap:9px;margin-top:22px}
 .recall-mode-label{display:inline-flex;margin:16px 0 8px;padding:4px 9px;border-radius:999px;background:hsl(var(--secondary));font-size:12px;font-weight:700}
 .recall-listen{display:flex;margin:10px 0 14px}
 .recall-prompt{font-size:20px;line-height:1.65;font-weight:600;margin:10px 0 20px;padding:16px;border-radius:12px;background:hsl(var(--secondary))}
@@ -409,7 +415,6 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 
 @media(max-width:640px){
   .recall-diff-line{grid-template-columns:1fr}
-  .recall-level-tabs .tab{padding:9px 7px;font-size:12.5px}
   .recall-blank-group{gap:5px}
 }
 
@@ -579,6 +584,7 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 /* microscope / per-sentence nav — one row, left / right */
 .sent-nav{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px}
 .sent-nav .btn{min-width:148px}
+.using-nav{margin-top:24px;padding-top:8px}
 
 /* done page recolor */
 .done-words{margin:0 auto 26px;text-align:center}
