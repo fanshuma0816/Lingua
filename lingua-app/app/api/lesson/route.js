@@ -1,6 +1,7 @@
 import { generateLesson } from "../../../lib/lesson-client";
 import { cleanText } from "../../../lib/text";
 import { prepareImport } from "../../../lib/text-chunks";
+import { MAX_DOCUMENT_CHARS } from "../../../config/constants";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -12,6 +13,7 @@ export const maxDuration = 30;
 export async function POST(req) {
   try {
     const body = await req.json();
+    if (String(body.text || "").length > MAX_DOCUMENT_CHARS) return Response.json({ error: "document_too_large" }, { status: 413 });
     let text = cleanText(body.text || "");
     const lang = body.lang || "Dutch";
     const level = body.level || "A2 — Elementary";

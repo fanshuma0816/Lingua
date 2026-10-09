@@ -10,7 +10,7 @@ import { SessionView, Sidebar } from "./Session";
 import { InputScreen, Preview } from "./Setup";
 import { Done, QuickScan } from "./Steps";
 import { Loading, Svg } from "../ui/elements";
-import { STEPS, STEP_SLUG, stepIndex } from "../../config/constants";
+import { GOALS, STEPS, STEP_SLUG, stepIndex } from "../../config/constants";
 import { UI_TEXT } from "../../config/uiText";
 import { UIContext } from "../../hooks/useUI";
 import { identifyUser, resetAnalytics, trackEvent } from "../../lib/analytics";
@@ -24,6 +24,7 @@ import { cachedAiAnalyze } from "../../services/api";
 import { prepareImport } from "../../lib/text-chunks";
 import { rememberMaterial } from "../../lib/material-history";
 import { buildFallbackRecallPlan } from "../../lib/recall";
+import { completeMaterialSegment, fetchMaterial, startMaterialSegment } from "../../lib/materials-client";
 
 function stepPath(index){ const s=STEPS[Math.max(0,Math.min(STEPS.length-1,index))]; return "/learn/"+STEP_SLUG[s.mod]; }
 
@@ -37,6 +38,7 @@ function routeState(pathname){
   if(path==="/login") return {screen:"login",inputMode:null,path:"/login"};
   if(path==="/progress") return {screen:"progress",inputMode:null,path:"/progress"};
   if(path==="/collection"||path==="/collection/words") return {screen:"collection",inputMode:null,path:"/collection",collectionTab:"words"};
+  if(path==="/collection/materials") return {screen:"collection",inputMode:null,path:"/collection/materials",collectionTab:"materials"};
   if(path==="/collection/grammar") return {screen:"collection",inputMode:null,path:"/collection/grammar",collectionTab:"grammar"};
   if(path==="/learn") return {screen:"lesson",inputMode:null,path:stepPath(0),stepIndex:0};
   if(path.startsWith("/learn/")){ const slug=path.slice(7); const i=STEPS.findIndex(s=>STEP_SLUG[s.mod]===slug); return {screen:"lesson",inputMode:null,path,stepIndex:i>=0?i:0}; }
@@ -78,6 +80,7 @@ function App(){
   const [narrow,setNarrow]=useState(false);
   const [auth,setAuth]=useState({configured:true,session:null,checked:false});
   const [authPrompt,setAuthPrompt]=useState(false);
+  const [authPromptPurpose,setAuthPromptPurpose]=useState(null);
   const mode=screen==="lesson"?"session":screen==="done"?"done":"home";
   const activeMain=screen==="progress"?"progress":screen==="collection"?"collection":"learn";
   const showSideBack=mode!=="home"||screen==="scan"||screen==="preview"||(screen==="input"&&pathname!=="/");
@@ -143,7 +146,7 @@ function App(){
     navigateTo("login","/login");
   }
   async function handleSignOut(){ await signOut(auth.session); await refreshAuth(); }
-  function requireLogin(nextPath=pathname){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPrompt(true); }
+  function requireLogin(nextPath=pathname,purpose=null){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPromptPurpose(purpose); setAuthPrompt(true); }
   function continueAfterLogin(){
     const r=routeState(pathname);
     if((r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"||r.screen==="done")&&!lesson){ navigateTo("input","/"); return; }
@@ -160,7 +163,9 @@ function App(){
   function reviewSession(){ resetSession(); trackEvent("learning_session_started",{session_type:"review",language:lesson?.lang,level:lesson?.level?.slice(0,2)}); goStep(0); }
   function go(id){ const idx=stepIndex(id); if(idx<0) return; goStep(idx); }
   function onContinue(){ const cur=STEPS[step]; trackEvent("learning_step_completed",{step_id:cur.id,module_id:cur.mod,step_number:step+1}); setDoneSet(prev=>new Set(prev).add(cur.id));
-    if(step===STEPS.length-1){ if(lesson?.lang==="Dutch") rememberMaterial({...lesson.material,text},"completed"); saveChunkProgress(lesson,"completed"); trackEvent("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { goStep(step+1); } }
+    if(step===STEPS.length-1){ if(lesson?.lang==="Dutch") rememberMaterial({...lesson.material,text},"completed"); saveChunkProgress(lesson,"completed");
+      if(lesson?.material?.accountMaterialId&&lesson?.material?.accountSegmentId&&auth.session?.accessToken) completeMaterialSegment(lesson.material.accountMaterialId,lesson.material.accountSegmentId,auth.session.accessToken).catch(()=>{});
+      trackEvent("learning_session_completed",{language:lesson?.lang,level:lesson?.level?.slice(0,2),step_count:STEPS.length}); navigateTo("done","/done"); } else { goStep(step+1); } }
   function onSkip(){ const cur=STEPS[step]; trackEvent("learning_step_skipped",{step_id:cur.id,module_id:cur.mod,step_number:step+1});
     if(step===STEPS.length-1){ navigateTo("done","/done"); } else { goStep(step+1); } }
   function onPrev(){ goStep(Math.max(0,step-1)); }
@@ -196,17 +201,26 @@ function App(){
     saveChunkProgress(L,"started");
     return L;
   }
-  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.remove("recallShown"); DB.remove("recallState"); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
+  async function loadLesson(d){ trackEvent("lesson_created",{source:d.material?"generated_material":"imported_text",language:d.lang,level:d.level?.slice(0,2),goal:d.goal}); DB.set("lastInputMode",d.material?.accountMaterialId?"material":d.material?"find":"material"); setText(d.text); DB.set("currentText",d.text); DB.set("recallAnswers",{}); DB.remove("recallShown"); DB.remove("recallState"); DB.set("unknownWords",[]); DB.remove("aiPractice"); DB.remove("aiPracticeFeedback"); DB.remove("aiChatTranscript"); DB.remove("aiChatEvaluation"); setUserWords([]); clearLineTr(); setScreen("loading");
     try{ const r=await fetch("/api/lesson",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error("api"); const L=saveLoadedLesson({...(await r.json()),localLessonId:crypto.randomUUID()},d); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
-      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?.localLessonId===L.localLessonId?{...cur,focus:f}:cur); });
+      if(L.material?.accountMaterialId&&L.material?.accountSegmentId&&auth.session?.accessToken) startMaterialSegment(L.material.accountMaterialId,L.material.accountSegmentId,auth.session.accessToken).catch(()=>{});
+      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,goal:L.goal,topics:L.topics,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?.localLessonId===L.localLessonId?{...cur,focus:f}:cur); });
     }
     catch(e){
       const sourceDocument=d.lang==="Dutch"&&!d.material?prepareImport(d.text,{level:d.level,targetMin:d.targetMin,difficulty:d.difficulty}):null;
       const actualText=sourceDocument?sourceDocument.text:d.text;
       const L=saveLoadedLesson({...generateLesson(actualText,d.lang,d.level,d.goal,d.targetMin||null,d.material||null),text:actualText,
         ...(sourceDocument?{sourceDocument,importDocumentId:sourceDocument.id,importChunkId:sourceDocument.selectedChunkId,importChunkIndex:sourceDocument.selectedChunkIndex}:{}),localLessonId:crypto.randomUUID()},d); setLesson(L); DB.set("currentLesson",L); DB.set("resumePath","/scan"); navigateTo("scan","/scan");
-      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?.localLessonId===L.localLessonId?{...cur,focus:f}:cur); });
+      if(L.material?.accountMaterialId&&L.material?.accountSegmentId&&auth.session?.accessToken) startMaterialSegment(L.material.accountMaterialId,L.material.accountSegmentId,auth.session.accessToken).catch(()=>{});
+      cachedAiAnalyze("focus",{lang:L.lang,level:L.level,goal:L.goal,topics:L.topics,sentences:L.sents,vocab:(L.vocab||[]).map(v=>v.word),feedbackLanguage:uiLang==="zh"?"Chinese":"English"}).then(f=>{ if(f) setLesson(cur=>cur?.localLessonId===L.localLessonId?{...cur,focus:f}:cur); });
     } }
+
+  async function startSavedSegment(materialId,segmentId){
+    if(!auth.session?.accessToken)return startLogin("/collection/materials");
+    const {material}=await fetchMaterial(materialId,auth.session.accessToken);const segment=(material.segments||[]).find(s=>s.id===segmentId)||(material.segments||[]).find(s=>s.status!=="completed");if(!segment)return;
+    loadLesson({text:segment.text,lang:material.language||"Dutch",level:material.learner_level,goal:material.learning_goal||GOALS[0],targetMin:Math.round(((segment.estimated_minutes_min||20)+(segment.estimated_minutes_max||30))/2),
+      material:{id:segment.id,title:material.display_name,source:material.source_type,targetUserLevel:String(material.learner_level).slice(0,2),validatedTextLevel:segment.material_level||String(material.learner_level).slice(0,2),difficultyTier:segment.difficulty_label||"balanced",accountMaterialId:material.id,accountSegmentId:segment.id,segmentIndex:segment.segment_index,segmentCount:material.segments.length}});
+  }
 
   if(screen==="login") return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
     <main className="main"><Login nextPath={DB.get("loginNextPath","/progress")} onDone={continueAfterLogin}/></main></UIContext.Provider>);
@@ -227,15 +241,15 @@ function App(){
       </div>
       <main className="main">
         {screen==="loading" && <Loading/>}
-        {screen==="input" && <InputScreen onNext={loadLesson} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
+        {screen==="input" && <InputScreen auth={auth} onRequireLogin={requireLogin} onNext={loadLesson} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
         {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}
         {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
         {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} auth={auth} onRequireLogin={requireLogin} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
-        {screen==="done" && lesson && <Done lesson={lesson} text={text} diag={{unknown:userWords}} doneSet={doneSet} onNew={()=>navigateTo("input","/")} onReview={reviewSession}/>}
+        {screen==="done" && lesson && <Done lesson={lesson} text={text} diag={{unknown:userWords}} doneSet={doneSet} onNew={()=>navigateTo("input","/")} onReview={reviewSession} onOpenMaterial={()=>navigateTo("collection","/collection/materials")}/>}
         {screen==="progress" && <Progress auth={auth} onLogin={()=>startLogin("/progress")} onStartLearning={()=>navigateTo("input","/")} onResume={resumeLearning}/>}
-        {screen==="collection" && <Collection auth={auth} tab={currentRoute.collectionTab} onTabChange={(tab)=>navigateTo("collection",tab==="grammar"?"/collection/grammar":"/collection")} onLogin={()=>startLogin(currentRoute.path)} onStartLearning={()=>navigateTo("input","/")}/>}
+        {screen==="collection" && <Collection auth={auth} tab={currentRoute.collectionTab} onTabChange={(tab)=>navigateTo("collection",tab==="materials"?"/collection/materials":tab==="grammar"?"/collection/grammar":"/collection")} onLogin={()=>startLogin(currentRoute.path)} onStartLearning={()=>navigateTo("input","/")} onStartSegment={startSavedSegment}/>}
       </main>
-      <AuthPrompt open={authPrompt} onClose={()=>setAuthPrompt(false)} returnPath={DB.get("loginNextPath",pathname||"/")}/>
+      <AuthPrompt open={authPrompt} purpose={authPromptPurpose} onClose={()=>setAuthPrompt(false)} returnPath={DB.get("loginNextPath",pathname||"/")}/>
     </div>
     <div className={"scrim"+((pinned&&narrow)?" on":"")} onClick={()=>setPinned(false)}/>
   </UIContext.Provider>);

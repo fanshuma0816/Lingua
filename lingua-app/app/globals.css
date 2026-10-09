@@ -168,7 +168,16 @@
   .source-links a,.source-links span{border:1px solid hsl(var(--border));background:hsl(var(--background));border-radius:999px;padding:5px 8px;font-size:11.5px;font-weight:600;text-decoration:none;color:hsl(var(--foreground))}
   .source-links span{color:hsl(var(--muted-foreground))}
   .split-warning{margin-top:10px;border:1px solid hsl(var(--warm)/.36);background:hsl(var(--warm)/.08);border-radius:8px;padding:10px 11px;color:hsl(24 70% 31%);font-size:12.5px;line-height:1.45}
-  .split-warning b{display:block;margin-bottom:2px}
+.split-warning b{display:block;margin-bottom:2px}
+.import-progress{margin:8px 0 12px;padding:10px 12px;border-radius:8px;background:hsl(var(--primary)/.08);font-size:13px;color:hsl(var(--foreground))}
+.material-plan-summary h2,.material-collection-card h3,.lesson-objectives h3{margin:0 0 8px}
+.segment-list{display:grid;gap:8px;margin:14px 0}
+.segment-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 12px;border:1px solid hsl(var(--border));border-radius:8px;background:hsl(var(--background))}
+.segment-row span:first-child{display:grid;gap:2px}.segment-row small{color:hsl(var(--muted-foreground));font-size:12px}
+.material-save-choice{margin-top:14px;padding-top:14px;border-top:1px solid hsl(var(--border))}.material-save-choice p{margin:0 0 12px;line-height:1.55}
+.material-collection-list{display:grid;gap:14px}.material-collection-card h3{margin-top:8px}.material-collection-card>.btn-ghost{margin-top:4px}
+.lesson-objectives{margin-bottom:16px;background:hsl(var(--primary)/.06);border-color:hsl(var(--primary)/.22)}
+.lesson-objectives ul{margin:8px 0 0;padding-left:20px;display:grid;gap:7px;line-height:1.5}
   .notice{display:flex;gap:10px;align-items:flex-start;border:1px solid hsl(var(--border));background:hsl(var(--secondary)/.65);border-radius:8px;padding:12px 13px;font-size:13px;color:hsl(var(--muted-foreground));line-height:1.5}
   .segmented{display:inline-flex;gap:4px;background:hsl(var(--secondary));padding:3px;border-radius:9px;width:100%}
   .segmented button{border:none;background:transparent;border-radius:7px;padding:7px 10px;flex:1;font-size:12.5px;font-weight:600;color:hsl(var(--muted-foreground))}

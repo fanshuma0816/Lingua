@@ -6,7 +6,7 @@ import { useUI } from "../../hooks/useUI";
 import { signInWithEmail } from "../../lib/auth-client";
 import { DB } from "../../lib/storage";
 
-function AuthPrompt({ open, onClose, returnPath }) {
+function AuthPrompt({ open, onClose, returnPath, purpose }) {
   const { t } = useUI();
   const [email,setEmail]=useState(()=>DB.get("email",""));
   const [status,setStatus]=useState("idle");
@@ -34,8 +34,8 @@ function AuthPrompt({ open, onClose, returnPath }) {
       <div className="auth-pop" role="dialog" aria-modal="true" aria-labelledby="auth-pop-title" onClick={(e) => e.stopPropagation()}>
         <button className="auth-pop-close focusable" onClick={onClose} aria-label={t.authPrompt.close}>×</button>
         <div className="auth-pop-icon"><Svg n="bookmark" /></div>
-        <h2 id="auth-pop-title">{t.authPrompt.title}</h2>
-        <p>{t.authPrompt.body}</p>
+        <h2 id="auth-pop-title">{purpose==="save-material-plan"?(t.signInSavePlan||t.authPrompt.title):t.authPrompt.title}</h2>
+        <p>{purpose==="save-material-plan"?(t.saveMaterialGuest||t.authPrompt.body):t.authPrompt.body}</p>
         <div className="auth-pop-field">
           <label className="fld" htmlFor="auth-email">{t.email}</label>
           <input id="auth-email" className="input" type="email" autoComplete="email" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>

@@ -49,6 +49,7 @@ function LessonHistoryCard({ lesson }) {
   const meta = [
     lesson?.lang,
     lesson?.level,
+    Number.isInteger(lesson?.segment_index)&&lesson?.segment_count?`${t.materialPart?.(lesson.segment_index+1)||`Part ${lesson.segment_index+1}`} / ${lesson.segment_count}`:null,
     stats.sentenceCount && t.progress.sentences(stats.sentenceCount),
     stats.vocabCount && t.progress.words(stats.vocabCount),
     dateLabel(lesson?.completed_at),

@@ -218,6 +218,18 @@ Outlook 或 Microsoft Defender 可能会在用户点击前预先访问邮件里�
 ## 填了密钥后，这些都是真实的
 - 翻译：每句的翻译由 **Google Cloud Translation** 生成（`/api/analyze` 的 translate）。
 - 课程内容与语法：词义 + 全新实用例句、逐句语法讲解、按你水平出的目标语选择题、AI 推荐学习材料，都由 **Gemini 3.7 Flash on Vertex AI global** 生成（`/api/analyze`、`/api/lesson`）。
+
+## 启用用户材料和分段学习计划
+
+PDF 在浏览器中解析，原始文件不会上传或保存，因此不需要创建 Supabase Storage bucket。登录用户保存的是清洗后的文本、分段计划和学习进度。
+
+1. 打开 Supabase → SQL Editor。
+2. 执行 `supabase/migrations/20261009_user_materials.sql`。
+3. 在 Table Editor 确认 `user_materials`、`material_segments` 已创建，且 `lesson_sessions` 已增加材料关联字段。
+4. 在 Authentication → Policies 确认两个新表均已启用 RLS。
+5. 使用两个不同测试账号验证：账号 A 的材料不能被账号 B 读取、更新或删除。
+
+现有的 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 和 `SUPABASE_SERVICE_ROLE_KEY` 已足够，不需要新增环境变量。
 - 高质量语音朗读：所有朗读都用 **Google Cloud Text-to-Speech**（`/api/tts`）；没有密钥时自动退回浏览器自带声音。
 - Part 1 写作反馈 + Part 2 AI 对话：由 **Gemini 3.7 Flash on Vertex AI global** 实时生成（`/api/chat`）。
 

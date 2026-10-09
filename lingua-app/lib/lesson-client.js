@@ -127,6 +127,27 @@ function materialStats(text,level,targetDuration){
   return {words:ws.length,chars:clean.length,vocab,mins:targetDuration?clampToDuration(estimated,targetDuration):estimated};
 }
 
+function fallbackLearningObjectives(text,lang,level,goal){
+  const lower=String(text||"").toLowerCase(),zh=typeof document!=="undefined"&&document.documentElement.lang.startsWith("zh");
+  const pick=(en,cn)=>zh?cn:en;
+  if(/restaurant|café|cafe|menukaart|bestellen|ober|serveerster/.test(lower))return [
+    {type:"communicative",text:pick("Order food or a drink and make a polite request.","点餐或点饮料，并礼貌地提出一个要求。")},
+    {type:"language",text:pick("Use common Dutch phrases for asking and responding in a restaurant.","使用餐厅场景中常见的荷兰语问答表达。")},
+  ];
+  if(/vrije tijd|weekend|hobby|graag|houden van/.test(lower))return [
+    {type:"communicative",text:pick("Talk about what you like to do in your free time.","谈论自己空闲时间喜欢做的事情。")},
+    {type:"communicative",text:pick("Ask someone about their plans or interests.","询问他人的计划或兴趣。")},
+  ];
+  if(/ik heet|mijn naam|ik woon|ik kom uit/.test(lower))return [
+    {type:"communicative",text:pick("Introduce yourself and share basic personal information.","做简短的自我介绍并提供基本个人信息。")},
+    {type:"communicative",text:pick("Ask and answer simple questions about where someone lives or comes from.","询问并回答居住地或来自哪里等简单问题。")},
+  ];
+  return [
+    {type:"comprehension",text:pick("Identify the text's main situation and key details.","理解文本的主要情境和关键信息。")},
+    {type:"communicative",text:pick("Summarize one important idea from the text in Dutch.","用荷兰语复述文本中的一个重要信息。")},
+  ];
+}
+
 function sourceIcon(source){
   const s=(source||"").toLowerCase();
   if(s.includes("dialogue")) return "💬";
@@ -228,10 +249,11 @@ function generateLesson(text,lang,level,goal,targetMin=null,providedMaterial=nul
   const recommended=LEVELS.find(l=>l.slice(0,2)===material.validatedTextLevel)||LEVELS[1];
   const diff=Math.max(1,Math.min(5,3+(cefrIndex(material.validatedTextLevel)-levelIdx(level))));
   return { lang,level,goal,charCount:chars,sents,vocab,vocabCount,vlist,recommended,material,diff,
+    learningObjectives:fallbackLearningObjectives(text,lang,level,goal),
     topics:inferTopics(text),
     estMin,
     grammarFocus:["Verb position in main clauses","Useful tense patterns","Connectors and sentence flow"],
     comprehension:quizItems([...sents].sort((a,b)=>a.split(/\s+/).length-b.split(/\s+/).length),vlist,3),
     recognition:quizItems(sents,vlist,3) }; }
 
-export { TOPIC_KEYWORDS, altered, estimateMinutes, estimateVocabCount, fallbackGrammarItems, generateLesson, inferTopics, materialStats, practiceQuestion, quizItems, recommendLevel, sourceIcon };
+export { TOPIC_KEYWORDS, altered, estimateMinutes, estimateVocabCount, fallbackGrammarItems, fallbackLearningObjectives, generateLesson, inferTopics, materialStats, practiceQuestion, quizItems, recommendLevel, sourceIcon };

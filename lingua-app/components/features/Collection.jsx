@@ -5,6 +5,7 @@ import { Say, Svg } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
 import { fetchCollection, removeGrammarFromCollection, removeWordFromCollection, wordLemmaKey } from "../../lib/collection";
 import { meaningParts } from "../../lib/text";
+import { MaterialCollection } from "./MaterialCollection";
 
 // Collapse inflected variants so the word list shows each base word once.
 function dedupeWords(list) {
@@ -77,26 +78,26 @@ function GrammarCard({ item, onRemove }) {
   );
 }
 
-function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning }) {
+function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning, onStartSegment }) {
   const { t } = useUI();
   const signedIn = !!auth?.session?.accessToken;
-  const active = tab === "grammar" ? "grammar" : "words";
-  const [state, setState] = useState({ loading: false, error: "", words: [], grammar: [] });
+  const active = tab === "materials" ? "materials" : tab === "grammar" ? "grammar" : "words";
+  const [state, setState] = useState({ loading: false, error: "", materials: [], words: [], grammar: [] });
   const [language, setLanguage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       if (!signedIn) {
-        setState({ loading: false, error: "", words: [], grammar: [] });
+        setState({ loading: false, error: "", materials: [], words: [], grammar: [] });
         return;
       }
       setState((prev) => ({ ...prev, loading: true, error: "" }));
       try {
         const data = await fetchCollection(auth.session.accessToken);
-        if (!cancelled) setState({ loading: false, error: "", words: data.words || [], grammar: data.grammar || [] });
+        if (!cancelled) setState({ loading: false, error: "", materials: data.materials || [], words: data.words || [], grammar: data.grammar || [] });
       } catch (e) {
-        if (!cancelled) setState({ loading: false, error: e?.message || t.collection.loadError, words: [], grammar: [] });
+        if (!cancelled) setState({ loading: false, error: e?.message || t.collection.loadError, materials: [], words: [], grammar: [] });
       }
     }
     load();
@@ -108,9 +109,9 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
     if (!languages.length) setLanguage("");
     else if (!language || !languages.includes(language)) setLanguage(languages[0]);
   }, [languages.join("|"), language]);
-  const allItems = active === "grammar" ? state.grammar : state.words;
-  const filtered = languages.length > 1 && language ? allItems.filter((item) => item.lang === language) : allItems;
-  const items = active === "grammar" ? filtered : dedupeWords(filtered);
+  const allItems = active === "grammar" ? state.grammar : active === "materials" ? state.materials : state.words;
+  const filtered = active !== "materials" && languages.length > 1 && language ? allItems.filter((item) => item.lang === language) : allItems;
+  const items = active === "words" ? dedupeWords(filtered) : filtered;
 
   async function removeItem(item, type) {
     const token = auth?.session?.accessToken;
@@ -138,18 +139,20 @@ function Collection({ auth, tab = "words", onTabChange, onLogin, onStartLearning
       </div>
 
       <div className="tabs collection-tabs">
+        <button className={"tab" + (active === "materials" ? " on" : "")} onClick={() => onTabChange?.("materials")}>{t.collection.materialsTab||"Materials"}</button>
         <button className={"tab" + (active === "words" ? " on" : "")} onClick={() => onTabChange?.("words")}>{t.collection.wordsTab}</button>
         <button className={"tab" + (active === "grammar" ? " on" : "")} onClick={() => onTabChange?.("grammar")}>{t.collection.grammarTab}</button>
       </div>
-      {signedIn && languages.length > 1 && <div className="tabs language-tabs">
+      {signedIn && active !== "materials" && languages.length > 1 && <div className="tabs language-tabs">
         {languages.map((lang) => <button className={"tab" + (language === lang ? " on" : "")} onClick={() => setLanguage(lang)} key={lang}>{lang}</button>)}
       </div>}
 
       {!signedIn && <CollectionEmpty signedIn={false} tab={active} onLogin={onLogin} onStartLearning={onStartLearning} />}
       {signedIn && state.loading && <div className="card card-p">{t.collection.loading}</div>}
       {signedIn && state.error && <div className="notice">{state.error}</div>}
-      {signedIn && !state.loading && !state.error && !items.length && <CollectionEmpty signedIn tab={active} onLogin={onLogin} onStartLearning={onStartLearning} />}
-      {signedIn && !state.loading && !state.error && !!items.length && <div className="collection-list">
+      {signedIn && active !== "materials" && !state.loading && !state.error && !items.length && <CollectionEmpty signedIn tab={active} onLogin={onLogin} onStartLearning={onStartLearning} />}
+      {signedIn && !state.loading && !state.error && active === "materials" && <MaterialCollection materials={state.materials} auth={auth} onStartSegment={onStartSegment} onDeleted={id=>setState(prev=>({...prev,materials:prev.materials.filter(m=>m.id!==id)}))}/>}
+      {signedIn && !state.loading && !state.error && active !== "materials" && !!items.length && <div className="collection-list">
         {active === "grammar"
           ? items.map((item) => <GrammarCard key={item.id} item={item} onRemove={(it) => removeItem(it, "grammar")} />)
           : items.map((item) => <WordCard key={item.id || `${item.lang}-${item.word}`} item={item} onRemove={(it) => removeItem(it, "word")} />)}

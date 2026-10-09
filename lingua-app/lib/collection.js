@@ -134,6 +134,7 @@ async function fetchCollection(accessToken) {
   });
   return {
     ...data,
+    materials: data.materials || [],
     words: mergeCachedWords(data.words || []),
     grammar: mergeCachedGrammar(data.grammar || []),
   };

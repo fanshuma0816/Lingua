@@ -1,5 +1,15 @@
 const LANG_CODE={Dutch:"nl-NL"};
 
+// User-provided material limits. Keep these shared by the importer and the
+// server-side lesson/material validation so the UI never promises a file that
+// the backend later rejects.
+const MAX_PDF_BYTES=10*1024*1024;
+const MAX_PDF_PAGES=100;
+const MAX_DOCUMENT_CHARS=200000;
+const MIN_LEARNABLE_WORDS=50;
+const PDF_PARSE_TIMEOUT_MS=20000;
+const PENDING_MATERIAL_TTL_MS=24*60*60*1000;
+
 const PARTNER={Spanish:{name:"Lucía",face:"👩🏻"},French:{name:"Camille",face:"👩🏼"},German:{name:"Lena",face:"👩🏼"},
   Italian:{name:"Giulia",face:"👩🏻"},Portuguese:{name:"Sofia",face:"👩🏽"},Dutch:{name:"Sanne",face:"👩🏼"},
   Japanese:{name:"Yuki",face:"🧑🏻"},Korean:{name:"Minji",face:"👩🏻"},"Mandarin Chinese":{name:"Mei",face:"👩🏻"},
@@ -51,4 +61,4 @@ const GOALS=["General fluency","Conversation & speaking","Reading comprehension"
 
 const SUPPORT_CHECKOUT_URL="https://buy.stripe.com/aFa00l0Hh3zU2Xh1bl18c00";
 
-export { GOALS, LANGS, LANG_CODE, LEVELS, MODULES, PARTNER, PLAN_BLOCKS, POS, STEPS, STEP_SLUG, SUPPORT_CHECKOUT_URL, TOTAL_MIN, levelIdx, stepIndex };
+export { GOALS, LANGS, LANG_CODE, LEVELS, MAX_DOCUMENT_CHARS, MAX_PDF_BYTES, MAX_PDF_PAGES, MIN_LEARNABLE_WORDS, MODULES, PARTNER, PDF_PARSE_TIMEOUT_MS, PENDING_MATERIAL_TTL_MS, PLAN_BLOCKS, POS, STEPS, STEP_SLUG, SUPPORT_CHECKOUT_URL, TOTAL_MIN, levelIdx, stepIndex };

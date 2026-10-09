@@ -376,4 +376,15 @@ Expected:
 
 - The exercise uses vocabulary or phrases from the current lesson.
 - The AI does not switch to unrelated generic vocabulary.
+# PDF and long-material import
+
+- A text-based PDF up to 10 MB and 100 pages is parsed locally and shows editable cleaned text.
+- A fake, encrypted, scanned, oversized, or over-100-page PDF shows an actionable error.
+- The original PDF is never sent to an application API.
+- Long pasted text and long PDF text produce ordered, non-overlapping segments that cover the cleaned text.
+- A signed-out learner who chooses “current lesson only” can study the first segment and cannot later retrieve the remaining segments.
+- A pending long-material plan survives the email sign-in round trip and is removed after save or refusal.
+- A signed-in learner can save a plan, see it in Collection, start the next pending segment, and see status move from To learn to In progress to Completed.
+- One account cannot read, update, or delete another account's material.
+- Preview shows 2–3 learning objectives after Quick Scan, with a local fallback when AI focus generation fails.
 

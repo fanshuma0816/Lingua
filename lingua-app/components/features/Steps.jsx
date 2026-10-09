@@ -824,7 +824,7 @@ function SaveProgressCard({lesson,text,wordList,doneSet}){
   </div>);
 }
 
-function Done({lesson,text,diag,doneSet,onNew,onReview}){
+function Done({lesson,text,diag,doneSet,onNew,onReview,onOpenMaterial}){
   const {t}=useUI();
   const feedbackKey=`lessonFeedback:${lesson?.localLessonId||lesson?.material?.id||lesson?.id||"current"}`;
   const feedbackWasHandled=DB.get(feedbackKey,false);
@@ -874,6 +874,7 @@ function Done({lesson,text,diag,doneSet,onNew,onReview}){
   const feedbackNumber=isLeastStep?2:1;
   const feedbackText=devFeedback.trim();
   const feedbackSending=devFeedbackStatus==="sending";
+  const hasNextMaterialSegment=lesson?.material?.accountMaterialId&&Number.isInteger(lesson?.material?.segmentIndex)&&lesson.material.segmentIndex+1<(lesson.material.segmentCount||0);
   return (<>
     <div className="done-wrap">
       <div className="done-emoji">🎉</div>
@@ -898,6 +899,7 @@ function Done({lesson,text,diag,doneSet,onNew,onReview}){
       </div>
       <div className="done-actions">
         <button className="btn btn-outline focusable" onClick={onReview}><Svg n="recall"/> {t.done.review}</button>
+        {hasNextMaterialSegment&&<button className="btn btn-primary focusable" onClick={onOpenMaterial}>{t.done.nextMaterialLesson||"View next lesson"} →</button>}
         <button className="btn btn-primary focusable" onClick={onNew}>{t.done.new} →</button>
       </div>
     </div>

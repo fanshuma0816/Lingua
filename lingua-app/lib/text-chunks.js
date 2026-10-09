@@ -1,7 +1,7 @@
 import { cleanText } from "./text.js";
 import { analyzeDifficulty, cefrIdx, materialId } from "./cefr.mjs";
+import { MAX_DOCUMENT_CHARS } from "../config/constants.js";
 
-export const MAX_DOCUMENT_CHARS = 200000;
 const countWords = text => (text.match(/[\p{L}\p{N}]+/gu) || []).length;
 export function prepareImport(raw, { level = "A2", targetMin = 30, difficulty = "balanced" } = {}) {
   const originalText = String(raw || "");
@@ -57,6 +57,8 @@ function sentenceUnits(text) {
 export function corpusWordCount(text) {
   return (String(text).match(/[\p{L}][\p{L}'’-]{1,}/gu) || []).length;
 }
+
+export { MAX_DOCUMENT_CHARS };
 
 // Group complete question+first-answer units before applying the session length.
 // All offsets refer to the stored cleaned article, never to another article.
