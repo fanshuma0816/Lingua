@@ -281,12 +281,12 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 
 /* Independent brand and right controls keep the learning column centered. */
 .app-chrome{display:contents}
-.app-brand-link{position:fixed;top:14px;left:calc(50% - 580px);z-index:45;height:36px;display:inline-flex;align-items:center;color:hsl(var(--foreground));text-decoration:none;border-radius:6px}
-.landing-brand{display:inline-flex;align-items:center;gap:9px;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:26px;font-weight:600;letter-spacing:-.03em;line-height:1;white-space:nowrap}
-.landing-brand-glyph{display:block;width:26px;height:26px;flex-shrink:0}
+.app-brand-link{position:fixed;top:15px;left:max(32px,calc(50% - 528px));z-index:45;height:36px;display:inline-flex;align-items:center;color:hsl(var(--foreground));text-decoration:none;border-radius:6px}
+.landing-brand{display:inline-flex;align-items:center;gap:9px;font-family:-apple-system,"SF Pro Display","SF Pro Text",BlinkMacSystemFont,"Helvetica Neue",Helvetica,system-ui,Arial,sans-serif;font-size:22px;font-weight:600;letter-spacing:-.03em;line-height:1.6;white-space:nowrap}
+.landing-brand-glyph{display:block;width:22px;height:22px;flex-shrink:0}
 .landing-brand-dot{color:#c6f034}
 .path-anchor{position:fixed;top:14px;right:calc(50% - 580px);width:216px;z-index:45;--w-open:216px}
-@media(max-width:1200px){ .app-brand-link{left:16px} .path-anchor{right:16px;top:14px} }
+@media(max-width:1200px){ .path-anchor{right:16px;top:14px} }
 .chrome-row{display:flex;align-items:center;justify-content:flex-end;gap:8px}
 .chrome-btn{width:36px;height:36px;border-radius:9px;border:1px solid hsl(var(--border));background:hsl(var(--card));
   display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.06);
@@ -611,18 +611,13 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 
 @media(max-width:640px){
   .main{padding:18px 16px calc(132px + env(safe-area-inset-bottom))}
-  .app-chrome{position:sticky;top:0;z-index:45;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 16px 8px;background:hsl(var(--background)/.94);backdrop-filter:blur(8px);border-bottom:1px solid hsl(var(--border))}
-  .app-brand-link{position:static;height:36px;flex-shrink:0}
-  .landing-brand{font-size:22px;gap:6px}
-  .landing-brand-glyph{width:22px;height:22px}
+  .app-chrome{position:sticky;top:0;z-index:45;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 32px 8px;background:hsl(var(--background)/.94);backdrop-filter:blur(8px);border-bottom:1px solid hsl(var(--border))}
+  .app-brand-link{position:relative;top:7px;left:auto;height:36px;flex-shrink:0}
   .path-anchor{position:static;min-width:0;width:auto}
-  .chrome-row{max-width:100%;overflow-x:auto;padding-bottom:1px;scrollbar-width:none}
+  .chrome-row{max-width:100%;justify-content:flex-start;overflow-x:auto;padding-bottom:1px;scrollbar-width:none}
   .chrome-row::-webkit-scrollbar{display:none}
   .sidebar{top:calc(52px + env(safe-area-inset-top));right:16px;max-width:calc(100vw - 32px);max-height:calc(100vh - 76px - env(safe-area-inset-top))}
   @media(max-width:380px){
-    .app-chrome{padding-left:12px;padding-right:12px}
-    .landing-brand{font-size:18px;gap:4px}
-    .landing-brand-glyph{width:20px;height:20px}
     .chrome-row{gap:4px}
   }
   textarea,select,.input{font-size:16px}
@@ -665,3 +660,32 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
   .save-mini,.saved-pill{white-space:nowrap;min-height:36px;height:auto}
   .scanw{padding:3px 5px!important}
 }
+
+/* Commercial launch notice and email account entry; learning styles are unchanged. */
+.launch-notice{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;margin:0 0 24px;background:hsl(var(--primary)/.09);border:1px solid hsl(var(--primary)/.24);border-radius:12px}
+.launch-notice-copy{flex:1;min-width:0;font-size:12.5px;line-height:1.5}
+.launch-notice-copy strong{font-size:13px;font-weight:600}
+.launch-notice-copy p{margin:4px 0;color:hsl(var(--muted-foreground))}
+.launch-notice a,.auth-pro-note a{color:hsl(var(--foreground));text-decoration:underline;text-underline-offset:3px;font-weight:600}
+.launch-notice-close{flex:0 0 auto;width:28px;height:28px;border:0;background:transparent;color:hsl(var(--muted-foreground));border-radius:6px;font-size:20px;line-height:1}
+.launch-notice-close:hover{background:hsl(var(--accent));color:hsl(var(--foreground))}
+.auth-page{max-width:480px;margin:0 auto}
+.auth-brand{display:flex;justify-content:center;width:fit-content;margin:0 auto 24px;color:hsl(var(--foreground));text-decoration:none;border-radius:6px}
+.auth-card{text-align:left}
+.auth-card h1{font-size:23px;line-height:1.25;margin:0 0 10px}
+.auth-card .sub{font-size:14px;line-height:1.6;margin-bottom:18px}
+.auth-mode-switch{display:flex;gap:4px;padding:4px;margin-bottom:24px;border-radius:10px;background:hsl(var(--secondary))}
+.auth-mode-switch button{flex:1;padding:9px 8px;border:0;border-radius:7px;background:transparent;color:hsl(var(--muted-foreground));font-size:13px;font-weight:600}
+.auth-mode-switch button[aria-pressed="true"]{background:hsl(var(--card));color:hsl(var(--foreground));box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.auth-mode-switch button:disabled{cursor:default;opacity:.65}
+.auth-benefits{padding-left:19px;margin:0 0 22px;font-size:13px;color:hsl(var(--muted-foreground));line-height:1.6}
+.auth-benefits li+li{margin-top:7px}
+.auth-submit{width:100%;margin-top:14px}
+.auth-password-note{margin:12px 0 0}
+.auth-pro-note{border-top:1px solid hsl(var(--border));margin-top:22px;padding-top:16px;font-size:12px;line-height:1.6;color:hsl(var(--muted-foreground))}
+.auth-pro-note p{margin:0 0 6px}
+.auth-plan-details{margin-top:14px;font-size:12px;line-height:1.6;color:hsl(var(--muted-foreground))}
+.auth-plan-details summary{cursor:pointer}
+.auth-plan-details p{margin:8px 0 0}
+.auth-pop .auth-launch-note{font-size:12px;line-height:1.5}
+@media(max-width:640px){.auth-card{padding:20px}.auth-card h1{font-size:21px}}

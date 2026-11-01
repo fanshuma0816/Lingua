@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AuthPrompt } from "./AuthPrompt";
 import { Collection } from "./Collection";
 import { Login } from "./Login";
+import { LaunchNotice } from "./LaunchNotice";
 import { Progress } from "./Progress";
 import { SessionView, Sidebar } from "./Session";
 import { InputScreen, Preview } from "./Setup";
@@ -245,6 +246,7 @@ function App(){
       </div>
       </div>
       <main className="main">
+        {screen==="input" && !currentRoute.inputMode && <LaunchNotice/>}
         {screen==="loading" && <Loading/>}
         {screen==="input" && <InputScreen auth={auth} onRequireLogin={requireLogin} onNext={loadLesson} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
         {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}

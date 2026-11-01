@@ -43,7 +43,7 @@ function Brand({variant="default"}){
       <path d="M4 5.5C4 4.7 4.7 4 5.5 4h9A2.5 2.5 0 0 1 17 6.5v7A2.5 2.5 0 0 1 14.5 16H8l-4 3.2V5.5Z" fill="currentColor"/>
       <path d="M11 15.5c0 .8.7 1.5 1.5 1.5H16l4 3V9.5A2.5 2.5 0 0 0 17.5 7H16" stroke="#3d5a00" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
-    <span>Lingua</span><span className="landing-brand-dot">.</span>
+    Lingua<span className="landing-brand-dot">.</span>
   </span>);
   return (<div className="brand"><div className="logo">L</div>Lingua</div>);
 }

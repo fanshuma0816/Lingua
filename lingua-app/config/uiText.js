@@ -1,5 +1,6 @@
 const UI_TEXT={
   en:{
+    commercial:{"launchTitle":"Lingua Pro launches 9 November 2026","launchBody":"€5.99/month, including applicable VAT. Free lessons will remain available.","viewPlans":"View plans","dismiss":"Dismiss launch notice","signupTab":"Create account","loginTab":"Log in","signupTitle":"Create your account. Keep your lessons.","signupBody":"Save lessons and learning progress to your account. From 9 November, new and existing accounts receive 3 free lesson generations, once only.","loginTitle":"Welcome back to Lingua","loginBody":"Continue your learning and revisit saved lessons. From 9 November, existing accounts receive the same one-time allowance of 3 free lesson generations.","sendSignup":"Send account link","sendLogin":"Send sign-in link","resend":"Send another link","signupSent":"Check your email for your account link. Return to Lingua after signing in to continue.","loginSent":"Check your email for your sign-in link. Return to Lingua after signing in to continue.","benefits":["Save lessons and learning progress","Revisit generated, saved lessons without using another generation","No automatic subscription or charge when you create an account"],"proNote":"Optional from 9 November: Lingua Pro, €5.99/month including applicable VAT. Unlimited lesson generations during your subscription. EU consumers only.","planRules":"One-time free generations, not a monthly allowance. Signing in does not reset them. Under the new plan, a successful new lesson reaching Quick Scan uses one generation; reviewing a saved lesson uses none.","renewalNote":"Pro renews monthly. Cancel renewal at any time; access continues until the paid period ends. If renewal payment fails, there is no grace period; pay again to restore Pro.","noCharge":"Creating an account does not subscribe you to Pro or charge you.","saveIntro":"Create an account or sign in to keep this lesson and your progress.","saveLaunch":"From 9 November: new and existing accounts receive 3 free lesson generations, once only. Creating an account does not start a paid subscription."},
     interfaceLanguage:"Interface language", english:"English", chinese:"中文", languageNames:{Dutch:"Dutch"}, clearLocalData:"Clear local data", clearConfirm:"Clear all local learning data (draft, notes, ratings, progress)?", newMaterial:"New material",
     continue:"Continue", previous:"Previous", back:"Back", next:"Next", finish:"Finish", exitSession:"Exit session", play:"Play", stop:"Stop", restart:"restart",
     skip:"Skip", skipStep:"Skip this →",
@@ -21,8 +22,8 @@ const UI_TEXT={
     buildingTitle:"Building your lesson…",
     buildingSteps:["Reading your text…","Splitting it into sentences…","Translating each line…","Finding the key words…","Writing fresh examples…","Preparing your quiz…","Almost ready…"],
     buildingNote:"A real AI is translating your text and writing the lesson — this usually takes 20–40 seconds. Thanks for your patience!",
-    loginTitle:"Learn any language through content you love", loginSub:"Paste a text, transcript, or article excerpt, and it becomes a complete guided learning session.", loginChecking:"Checking sign-in...", loginLinkSent:"Check your email for the sign-in link.", loginError:"Could not send the sign-in link.",
-    email:"Email", noPassword:"No password needed for this test build. Your learning stays on this device.",
+    loginTitle:"Welcome back to Lingua", loginSub:"Sign in to continue learning and revisit your saved lessons.", loginChecking:"Checking sign-in...", loginLinkSent:"Check your email for the sign-in link.", loginError:"Could not send the sign-in link.",
+    email:"Email", noPassword:"No password needed. We’ll email you a secure sign-in link.",
     inputTitle:"Bring your material", inputSub:"Paste Dutch text, or upload a PDF or text file. Longer material can be divided into several lessons.",
     startTitle:"Choose how you'd like to learn today.", startSub:"Start with your own material, or let AI help you find something matched to your level and goals.",
     startMaterialTitle:"I already have learning material", startMaterialSub:"Turn a PDF, textbook, transcript or article into one or more AI lessons.", startMaterialAction:"Use my material",
@@ -133,6 +134,7 @@ const UI_TEXT={
     celebrate:{explored:(n)=>`Today you explored ${n} new words`},
   },
   zh:{
+    commercial:{"launchTitle":"Lingua Pro 将于 2026 年 11 月 9 日上线","launchBody":"€5.99/月，包含适用税费。免费体验继续保留。","viewPlans":"查看方案","dismiss":"关闭上线预告","signupTab":"创建账户","loginTab":"已有账户登录","signupTitle":"创建账户，保存你的学习课程","signupBody":"把课程和学习进度保存到账户。11 月 9 日起，新旧账户均可获得一次性的 3 次免费课程生成额度。","loginTitle":"欢迎回来，继续你的学习","loginBody":"继续学习，复习已保存的课程。11 月 9 日起，已有账户同样可获得一次性的 3 次免费课程生成额度。","sendSignup":"发送账户链接","sendLogin":"发送登录链接","resend":"重新发送链接","signupSent":"请查看邮箱里的账户链接。登录后回到 Lingua，即可继续。","loginSent":"请查看邮箱里的登录链接。登录后回到 Lingua，即可继续。","benefits":["保存课程和学习进度","重复学习已生成并保存的课程，不再消耗生成额度","创建账户不会自动订阅或收费"],"proNote":"11 月 9 日起可选：Lingua Pro，€5.99/月，包含适用税费。订阅期间不限课程生成，仅面向欧盟消费者。","planRules":"免费生成额度仅发放一次，不按月补充，登录不会重置。新方案启用后，新课程成功进入 Quick Scan 时使用 1 次额度；复习已保存课程不扣额度。","renewalNote":"Pro 按月自动续费，可随时关闭续费，权益保留至已付费周期结束。续费失败不设宽限期，重新付款后恢复 Pro。","noCharge":"创建账户不会自动订阅 Pro，也不会收费。","saveIntro":"创建账户或登录，保存这节课程和学习进度。","saveLaunch":"11 月 9 日起，新旧账户均可获得一次性的 3 次免费课程生成额度。创建账户不会开通付费订阅。"},
     interfaceLanguage:"界面语言", english:"English", chinese:"中文", languageNames:{Dutch:"荷兰语"}, clearLocalData:"清除本地数据", clearConfirm:"清除所有本地学习数据（草稿、笔记、评分和进度）？", newMaterial:"新材料",
     continue:"继续", previous:"上一步", back:"返回", next:"下一步", finish:"完成", exitSession:"退出学习", play:"播放", stop:"停止", restart:"重新开始",
     skip:"跳过", skipStep:"跳过这步 →",
@@ -154,8 +156,8 @@ const UI_TEXT={
     buildingTitle:"正在生成你的课程…",
     buildingSteps:["读取文本…","切分句子…","逐句翻译…","寻找关键词…","生成新例句…","准备小测验…","快好了…"],
     buildingNote:"AI 正在翻译文本并生成课程，通常需要 20–40 秒。谢谢耐心等待！",
-    loginTitle:"用你喜欢的内容学习任何语言", loginSub:"粘贴一段文本、字幕或文章节选，它会变成一节完整的引导式学习课。", loginChecking:"正在检查登录状态...", loginLinkSent:"请查看邮箱里的登录链接。", loginError:"暂时无法发送登录链接。",
-    email:"邮箱", noPassword:"这个测试版本不需要密码。学习记录只保存在这台设备上。",
+    loginTitle:"欢迎回到 Lingua", loginSub:"登录后继续学习，复习已保存的课程。", loginChecking:"正在检查登录状态...", loginLinkSent:"请查看邮箱里的登录链接。", loginError:"暂时无法发送登录链接。",
+    email:"邮箱", noPassword:"无需密码，我们会向你的邮箱发送安全登录链接。",
     inputTitle:"导入你的材料", inputSub:"粘贴荷兰语文本，或上传 PDF、文本文件。较长材料可以分成多次学习。",
     startTitle:"今天你想怎样开始学习？", startSub:"你可以用自己的材料开始，也可以让 AI 按水平和目标帮你找内容。",
     startMaterialTitle:"我已经有学习材料", startMaterialSub:"把 PDF、教材、字幕或文章变成一节或多节 AI 课程。", startMaterialAction:"使用我的材料",

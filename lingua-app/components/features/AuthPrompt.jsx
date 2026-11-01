@@ -35,7 +35,8 @@ function AuthPrompt({ open, onClose, returnPath, purpose }) {
         <button className="auth-pop-close focusable" onClick={onClose} aria-label={t.authPrompt.close}>×</button>
         <div className="auth-pop-icon"><Svg n="bookmark" /></div>
         <h2 id="auth-pop-title">{purpose==="save-material-plan"?(t.signInSavePlan||t.authPrompt.title):t.authPrompt.title}</h2>
-        <p>{purpose==="save-material-plan"?(t.saveMaterialGuest||t.authPrompt.body):t.authPrompt.body}</p>
+        <p>{purpose==="save-material-plan"?(t.saveMaterialGuest||t.authPrompt.body):t.commercial.saveIntro+" "+t.authPrompt.body}</p>
+        <p className="tiny muted auth-launch-note">{t.commercial.saveLaunch}</p>
         <div className="auth-pop-field">
           <label className="fld" htmlFor="auth-email">{t.email}</label>
           <input id="auth-email" className="input" type="email" autoComplete="email" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>
