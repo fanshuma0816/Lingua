@@ -9,7 +9,7 @@ import { Progress } from "./Progress";
 import { SessionView, Sidebar } from "./Session";
 import { InputScreen, Preview } from "./Setup";
 import { Done, QuickScan } from "./Steps";
-import { Loading, Svg } from "../ui/elements";
+import { Brand, Loading, Svg } from "../ui/elements";
 import { GOALS, STEPS, STEP_SLUG, stepIndex } from "../../config/constants";
 import { UI_TEXT } from "../../config/uiText";
 import { UIContext } from "../../hooks/useUI";
@@ -227,9 +227,13 @@ function App(){
 
   return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
     <div className={"shell"+(pinned?" pinned":"")}>
+      <div className="app-chrome">
+        <a className="app-brand-link focusable" href="https://www.lingualanguage.site/" aria-label="Lingua home">
+          <Brand variant="landing"/>
+        </a>
       <div className="path-anchor">
         <div className="chrome-row">
-          <button className="bar-toggle focusable" onClick={toggleSide} aria-pressed={pinned} aria-label="Show or hide the learning path"><Svg n={pinned?"panelClose":"panel"}/></button>
+          <button className="bar-toggle focusable" onClick={toggleSide} aria-pressed={pinned} aria-label="Show or hide the learning path"><Svg n={pinned?"panelRightClose":"panelRight"}/></button>
           <label className="chrome-select" title={t.interfaceLanguage}><Svg n="globe"/>
             <select value={uiLang} onChange={e=>setUiLang(e.target.value)} aria-label={t.interfaceLanguage}>
               <option value="en">EN</option><option value="zh">中文</option></select></label>
@@ -238,6 +242,7 @@ function App(){
         </div>
         <Sidebar mode={mode} activeScreen={screen} lesson={lesson} step={step} doneSet={doneSet} go={go} onGoScan={()=>navigateTo("scan","/scan")} onBackHome={()=>navigateTo("input","/")} showBack={showSideBack}
           activeMain={activeMain} onNavigate={navigatePath} auth={auth} onLogin={()=>startLogin(pathname)} onSignOut={handleSignOut}/>
+      </div>
       </div>
       <main className="main">
         {screen==="loading" && <Loading/>}
