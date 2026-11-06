@@ -24,7 +24,7 @@ import { cachedAiAnalyze, chatFallback } from "../../services/api";
 // Quick scan — the learner taps words they don't know straight in the text.
 // All words look the same (no difficulty hints, no CEFR badges); the marked
 // words are remembered and drive the Vocabulary & Grammar and Recall steps.
-function QuickScan({lesson,text,onDone,onSkip,onBack}){
+function QuickScan({lesson,text,onDone,onSkip,onBack,disabled=false}){
   const {t}=useUI();
   const src=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
   const parts=useMemo(()=>src.split(/([\p{L}][\p{L}'’-]*)/u),[src]);
@@ -34,7 +34,7 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   const count=marked.size;
   return (<div>
     <div className="step-head"><div className="step-head-main"><div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2></div>
-      <button className="btn btn-outline btn-sm step-skip focusable" onClick={onSkip}>{t.scan.skip}</button></div>
+      <button className="btn btn-outline btn-sm step-skip focusable" disabled={disabled} onClick={onSkip}>{t.scan.skip}</button></div>
     <Teacher>{t.scan.teacher}</Teacher>
     <div className="card card-p" style={{marginBottom:14}}>
       <div style={{whiteSpace:"pre-wrap",lineHeight:2.05,fontSize:16,maxHeight:360,overflowY:"auto"}}>
@@ -49,10 +49,10 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
     </div>
     <div className="row" style={{justifyContent:"space-between",alignItems:"center"}}>
       <div className="row" style={{gap:12}}>
-        {onBack && <button className="btn btn-ghost btn-sm focusable" onClick={onBack}>{t.scan.reselect}</button>}
+        {onBack && <button className="btn btn-ghost btn-sm focusable" disabled={disabled} onClick={onBack}>{t.scan.reselect}</button>}
         <span className="tiny muted">{count?t.scan.marked(count):t.scan.none}</span>
       </div>
-      <button className="btn btn-primary focusable" onClick={()=>onDone([...marked])}>{t.scan.done}</button>
+      <button className="btn btn-primary focusable" disabled={disabled} onClick={()=>onDone([...marked])}>{t.scan.done}</button>
     </div>
   </div>);
 }

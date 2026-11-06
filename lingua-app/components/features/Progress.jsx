@@ -35,7 +35,7 @@ function compactList(items, max = 10) {
   return list.length > max ? [...list.slice(0, max), `+${list.length - max}`] : list;
 }
 
-function LessonHistoryCard({ lesson }) {
+function LessonHistoryCard({ lesson, onRestore }) {
   const { t } = useUI();
   const stats = lesson?.stats || {};
   const snapshot = lesson?.lesson_snapshot || {};
@@ -51,7 +51,7 @@ function LessonHistoryCard({ lesson }) {
     lesson?.level,
     stats.sentenceCount && t.progress.sentences(stats.sentenceCount),
     stats.vocabCount && t.progress.words(stats.vocabCount),
-    dateLabel(lesson?.completed_at),
+    lesson?.completed_at?dateLabel(lesson.completed_at):t.learningAccess.inProgress,
   ].filter(Boolean).join(" · ");
 
   return (
@@ -64,6 +64,10 @@ function LessonHistoryCard({ lesson }) {
         <Svg n="chevronRight" />
       </summary>
       <div className="history-detail">
+        {(snapshot.sents?.length||snapshot.sentences?.length)?<div className="learning-course-actions">
+          <button className="btn btn-primary btn-sm" onClick={()=>onRestore(lesson,false)}>{t.learningAccess.open}</button>
+          <button className="btn btn-outline btn-sm" onClick={()=>onRestore(lesson,true)}>{t.learningAccess.review}</button>
+        </div>:<p className="tiny muted">{t.learningAccess.unavailable}</p>}
         {lesson?.input_text && <section>
           <h3>{t.progress.savedText}</h3>
           <p className="history-text notranslate" translate="no" lang={lesson.lang === "Dutch" ? "nl" : undefined}>{lesson.input_text}</p>
@@ -89,11 +93,11 @@ function LessonHistoryCard({ lesson }) {
   );
 }
 
-function Progress({ auth, onLogin, onStartLearning, onResume }) {
+function Progress({ auth, onLogin, onStartLearning, onResume, onRestore }) {
   const { t } = useUI();
   const signedIn = !!auth?.session?.accessToken;
   const [localProgress, setLocalProgress] = useState({ lesson: null, text: "" });
-  const [records, setRecords] = useState({ loading: false, error: "", lessons: [] });
+  const [records, setRecords] = useState({ loading: false, error: "", lessons: [], nextPage:null });
   useEffect(() => {
     setLocalProgress({
       lesson: DB.get("currentLesson", null),
@@ -110,7 +114,7 @@ function Progress({ auth, onLogin, onStartLearning, onResume }) {
       setRecords((prev) => ({ ...prev, loading: true, error: "" }));
       try {
         const data = await fetchLearningRecords(auth.session.accessToken);
-        if (!cancelled) setRecords({ loading: false, error: "", lessons: data.lessons || [] });
+        if (!cancelled) setRecords({ loading: false, error: "", lessons: data.lessons || [], nextPage: data.nextPage });
       } catch (e) {
         if (!cancelled) setRecords({ loading: false, error: e?.message || t.progress.loadError, lessons: [] });
       }
@@ -118,6 +122,14 @@ function Progress({ auth, onLogin, onStartLearning, onResume }) {
     loadRecords();
     return () => { cancelled = true; };
   }, [signedIn, auth?.session?.accessToken]);
+  async function loadMore(){
+    if(records.loading||records.nextPage==null)return;
+    setRecords(prev=>({...prev,loading:true,error:""}));
+    try {
+      const data=await fetchLearningRecords(auth.session.accessToken,records.nextPage);
+      setRecords(prev=>({...prev,loading:false,nextPage:data.nextPage,lessons:[...prev.lessons,...(data.lessons||[])].filter((v,i,a)=>a.findIndex(x=>x.id===v.id)===i)}));
+    }catch{setRecords(prev=>({...prev,loading:false,error:t.progress.loadError}));}
+  }
   const currentLesson = localProgress.lesson;
   const currentText = localProgress.text;
   const localStats = currentLesson ? {
@@ -154,8 +166,9 @@ function Progress({ auth, onLogin, onStartLearning, onResume }) {
       {hasSavedLessons && <div className="history-section">
         <h2>{t.progress.savedLessons}</h2>
         <div className="history-list">
-          {records.lessons.map((lesson) => <LessonHistoryCard key={lesson.id} lesson={lesson} />)}
+          {records.lessons.map((lesson) => <LessonHistoryCard key={lesson.id} lesson={lesson} onRestore={onRestore} />)}
         </div>
+        {records.nextPage!=null && <button className="btn btn-outline" disabled={records.loading} onClick={loadMore}>{t.learningAccess.more}</button>}
       </div>}
     </div>
   );
