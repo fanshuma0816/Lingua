@@ -38,14 +38,14 @@ async function readRows(path, env, optional = false) {
 }
 
 async function readLessonRows(userId, env) {
-  const richSelect = "id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at,input_text,lesson_snapshot,interaction_snapshot,saved_options";
+  const richSelect = "id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at,input_text,lesson_snapshot,interaction_snapshot,saved_options,material_id,material_segment_id,segment_index,segment_count";
   const basicSelect = "id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at";
   const richPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${richSelect}&order=completed_at.desc&limit=20`;
   const basicPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${basicSelect}&order=completed_at.desc&limit=20`;
   try {
     return await readRows(richPath, env);
   } catch (e) {
-    if (!/input_text|lesson_snapshot|interaction_snapshot|saved_options|schema cache|column/i.test(String(e?.message || ""))) throw e;
+    if (!/input_text|lesson_snapshot|interaction_snapshot|saved_options|material_id|material_segment_id|segment_index|segment_count|schema cache|column/i.test(String(e?.message || ""))) throw e;
     return readRows(basicPath, env);
   }
 }

@@ -13,27 +13,46 @@ function grammarExamples(g){
   return [];
 }
 
-function cleanText(raw){ let t=String(raw||"").normalize("NFKC");
+function cleanText(raw){
+  let t=String(raw||"").normalize("NFKC").replace(/\r\n?/g,"\n");
   t=t.replace(/[\uFFFD\u200B-\u200D\uFEFF]/g,"");
-  t=t.replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'");
+  t=t.replace(/&(?:amp;)+/gi,"&").replace(/&nbsp;/gi," ").replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'");
   t=t.replace(/[“”„]/g,'"').replace(/[‘’‚]/g,"'").replace(/[‐‑‒–—―]/g,"-");
-  t=t.replace(/^\s*WEBVTT[^\n]*$/gim," ");
-  t=t.replace(/^\s*(kind:\s*captions|language:\s*\w+|subscribe|like and subscribe|advertentie|reclame)\s*$/gim," ");
-  t=t.replace(/\[(music|muziek|applause|applaus|laughter|gelach|inaudible|onverstaanbaar|crosstalk|silence)\]/gi," ");
-  t=t.replace(/\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?\s*(?:-->|-\s*>|→)\s*\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?/g," ");
-  t=t.replace(/\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?/g," ");
-  t=t.replace(/^\s*\d+\s*$/gm," ").replace(/-->/g," ");
-  t=t.replace(/([a-zà-ÿ])-\s*\n\s*([a-zà-ÿ])/giu,"$1$2");
-  t=t.replace(/[ \t]*\n[ \t]*/g,"\n").replace(/[ \t]{2,}/g," ");
-  t=t.replace(/\s+([,.;:!?])/g,"$1").replace(/([¿¡])\s+/g,"$1");
-  t=t.replace(/([!?]){3,}/g,"$1$1").replace(/([,;:]){2,}/g,"$1").replace(/\.{4,}/g,"...");
-  const lines=t.split(/\n+/).map(x=>x.trim()).filter(Boolean);
-  const out=[];
-  for(const line of lines){
-    if(out.length && !/[.!?。！？:;]$/.test(out[out.length-1]) && /^[\p{Ll}'"]/u.test(line)) out[out.length-1]+=" "+line;
-    else out.push(line);
+  const timeline=/^\s*\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?\s*-->\s*\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?[^\n]*$/;
+  const subtitle=/^\s*WEBVTT\b/m.test(t)||t.split("\n").some(line=>timeline.test(line));
+  if(subtitle){
+    const lines=t.split("\n"), cues=[]; let cue=[];
+    const flush=()=>{ if(cue.length) cues.push(cue.join(" ").trim()); cue=[]; };
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i].trim();
+      if(!line || timeline.test(line)){flush();continue;}
+      if(/^WEBVTT\b|^(Kind|Language):/i.test(line)) continue;
+      if(timeline.test((lines[i+1]||"").trim()) && (/^\d+$/.test(line)||i===0||!lines[i-1].trim())) continue; // cue identifier
+      const content=line.replace(/<\/?(?:c(?:\.[\w-]+)?|v(?:\s+[^>]+)?|i|b|u)>/gi,"")
+        .replace(/\[(music|muziek|applause|applaus|laughter|gelach|inaudible|onverstaanbaar|crosstalk|silence)\]/gi,"").trim();
+      if(content) cue.push(content);
+    }
+    flush();
+    const out=[];
+    for(const value of cues){
+      const previous=out[out.length-1]||"";
+      if(value===previous) continue;
+      if(previous && value.startsWith(previous+" ")){out[out.length-1]=value;continue;}
+      // Remove only multiword overlap between adjacent rolling caption cues.
+      const a=previous.split(/\s+/),b=value.split(/\s+/); let overlap=0;
+      for(let n=Math.min(a.length,b.length);n>=3;n--){if(a.slice(-n).join(" ")===b.slice(0,n).join(" ")){overlap=n;break;}}
+      const rest=b.slice(overlap).join(" "); if(rest) out.push(rest);
+    }
+    t=out.join("\n");
   }
-  return out.join("\n").replace(/\n{3,}/g,"\n\n").trim(); }
+  t=t.replace(/^\s{0,3}#{1,6}\s+/gm,"").replace(/^\s{0,3}>\s?/gm,"")
+    .replace(/^\s*```[^\n]*$/gm,"").replace(/!\[([^\]]*)\]\([^\n)]*\)/g,"$1")
+    .replace(/\[([^\]]+)\]\([^\n)]*\)/g,"$1")
+    .replace(/\*\*([^*\n]+)\*\*/g,"$1").replace(/__([^_\n]+)__/g,"$1")
+    .replace(/`([^`\n]+)`/g,"$1");
+  return t.replace(/[ \t]+/g," ").replace(/ *\n */g,"\n")
+    .replace(/\s+([,.;:!?])/g,"$1").replace(/\n{3,}/g,"\n\n").trim();
+}
 
 const STOP=new Set(("the a an and or but of to in on for with at by from as is are was were be been being this that these those it its i you he she we they my your our their not no so if then than into about over under out up down el la los las de que y a en un una por con para se su lo le les des du le la un une et ou de à dans pour qui ne pas ce cette der die das und ist im den").split(" "));
 

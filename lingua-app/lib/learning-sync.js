@@ -23,6 +23,10 @@ function lessonMaterialSummary(lesson) {
     source: material.source || null,
     validatedTextLevel: material.validatedTextLevel || null,
     difficultyTier: material.difficultyTier || null,
+    accountMaterialId: material.accountMaterialId || null,
+    accountSegmentId: material.accountSegmentId || null,
+    segmentIndex: Number.isInteger(material.segmentIndex) ? material.segmentIndex : null,
+    segmentCount: Number.isInteger(material.segmentCount) ? material.segmentCount : null,
   };
 }
 
@@ -60,6 +64,10 @@ function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, 
     inputText: text || "",
     material: lessonMaterialSummary(lesson),
     materialHash: lesson?.material?.id || null,
+    materialId: lesson?.material?.accountMaterialId || null,
+    materialSegmentId: lesson?.material?.accountSegmentId || null,
+    segmentIndex: Number.isInteger(lesson?.material?.segmentIndex) ? lesson.material.segmentIndex : null,
+    segmentCount: Number.isInteger(lesson?.material?.segmentCount) ? lesson.material.segmentCount : null,
     lessonSnapshot: {
       id: lesson?.id || null,
       material: lessonMaterialSummary(lesson),

@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { ICONS } from "../../config/icons";
+import { useElapsed } from "../../hooks/useElapsed";
 import { useUI } from "../../hooks/useUI";
 import { speak } from "../../lib/audio";
+import { LOADING_ESTIMATE_SECONDS, progressPct } from "../../lib/format";
 import { spokenTextForLine } from "../../lib/voices";
 
 function Svg({n}){ return <svg className="i" viewBox="0 0 24 24" dangerouslySetInnerHTML={{__html:ICONS[n]||""}}/>; }
@@ -24,7 +26,27 @@ function Loading(){
   </div>);
 }
 
-const Brand=()=>(<div className="brand"><div className="logo">L</div>Lingua</div>);
+function LoadingProgress({active,label,className=""}){
+  const {t}=useUI();
+  const elapsed=useElapsed(active);
+  if(!active) return null;
+  const remaining=Math.max(1,LOADING_ESTIMATE_SECONDS-elapsed);
+  return (<div className={`lookup-progress ${className}`.trim()}>
+    <div className="lookup-progress-copy"><span>{label}</span><span>{t.aboutRemaining(remaining)}</span></div>
+    <div className="mini-track subtle"><span style={{width:progressPct(elapsed,LOADING_ESTIMATE_SECONDS)+"%"}}/></div>
+  </div>);
+}
+
+function Brand({variant="default"}){
+  if(variant==="landing") return (<span className="landing-brand">
+    <svg className="landing-brand-glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 5.5C4 4.7 4.7 4 5.5 4h9A2.5 2.5 0 0 1 17 6.5v7A2.5 2.5 0 0 1 14.5 16H8l-4 3.2V5.5Z" fill="currentColor"/>
+      <path d="M11 15.5c0 .8.7 1.5 1.5 1.5H16l4 3V9.5A2.5 2.5 0 0 0 17.5 7H16" stroke="#3d5a00" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+    Lingua<span className="landing-brand-dot">.</span>
+  </span>);
+  return (<div className="brand"><div className="logo">L</div>Lingua</div>);
+}
 
 function LanguageSwitch(){
   const {uiLang,setUiLang,t}=useUI();
@@ -67,4 +89,4 @@ function StepHead({eyebrow,title,onSkip,skipLabel}){
   </div>);
 }
 
-export { Brand, CheckIn, LanguageSwitch, Loading, Purpose, Say, SelfRate, Stars, Stat, StepHead, Svg, Teacher };
+export { Brand, CheckIn, LanguageSwitch, Loading, LoadingProgress, Purpose, Say, SelfRate, Stars, Stat, StepHead, Svg, Teacher };

@@ -58,12 +58,24 @@ Keep EVERY reply to ONE short, natural sentence ending in a question, at or just
     }
 
     if (b.mode === "evaluate") {
-      const sys = "You are a kind language teacher. Reply ONLY with minified JSON.";
+      const sys = "You are a precise, encouraging language teacher. Reply ONLY with minified JSON. Base every correction on the learner's actual words; never invent an error they did not make.";
       const feedbackLanguage = b.feedbackLanguage || "English";
       const conv = (b.history || []).map(m => `${m.role}: ${m.content}`).join("\n");
-      const user = `Here is a short ${b.lang} practice conversation with a ${b.level} learner:\n${conv}\nReturn JSON {"praise": <one warm sentence in ${feedbackLanguage}>, "grammar": <one short tip in ${feedbackLanguage}>, "vocabulary": <one short tip in ${feedbackLanguage}>, "fluency": <one short tip in ${feedbackLanguage}>}.`;
+      const user = `Here is a short ${b.lang} practice conversation with a ${b.level} learner:\n${conv}
+For EACH user turn, quote the learner's exact text, then assess whether its meaning fits the preceding assistant question and whether its grammar is correct. Preserve a correct sentence instead of changing it unnecessarily. If it needs work, give a corrected version and explain the single most useful change. Also offer a natural fuller reply that answers that particular question.
+Use ${feedbackLanguage} for all coaching text and ${b.lang} for correctedText and betterReply.
+Return JSON {"praise":<one warm, specific sentence in ${feedbackLanguage}>,"turnFeedback":[{"userText":<exact user turn>,"correctedText":<corrected ${b.lang}, or the original when already correct>,"whatWorked":<specific success in ${feedbackLanguage}>,"explanation":<specific meaning or grammar note in ${feedbackLanguage}>,"betterReply":<one natural fuller answer in ${b.lang}>}],"focusNext":<one highest-priority pattern based on these replies in ${feedbackLanguage}>,"practiceSuggestion":<one concrete 2-minute exercise using a learner sentence in ${feedbackLanguage}>}.`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, ...ph });
-      return Response.json(parseJSON(out));
+      const parsed = parseJSON(out);
+      const learnerTurns=(Array.isArray(b.history)?b.history:[]).filter(message=>message.role==="user").map(message=>String(message.content||""));
+      const feedback=Array.isArray(parsed.turnFeedback)?parsed.turnFeedback.slice(0,learnerTurns.length).map((entry,index)=>({
+        userText:learnerTurns[index]||String(entry.userText||""),
+        correctedText:String(entry.correctedText||learnerTurns[index]||""),
+        whatWorked:String(entry.whatWorked||""),
+        explanation:String(entry.explanation||""),
+        betterReply:String(entry.betterReply||""),
+      })):[];
+      return Response.json({praise:String(parsed.praise||""),turnFeedback:feedback,focusNext:String(parsed.focusNext||""),practiceSuggestion:String(parsed.practiceSuggestion||"")});
     }
 
     return Response.json({ error: "bad mode" }, { status: 400 });

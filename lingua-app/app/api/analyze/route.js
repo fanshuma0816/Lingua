@@ -7,6 +7,7 @@ import { AI, chatComplete, parseJSON, googleTranslate } from "../../../lib/ai";
 import { cleanText } from "../../../lib/text";
 import { cefrIdx, validateForLevel, validateMaterialFit, materialId } from "../../../lib/cefr.mjs";
 import { selectTextbookMaterials } from "../../../lib/material-corpus";
+import { generateDutchMaterials } from "../../../lib/material-validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -46,6 +47,14 @@ export async function POST(req) {
       const duration = b.duration || "25-35 min";
       const spec = durationSpec(duration);
       const goal = b.goal || "General fluency";
+      if (lang === "Dutch") {
+        const result = await generateDutchMaterials({ level, difficulty: b.difficulty, goal, spec,
+          topics: Array.isArray(b.topics) ? b.topics : [], count: b.count,
+          history: Array.isArray(b.history) ? b.history : [], avoid: Array.isArray(b.avoid) ? b.avoid : [], seed: b.nonce,
+        }, { selectCorpus: selectTextbookMaterials, complete: (messages, options) => chatComplete(messages, { ...options, ...ph }), parse: parseJSON, enabled: AI.textEnabled });
+        console.log("[analyze:materials]", JSON.stringify({ requestId: ph.traceId, requestedLevel: level, count: result.materials.length, errors: result.errors, diagnostics: result.diagnostics }));
+        return Response.json({ ...result, requestId: ph.traceId });
+      }
       const topics = (Array.isArray(b.topics) ? b.topics : []).filter(Boolean).slice(0, 1);
       const n = Math.min(2, Math.max(1, Number(b.count) || 2));
       const tier = ["comfortable", "balanced"].includes(b.tier) ? b.tier : null;
@@ -365,20 +374,32 @@ Text (${lang} sentences):\n${JSON.stringify(src)}`;
       const vocab = (b.vocab || []).slice(0, 30);
       const feedbackLanguage = b.feedbackLanguage || "English";
       const sys = "You are a precise language-learning curriculum designer. Reply ONLY with minified JSON.";
-      const user = `A ${level} learner of ${lang} will study this text.
+      const user = `A ${level} learner of ${lang} will study this text. Their learning goal is ${b.goal||"General fluency"}.
 Pick today's top learning points: vocabulary and grammar that are exactly useful at this level or one level above.
 Return no more than 8 vocabulary items and no more than 3 grammar points.
 Also choose up to 10 important source sentences that are worth recall practice later.
+Create 2-3 concrete learning objectives in ${feedbackLanguage}. At least one must be a real communicative action the learner can perform after this lesson. Objectives must be grounded in this exact text, observable, level-appropriate, and must not say vague things like "learn vocabulary" or promise an ability the lesson does not practise.
+Create one concrete writing task inside the text's actual situation. Give the learner a role, a recipient, one communicative goal, three specific content points, and up to three short sentence starters in ${lang}.
+The writing task must directly practise one learning objective.
 Use ${feedbackLanguage} for explanations/translations, but keep source sentences and example sentences in ${lang}.
-Return JSON {"vocab":[{"word":<${lang} word or phrase>,"level":<CEFR like A2/B1>,"reason":<short ${feedbackLanguage} reason>}],"grammar":[{"point":<short ${feedbackLanguage} label>,"level":<CEFR>,"reason":<short ${feedbackLanguage} reason>}],"recallSentences":[<exact source sentence from the input>]}.
+Return JSON {"learningObjectives":[{"type":<"communicative"|"comprehension"|"language">,"text":<concrete objective in ${feedbackLanguage}>}],"vocab":[{"word":<${lang} word or phrase>,"level":<CEFR like A2/B1>,"reason":<short ${feedbackLanguage} reason>}],"grammar":[{"point":<short ${feedbackLanguage} label>,"level":<CEFR>,"reason":<short ${feedbackLanguage} reason>}],"recallSentences":[<exact source sentence from the input>],"writingTask":{"situation":<specific situation in ${feedbackLanguage}>,"role":<learner role in ${feedbackLanguage}>,"recipient":<recipient in ${feedbackLanguage}>,"goal":<clear task in ${feedbackLanguage}>,"points":[<three concrete things to include in ${feedbackLanguage}>],"starters":[<up to three short starters in ${lang}>]}}.
 Source sentences: ${JSON.stringify(src)}
 Candidate vocabulary: ${JSON.stringify(vocab)}`;
       const out = await chatComplete([{ role: "system", content: sys }, { role: "user", content: user }], { json: true, temp: 0.35, max: 2200, ...ph });
       const p = parseJSON(out);
       return Response.json({
+        learningObjectives:Array.isArray(p.learningObjectives)?p.learningObjectives.slice(0,3).map(item=>({type:["communicative","comprehension","language"].includes(item?.type)?item.type:"communicative",text:String(item?.text||"").slice(0,220)})).filter(item=>item.text):[],
         vocab: Array.isArray(p.vocab) ? p.vocab.slice(0, 8) : [],
         grammar: Array.isArray(p.grammar) ? p.grammar.slice(0, 3) : [],
         recallSentences: Array.isArray(p.recallSentences) ? p.recallSentences.slice(0, 10) : [],
+        writingTask:p.writingTask&&typeof p.writingTask==="object"?{
+          situation:String(p.writingTask.situation||""),
+          role:String(p.writingTask.role||""),
+          recipient:String(p.writingTask.recipient||""),
+          goal:String(p.writingTask.goal||""),
+          points:Array.isArray(p.writingTask.points)?p.writingTask.points.slice(0,3).map(String):[],
+          starters:Array.isArray(p.writingTask.starters)?p.writingTask.starters.slice(0,3).map(String):[],
+        }:null,
       });
     }
 

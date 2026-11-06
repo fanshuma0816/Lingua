@@ -1,86 +1,966 @@
 [
   {
-    "title": "Een eerste les",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-01",
+    "title": "Hoe heet je?",
+    "originalTitle": "Hoe heet je?",
     "level": "A1",
-    "tags": ["daily life", "work & study"],
-    "text": "Hallo, ik ben Inge. Ik ben docent Nederlands. Paula komt uit Frankrijk. Alex komt uit China. Paula woont in Rotterdam. Alex woont in Den Haag. Inge vraagt: Hoe heet je? Waar kom je vandaan? Waar woon je nu? Paula zegt haar naam. Alex zegt zijn naam. De les begint rustig."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 0,
+    "levelOrder": 1,
+    "sourceLine": 5,
+    "version": "m_aabam3",
+    "corpusVersion": 2,
+    "originalText": "Hallo, ik ben Inge. Mijn naam is Inge van Dijk. Ik ben de docent. Wie ben jij? Hoe heet je? Wat is je naam? Ik heet Paula. Mijn naam is Paula. Hallo Paula. Dag mevrouw. Uit welk land kom je? Wat zegt u? Uit welk land kom je? Waar kom je vandaan? Ik kom uit Frankrijk. En u meneer? Hoe heet u? Wat is uw naam? Mijn naam is Alex Wang. Waar komt u vandaan? Uit welk land komt u? Ik kom uit China. Waar woont u? In welke stad? Ik woon nu in Den Haag. In welke straat? In de Marktstraat, in het centrum. Op nummer 35. Wat is uw telefoonnummer? Mijn telefoonnummer is 06 (nul zes) 12345678. Paula, woon jij ook in Den Haag? Nee, ik woon in Rotterdam, dichtbij het centrum.\n\nDe docent heet Inge. Van Dijk is haar achternaam. Zij komt® uit Nederland.\nMeneer Wang komt niet uit Nederland. Hij komt~ uit China. Hij woont nu in Den Haag.\nPaula komt uit Frankrijk. Zij woont nu in Rotterdam.",
+    "text": "Hallo, ik ben Inge. Mijn naam is Inge van Dijk. Ik ben de docent. Wie ben jij? Hoe heet je? Wat is je naam? Ik heet Paula. Mijn naam is Paula. Hallo Paula. Dag mevrouw. Uit welk land kom je? Wat zegt u? Uit welk land kom je? Waar kom je vandaan? Ik kom uit Frankrijk. En u meneer? Hoe heet u? Wat is uw naam? Mijn naam is Alex Wang. Waar komt u vandaan? Uit welk land komt u? Ik kom uit China. Waar woont u? In welke stad? Ik woon nu in Den Haag. In welke straat? In de Marktstraat, in het centrum. Op nummer 35. Wat is uw telefoonnummer? Mijn telefoonnummer is 06 (nul zes) 12345678. Paula, woon jij ook in Den Haag? Nee, ik woon in Rotterdam, dichtbij het centrum.\n\nDe docent heet Inge. Van Dijk is haar achternaam. Zij komt uit Nederland.\nMeneer Wang komt niet uit Nederland. Hij komt uit China. Hij woont nu in Den Haag.\nPaula komt uit Frankrijk. Zij woont nu in Rotterdam.",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "komt®",
+        "to": "komt",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "komt~",
+        "to": "komt",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
   },
   {
-    "title": "De dagen van de week",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-02",
+    "title": "Welke dag is het vandaag?",
+    "originalTitle": "Welke dag is het vandaag?",
     "level": "A1",
-    "tags": ["daily life", "work & study"],
-    "text": "Vandaag is het dinsdag. Gisteren was het maandag. Morgen is het woensdag. Op zaterdag en zondag is het weekend. Veel mensen werken van maandag tot en met vrijdag. In het weekend zijn ze vrij. Ze gaan naar familie, doen boodschappen of leren Nederlands."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 1,
+    "levelOrder": 2,
+    "sourceLine": 13,
+    "version": "m_1mo49kd",
+    "corpusVersion": 2,
+    "originalText": "Welke dag is het vandaag?\nHet is vandaag dinsdag. Gisteren was het maandag. En morgen is het woensdag.\nNa woensdag volgen donderdag en vrijdag. De laatste twee dagen van de week zijn zaterdag en zondag. Dan is het weekend.\nWanneer werken de meeste mensen?\nVan maandag tot en met vrijdag. De meeste mensen zijn in het weekend vrij. We werken dan meestal niet. We gaan dan naar familie. Of we gaan naar buiten met de kinderen, of met vrienden. We hebben ook tijd om boodschappen te doen. Of andere leuke dingen, bijvoorbeeld Nederlands leren.\nOp welke dagen zijn de winkels open?\nDe meeste winkels zijn op maandag tot en met zaterdag open en veel winkels ook op zondag. Op maandagmorgen zijn veel winkels dicht. Mensen die in een winkel werken zijn dus meestal niet in het weekend vrij. Ze hebben op een andere dag vrij, bijvoorbeeld op maandag.\nZijn scholen in het weekend dicht?\nJa, alle scholen zijn dicht in het weekend.\nIn het weekend hebben kinderen geen les.\nKinderen tot twaalf jaar hebben meestal ook vrij op woensdagmiddag. En ze hebben zes weken\nvrij in de zomer! Hoe is dat in jullie land?",
+    "text": "Welke dag is het vandaag?\nHet is vandaag dinsdag. Gisteren was het maandag. En morgen is het woensdag.\nNa woensdag volgen donderdag en vrijdag. De laatste twee dagen van de week zijn zaterdag en zondag. Dan is het weekend.\nWanneer werken de meeste mensen?\nVan maandag tot en met vrijdag. De meeste mensen zijn in het weekend vrij. We werken dan meestal niet. We gaan dan naar familie. Of we gaan naar buiten met de kinderen, of met vrienden. We hebben ook tijd om boodschappen te doen. Of andere leuke dingen, bijvoorbeeld Nederlands leren.\nOp welke dagen zijn de winkels open?\nDe meeste winkels zijn op maandag tot en met zaterdag open en veel winkels ook op zondag. Op maandagmorgen zijn veel winkels dicht. Mensen die in een winkel werken zijn dus meestal niet in het weekend vrij. Ze hebben op een andere dag vrij, bijvoorbeeld op maandag.\nZijn scholen in het weekend dicht?\nJa, alle scholen zijn dicht in het weekend.\nIn het weekend hebben kinderen geen les.\nKinderen tot twaalf jaar hebben meestal ook vrij op woensdagmiddag. En ze hebben zes weken\nvrij in de zomer! Hoe is dat in jullie land?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
   },
   {
-    "title": "Mijn ochtend",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-03",
+    "title": "Mijn dag",
+    "originalTitle": "Mijn dag",
     "level": "A1",
-    "tags": ["daily life", "work & study", "food"],
-    "text": "Nick is om zes uur wakker. Hij eet brood en drinkt thee. Om kwart voor zeven gaat hij naar de bus. Daarna neemt hij de trein. Op het station leest hij de krant. Om half negen is hij op zijn werk. In de avond komt hij thuis."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 2,
+    "levelOrder": 3,
+    "sourceLine": 28,
+    "version": "m_8czj5a",
+    "corpusVersion": 2,
+    "originalText": "Nick, hoe laat ben je meestal wakker?\nIk ben altijd om zes uur wakker. Dan eet ik brood en drink ik thee.\nWaarom ben je zo vroeg wakker? Moet je zo vroeg van huis?\nIk moet om half negen (8.30) op mijn werk zijn.\nHet is een lange reis. Daarom ga ik niet met de fiets.\nHoe reis je?\nIk ga met de bus van kwart voor zeven (6.45) naar het station. De bus komt om half acht (7.30) aan bij het station. Dat is de officiële tijd. Maar de bus is niet altijd op tijd. Gisteren was hij te laat. Toen heb ik de trein gemist. Maar meestal mis ik hem niet, want hij vertrekt om kwart voor acht. Ik heb dus een kwartier op het station: vijftien minuten. Soms vertrekt de trein ook te laat. Maar meestal komt hij op tijd.\nWat doe je in die tijd op het station?\nIk lees bijvoorbeeld de krant of leer voor mijn lessen Nederlands.\nHoe laat kom je op je werk aan?\nIk ben om vijf voor half negen (8.25) op mijn werk. Ik eet meestal om één uur, en ik drink thee om vier uur.\nTot hoe laat werk je? Hoe laat ga je weer naar huis?\nDat verschilt van dag tot dag. Meestal werk ik tot half zes (17.30). Maar gisteren werkte ik bijvoorbeeld tot kwart over vier (16.15). Meestal kom ik om half acht's avonds thuis. We eten om acht uur. Soms kijk ik een half uur televisie. Daarna doe ik mijn huiswerk voor mijn Nederlandse les. Maar om half tien stop ik. De dag is dan al bijna afgelopen. Dus ik heb het druk. Jij ook?",
+    "text": "Nick, hoe laat ben je meestal wakker?\nIk ben altijd om zes uur wakker. Dan eet ik brood en drink ik thee.\nWaarom ben je zo vroeg wakker? Moet je zo vroeg van huis?\nIk moet om half negen (8.30) op mijn werk zijn.\nHet is een lange reis. Daarom ga ik niet met de fiets.\nHoe reis je?\nIk ga met de bus van kwart voor zeven (6.45) naar het station. De bus komt om half acht (7.30) aan bij het station. Dat is de officiële tijd. Maar de bus is niet altijd op tijd. Gisteren was hij te laat. Toen heb ik de trein gemist. Maar meestal mis ik hem niet, want hij vertrekt om kwart voor acht. Ik heb dus een kwartier op het station: vijftien minuten. Soms vertrekt de trein ook te laat. Maar meestal komt hij op tijd.\nWat doe je in die tijd op het station?\nIk lees bijvoorbeeld de krant of leer voor mijn lessen Nederlands.\nHoe laat kom je op je werk aan?\nIk ben om vijf voor half negen (8.25) op mijn werk. Ik eet meestal om één uur, en ik drink thee om vier uur.\nTot hoe laat werk je? Hoe laat ga je weer naar huis?\nDat verschilt van dag tot dag. Meestal werk ik tot half zes (17.30). Maar gisteren werkte ik bijvoorbeeld tot kwart over vier (16.15). Meestal kom ik om half acht's avonds thuis. We eten om acht uur. Soms kijk ik een half uur televisie. Daarna doe ik mijn huiswerk voor mijn Nederlandse les. Maar om half tien stop ik. De dag is dan al bijna afgelopen. Dus ik heb het druk. Jij ook?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
   },
   {
-    "title": "In de supermarkt",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-04",
+    "title": "Boodschappen doen",
+    "originalTitle": "Boodschappen doen",
     "level": "A1",
-    "tags": ["daily life", "food"],
-    "text": "Amber doet boodschappen in de supermarkt. Ze koopt melk, brood, aardappelen en fruit. Ze maakt eerst een lijstje. In de winkel zoekt ze de melk. Een man helpt haar. Daarna gaat Amber naar de kassa. Ze betaalt en zegt: Tot ziens."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 3,
+    "levelOrder": 4,
+    "sourceLine": 44,
+    "version": "m_yhpk4u",
+    "corpusVersion": 2,
+    "originalText": "Hallo Amber. Waar doe jij je boodschappen?\nMeestal doe ik in het weekend boodschappen in een supermarkt. Ik koop alles voor de hele week. Voor een week heb ik veel nodig dus ik maak een lijstje. Daar staat alles op: melk, brood, aardappelen, fruit ... Soms weet ik niet& waar iets staat in de supermarkt.\n\n(In de supermarkt)\n\nWaar staat de melk? O, daar zie ik iemand die kan helpen. Meneer, mag ik u wat vragen? Ik zie de melk nergens. Waar vind ik die?\nDaar bij het brood links en dan rechts. Ik loop wel even met u mee.\nIk geloof dat ik alles heb. O nee, ik heb geena koffie meer. O kijk: twee halen, één betalen. Dat doe ik. Dan heb ik één pak koffie gratis. Als ik alles heb, ga ik naar de kassa om te betalen. De mevrouw aan de kassa zegt: \"Goedemiddag\", en \"Tot ziens, fijn weekend!\" Dat is het hele gesprek.\nSoms ga ik op zaterdag naar de markt om groente en fruit te kopen.\nWat is het verschil tussen de markt en de supermarkt?\nOp de markt zijn de meeste producten goedkoop. Goedkoper dan in de supermarkt. Dat is een belangrijk verschil.",
+    "text": "Hallo Amber. Waar doe jij je boodschappen?\nMeestal doe ik in het weekend boodschappen in een supermarkt. Ik koop alles voor de hele week. Voor een week heb ik veel nodig dus ik maak een lijstje. Daar staat alles op: melk, brood, aardappelen, fruit... Soms weet ik niet waar iets staat in de supermarkt.\n\n(In de supermarkt)\n\nWaar staat de melk? O, daar zie ik iemand die kan helpen. Meneer, mag ik u wat vragen? Ik zie de melk nergens. Waar vind ik die?\nDaar bij het brood links en dan rechts. Ik loop wel even met u mee.\nIk geloof dat ik alles heb. O nee, ik heb geen koffie meer. O kijk: twee halen, één betalen. Dat doe ik. Dan heb ik één pak koffie gratis. Als ik alles heb, ga ik naar de kassa om te betalen. De mevrouw aan de kassa zegt: \"Goedemiddag\", en \"Tot ziens, fijn weekend!\" Dat is het hele gesprek.\nSoms ga ik op zaterdag naar de markt om groente en fruit te kopen.\nWat is het verschil tussen de markt en de supermarkt?\nOp de markt zijn de meeste producten goedkoop. Goedkoper dan in de supermarkt. Dat is een belangrijk verschil.",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "niet&",
+        "to": "niet",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "geena",
+        "to": "geen",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "food"
+    ]
   },
   {
-    "title": "Met de bus naar de les",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-05",
+    "title": "Stap voor stap leren",
+    "originalTitle": "Stap voor stap leren",
     "level": "A1",
-    "tags": ["daily life", "travel", "work & study"],
-    "text": "Katja komt met de bus naar de les. Ze stapt uit bij het station. Daarna loopt ze naar school. Soms komt ze met de fiets. Dat is sneller. Maar als het regent, neemt ze liever de bus. Dan blijft ze droog."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 4,
+    "levelOrder": 5,
+    "sourceLine": 58,
+    "version": "m_1eratlg",
+    "corpusVersion": 2,
+    "originalText": "Hoe werkt de Delftse methode? Leer je de teksten uit je hoofd?\nNee, je moet de tekst verstaan en begrijpen zonder hulp. Dat kost tijd. Daarom leer je de tekst in stappen. Dat kost meestal twee of drie uur per tekst. Hier zijn de vijf stappen in de online cursus.\nGa in het menu naar 'Les'. Je begint met stap één. Je kijkt en luistert goed naar elke zin. Aan het eind van de zin is een pauze. De woorden zoek je op.. Je weet dan wat ze betekenen, en je begrijpt de zin. Spreken ze te snel? Versta je niet alles?\nLuister een paar keer naar elke zin. Je zegt ook elke zin na\" , en je luistert naar je\nuitspraak. Zo leer je de uitspraak.\nDus ik doe drie dingen: luisteren, lezen en nazeggen?\nJa, en dat doe je zo een paar keer. Bij stap twee doe je dat ook. Maar nu heb je geen pauze na de zin. En bij stap drie en vier heb je ook geen hulp meer van de tekst. Je kunt de woorden niet meer opzoeken.\nIk begrijp het. Ik leer de tekst eerst met hulp, daarna zonder hulp. Zo leer ik de woorden, zo leer ik luisteren. En zo oefen ik de uitspraak.\nBij stap vijf krijg je antwoord op de vraag: ken ik de tekst goed? In het menu 'Toets' vind je een luistertoets. Je resultaat moet 80% of meer zijn. In het boek staat ook een tekst met gaten voor de controle. Die lees je hardop. Schrijf niet in je boek. Je moet de teksten later herhalen.\nWat doe ik met de oefening?\nDie doe je alleen als je de tekst goed kent. En in het boek heb je ook nog vragen.\nDie zijn om te leren praten.\nEn wat doen we in de les?\nPraten, veel praten. Zo werkt de Delftse Methode.",
+    "text": "Hoe werkt de Delftse methode? Leer je de teksten uit je hoofd?\nNee, je moet de tekst verstaan en begrijpen zonder hulp. Dat kost tijd. Daarom leer je de tekst in stappen. Dat kost meestal twee of drie uur per tekst. Hier zijn de vijf stappen in de online cursus.\nGa in het menu naar 'Les'. Je begint met stap één. Je kijkt en luistert goed naar elke zin. Aan het eind van de zin is een pauze. De woorden zoek je op.. Je weet dan wat ze betekenen, en je begrijpt de zin. Spreken ze te snel? Versta je niet alles?\nLuister een paar keer naar elke zin. Je zegt ook elke zin na\", en je luistert naar je\nuitspraak. Zo leer je de uitspraak.\nDus ik doe drie dingen: luisteren, lezen en nazeggen?\nJa, en dat doe je zo een paar keer. Bij stap twee doe je dat ook. Maar nu heb je geen pauze na de zin. En bij stap drie en vier heb je ook geen hulp meer van de tekst. Je kunt de woorden niet meer opzoeken.\nIk begrijp het. Ik leer de tekst eerst met hulp, daarna zonder hulp. Zo leer ik de woorden, zo leer ik luisteren. En zo oefen ik de uitspraak.\nBij stap vijf krijg je antwoord op de vraag: ken ik de tekst goed? In het menu 'Toets' vind je een luistertoets. Je resultaat moet 80% of meer zijn. In het boek staat ook een tekst met gaten voor de controle. Die lees je hardop. Schrijf niet in je boek. Je moet de teksten later herhalen.\nWat doe ik met de oefening?\nDie doe je alleen als je de tekst goed kent. En in het boek heb je ook nog vragen.\nDie zijn om te leren praten.\nEn wat doen we in de les?\nPraten, veel praten. Zo werkt de Delftse Methode.",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "work & study"
+    ]
   },
   {
-    "title": "Een kleine kamer",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-06",
+    "title": "Hoe kom je naar de les",
+    "originalTitle": "Hoe kom je naar de les",
     "level": "A1",
-    "tags": ["daily life"],
-    "text": "Katja woont op kamers. Ze heeft een eigen kamer. De keuken en de badkamer gebruikt ze samen met andere studenten. Haar kamer is niet groot, maar ze is tevreden. Ze kan er slapen, werken en Nederlands leren. De kamer is dicht bij het centrum."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 5,
+    "levelOrder": 6,
+    "sourceLine": 75,
+    "version": "m_79esmx",
+    "corpusVersion": 2,
+    "originalText": "Katja, vertel eens, hoe ben jij naar de les gekomen?\nMet de bus. Ik ben bij het station uitgestapt. Van het station ben ik lopend naar school gegaan.\nHoe lang duurde je reis? Hoe lang heb je erovera gedaan?\nIk heb er een half uur over gedaan. Soms kom ik met de fiets. Dat is sneller dan met de bus! Bovendien is het meestal druk in de bus. Dan kan ik niet zitten. De bus heeft ook vaak vertraging. Hij is dan te laat. En ik kom dan ook niet op tijd! Dat vind ik vervelend.\nWaarom kom je niet elke dag met de fiets?\nNou, omdat het hier altijd regent. En als je in de regen fietst, word je nat. Dat is een nadeel. Dan neem ik liever de bus.\nEn wie komt er met de auto? Heeft er iemand een auto? Jij Lisa?\nJa, ik meneer. Ik heb een auto. Kijk, daar staat hij: die kleine witte daar. Ik kan niet zonder. Er komt geen bus bij mij in de buurt. Met de auto kan ik overal naartoe. En het is sneller. Ik hoef nooit te wachten.\nBehalve als je in de file staat. 's Ochtends is er altijd file.\nJa, dat is waar. Maar in de auto heb je meer ruimte. Er zitten geen andere mensen in.\nJe bent alleen. Je kunt naar de radio luisteren.\nJa, dat is wel een voordeel, maar de bus is misschien goedkoper!\n\n(De les is al een kwartier bezig. Fred komt binnen.)\nGoedemorgen, meneer!\nGoedemorgen?! Goedemiddag! Waarom ben je zo laat? Je woont niet ver weg. Het is maar vijf minuten met de fiets. Dat is dus dichtbij.\nJa, met de fiets ben ik hier binnen vijf minuten. Maar vanochtend was mijn fiets kapot.\nDaarom moest ik lopen. Dan doe ik er langer over.\nMaar gisteren was je ook te laat. Was je fiets gisteren ook kapot?\nNee, gisteren was de brug open. Dat kost ook veel tijd. Daarom was ik te laat.\nSommige mensen hebben nooit geluk!",
+    "text": "Katja, vertel eens, hoe ben jij naar de les gekomen?\nMet de bus. Ik ben bij het station uitgestapt. Van het station ben ik lopend naar school gegaan.\nHoe lang duurde je reis? Hoe lang heb je erover gedaan?\nIk heb er een half uur over gedaan. Soms kom ik met de fiets. Dat is sneller dan met de bus! Bovendien is het meestal druk in de bus. Dan kan ik niet zitten. De bus heeft ook vaak vertraging. Hij is dan te laat. En ik kom dan ook niet op tijd! Dat vind ik vervelend.\nWaarom kom je niet elke dag met de fiets?\nNou, omdat het hier altijd regent. En als je in de regen fietst, word je nat. Dat is een nadeel. Dan neem ik liever de bus.\nEn wie komt er met de auto? Heeft er iemand een auto? Jij Lisa?\nJa, ik meneer. Ik heb een auto. Kijk, daar staat hij: die kleine witte daar. Ik kan niet zonder. Er komt geen bus bij mij in de buurt. Met de auto kan ik overal naartoe. En het is sneller. Ik hoef nooit te wachten.\nBehalve als je in de file staat. 's Ochtends is er altijd file.\nJa, dat is waar. Maar in de auto heb je meer ruimte. Er zitten geen andere mensen in.\nJe bent alleen. Je kunt naar de radio luisteren.\nJa, dat is wel een voordeel, maar de bus is misschien goedkoper!\n\n(De les is al een kwartier bezig. Fred komt binnen.)\nGoedemorgen, meneer!\nGoedemorgen?! Goedemiddag! Waarom ben je zo laat? Je woont niet ver weg. Het is maar vijf minuten met de fiets. Dat is dus dichtbij.\nJa, met de fiets ben ik hier binnen vijf minuten. Maar vanochtend was mijn fiets kapot.\nDaarom moest ik lopen. Dan doe ik er langer over.\nMaar gisteren was je ook te laat. Was je fiets gisteren ook kapot?\nNee, gisteren was de brug open. Dat kost ook veel tijd. Daarom was ik te laat.\nSommige mensen hebben nooit geluk!",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "erovera",
+        "to": "erover",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "work & study"
+    ]
   },
   {
-    "title": "Naar Sara",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-07",
+    "title": "De vier seizoenen",
+    "originalTitle": "De vier seizoenen",
     "level": "A1",
-    "tags": ["daily life", "travel"],
-    "text": "Alex en Lisa gaan naar Sara. Sara woont in de Kerkstraat, op nummer 77. Ze lopen samen door de stad. Eerst gaan ze linksaf. Daarna lopen ze rechtdoor. Bij de brug gaan ze rechts. Nummer 77 is aan de linkerkant."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 6,
+    "levelOrder": 7,
+    "sourceLine": 99,
+    "version": "m_1lsydd9",
+    "corpusVersion": 2,
+    "originalText": "Welke dag is het vandaag? Hoe laat gaan de winkels dicht? Hoe lang duurt de cursus? Wanneer ga je met vakantie? Hoeveel keer per week heeft u les? Die vragen zijn belangrijk! We willen weten wanneer iets gebeurt, of hoe lang iets duurt. Daarom verdelen we de tijd in jaren, maanden, weken, dagen, uren, minuten en seconden.\nEen maand heeft ongeveer vier weken en een week zeven dagen. In Nederland hebben we vier seizoenen. Het weer verschilt per seizoen.\nIn de zomer is het warm. Tenminste, dat zeggen de Nederlanders. Tussen de 21 en de 25 graden vinden ze warm. Vaak schijnt de zon, maar het regent ook erg vaak. In de maanden juli en augustus gaan veel mensen met vakantie. Naar een land dat niet zo nat is, met meer zon en weinig regen!\nIn september begint de herfst. In oktober en november wordt het koud. De dagen zijn al korter. Het wordt vroeg donker. Het waait. Gele bladeren vallen van de bomen.\nIn december begint de winter. Het wordt nog kouder. In de lente komen er weer bladeren aan de bomen. We zien overal bloemen. Het wordt warmer, de temperatuur stijgt, de dagen zijn steeds langer. Een mooi seizoen!\nWat een heerlijk klimaat heeft Nederland. Je hebt alles: zon, regen, wind. Het weer is nooit hetzelfde, het verandert steeds. Het is niet te warm, maar ook niet te koud. Het beste plekje van de wereld!",
+    "text": "Welke dag is het vandaag? Hoe laat gaan de winkels dicht? Hoe lang duurt de cursus? Wanneer ga je met vakantie? Hoeveel keer per week heeft u les? Die vragen zijn belangrijk! We willen weten wanneer iets gebeurt, of hoe lang iets duurt. Daarom verdelen we de tijd in jaren, maanden, weken, dagen, uren, minuten en seconden.\nEen maand heeft ongeveer vier weken en een week zeven dagen. In Nederland hebben we vier seizoenen. Het weer verschilt per seizoen.\nIn de zomer is het warm. Tenminste, dat zeggen de Nederlanders. Tussen de 21 en de 25 graden vinden ze warm. Vaak schijnt de zon, maar het regent ook erg vaak. In de maanden juli en augustus gaan veel mensen met vakantie. Naar een land dat niet zo nat is, met meer zon en weinig regen!\nIn september begint de herfst. In oktober en november wordt het koud. De dagen zijn al korter. Het wordt vroeg donker. Het waait. Gele bladeren vallen van de bomen.\nIn december begint de winter. Het wordt nog kouder. In de lente komen er weer bladeren aan de bomen. We zien overal bloemen. Het wordt warmer, de temperatuur stijgt, de dagen zijn steeds langer. Een mooi seizoen!\nWat een heerlijk klimaat heeft Nederland. Je hebt alles: zon, regen, wind. Het weer is nooit hetzelfde, het verandert steeds. Het is niet te warm, maar ook niet te koud. Het beste plekje van de wereld!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
   },
   {
-    "title": "Een rustig weekend",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a1-08",
+    "title": "Hoe wonen jullie?",
+    "originalTitle": "Hoe women jullie?",
     "level": "A1",
-    "tags": ["daily life", "culture"],
-    "text": "Nick heeft een rustig weekend. Op zaterdag slaapt hij uit. Daarna ruimt hij zijn kamer op. Hij doet boodschappen op de markt en belt zijn ouders. Op zondag gaat hij naar de kerk. In de avond leert hij de tekst voor de Nederlandse les."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 7,
+    "levelOrder": 8,
+    "sourceLine": 108,
+    "version": "m_1i1nd0j",
+    "corpusVersion": 2,
+    "originalText": "Hoe wonen jullie eigenlijk? Hebben jullie een eigen huis? Of huren jullie een woning? Of woon je op kamers, dus bij iemand anders in huis? Woon je alleen, met familie, of met een huisgenoot? Katja, vertel eens hoe je woont.\nIn mijn land woonde ik bij mijn moeder, maar hier woon ik op kamers. Samen met een vriend en twee andere huisgenoten, allemaal mannen. Wij hebben allemaal onze eigen kamer. Maar de badkamer, de wc en de keuken zijn beneden. Die gebruiken we samen.\nHebben jullie veel contact met die huisgenoten?\nJa, het zijn Nederlandse studenten en ze zijn erg aardig. We hebben veel contact met hen. We eten ook af en toe samen.\nHeb je veel ruimte? Hoe groot is je kamer?\nMijn kamer is vrij ruim: ongeveer 25 vierkante meter. Ik woon en werk er en ik slaap er ook. Mijn woonkamer is dus ook mijn slaapkamer. De keuken is niet ruim: maar twee bij drie meter. En hij is donker. Er zitten geen ramen in. Toch ben ik tevreden.\nIk heb genoeg ruimte om te wonen en te studeren.\nIs het een dure kamer? Hoeveel betaal je ervoor, als ik vragen mag?\nWat noemt u duur? Ik betaal 400 euro per maand, inclusief water en internet. Zelf vind ik dat een redelijke huur. Ik ben dus erg tevreden!\nDat vind ik ook redelijk. Hoe ben je aan die kamer gekomen?\nVia een vriend van mij. Die woont al lang in Nederland.\nEn jij Lisa, woon jlj ook op kamers?\nNee, ik woon nog bij mijn vader, maar mijn vriend en ik gaan binnenkort samenwonen. We willen een flat kopen. We zoeken een flat met twee kamers en een keuken. Het liefst dicht bij het centrum. Dus als jullie iets weten",
+    "text": "Hoe wonen jullie eigenlijk? Hebben jullie een eigen huis? Of huren jullie een woning? Of woon je op kamers, dus bij iemand anders in huis? Woon je alleen, met familie, of met een huisgenoot? Katja, vertel eens hoe je woont.\nIn mijn land woonde ik bij mijn moeder, maar hier woon ik op kamers. Samen met een vriend en twee andere huisgenoten, allemaal mannen. Wij hebben allemaal onze eigen kamer. Maar de badkamer, de wc en de keuken zijn beneden. Die gebruiken we samen.\nHebben jullie veel contact met die huisgenoten?\nJa, het zijn Nederlandse studenten en ze zijn erg aardig. We hebben veel contact met hen. We eten ook af en toe samen.\nHeb je veel ruimte? Hoe groot is je kamer?\nMijn kamer is vrij ruim: ongeveer 25 vierkante meter. Ik woon en werk er en ik slaap er ook. Mijn woonkamer is dus ook mijn slaapkamer. De keuken is niet ruim: maar twee bij drie meter. En hij is donker. Er zitten geen ramen in. Toch ben ik tevreden.\nIk heb genoeg ruimte om te wonen en te studeren.\nIs het een dure kamer? Hoeveel betaal je ervoor, als ik vragen mag?\nWat noemt u duur? Ik betaal 400 euro per maand, inclusief water en internet. Zelf vind ik dat een redelijke huur. Ik ben dus erg tevreden!\nDat vind ik ook redelijk. Hoe ben je aan die kamer gekomen?\nVia een vriend van mij. Die woont al lang in Nederland.\nEn jij Lisa, woon jij ook op kamers?\nNee, ik woon nog bij mijn vader, maar mijn vriend en ik gaan binnenkort samenwonen. We willen een flat kopen. We zoeken een flat met twee kamers en een keuken. Het liefst dicht bij het centrum. Dus als jullie iets weten",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "woon jlj",
+        "to": "woon jij",
+        "occurrences": 1
+      },
+      {
+        "field": "title",
+        "from": "Hoe women jullie?",
+        "to": "Hoe wonen jullie?"
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
   },
   {
+    "id": "nl-curated-a1-09",
+    "title": "Hoe kom ik daar?",
+    "originalTitle": "Hoe kom ik daar?",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 8,
+    "levelOrder": 9,
+    "sourceLine": 124,
+    "version": "m_4qfb69",
+    "corpusVersion": 2,
+    "originalText": "Zeg Alex, heb je zin om volgende week zaterdag te komen eten? Om een uur of zes?\nLisa en een paar anderen van de groep komen ook.\nJa, leuk, Sara! Ik kom graag. Waar woon je?\nIn de Kerkstraat, op nummer 77. Het is niet heel ver. Je kunt het lopen. Zal ik het even uitleggen?\nDat is niet nodig\", mijn mobiel wijst me de weg. Trouwens, Lisa woont bij mij om de hoek, we kunnen samen gaan. Met z'n tweeën vinden we je huis wel.\nOké. Tot dan.\nZal ik iets meenemen?\nNee hoor, dat hoeft niet.\n\nAlex en Lisa gaan op weg. Ze hebben allebei iets gekocht voor Sara: Alex heeft een boek gekocht en Lisa bloemen. Alex zegt: \"Ik weet uit mijn hoofd hoe we moeten lopen\". Maar na een paar straten vraagt hij:\nMoeten we hier links- of rechtsaf? Ik ben het vergeten.\n\nLisa pakt haar mobiel.\nWaar gaan we naartoe? Van hier naar ...?\nKerkstraat 77.\nKijk. We moeten hier linksaf. We lopen rechtdoor. Na 345 meter komen we bij een brede weg. Die weg moeten& we oversteken.\nDus we gaan eerst verder in dezelfde richting.\n\nLisa en Alex steken de drukke brede weg over. Even later zijn ze op een plein met veel winkels. Daar moet het ongeveer zijn. Ze zien een kerk, de Kerkstraat is nu dichtbij. \nHet is over de brug de eerste straat rechts.\nKijk daar, aan de linkerkant, in dat hoge gebouw, daar woont Sara. Op de tweede verdieping. Nemen we de lift\nNee, kom, het zijn maar vier trappen.\n\nBoven gaan ze links de hoek om. Nummer 77 is de laatste deur aan de linkerkant.",
+    "text": "Zeg Alex, heb je zin om volgende week zaterdag te komen eten? Om een uur of zes?\nLisa en een paar anderen van de groep komen ook.\nJa, leuk, Sara! Ik kom graag. Waar woon je?\nIn de Kerkstraat, op nummer 77. Het is niet heel ver. Je kunt het lopen. Zal ik het even uitleggen?\nDat is niet nodig\", mijn mobiel wijst me de weg. Trouwens, Lisa woont bij mij om de hoek, we kunnen samen gaan. Met z'n tweeën vinden we je huis wel.\nOké. Tot dan.\nZal ik iets meenemen?\nNee hoor, dat hoeft niet.\n\nAlex en Lisa gaan op weg. Ze hebben allebei iets gekocht voor Sara: Alex heeft een boek gekocht en Lisa bloemen. Alex zegt: \"Ik weet uit mijn hoofd hoe we moeten lopen\". Maar na een paar straten vraagt hij:\nMoeten we hier links- of rechtsaf? Ik ben het vergeten.\n\nLisa pakt haar mobiel.\nWaar gaan we naartoe? Van hier naar...?\nKerkstraat 77.\nKijk. We moeten hier linksaf. We lopen rechtdoor. Na 345 meter komen we bij een brede weg. Die weg moeten we oversteken.\nDus we gaan eerst verder in dezelfde richting.\n\nLisa en Alex steken de drukke brede weg over. Even later zijn ze op een plein met veel winkels. Daar moet het ongeveer zijn. Ze zien een kerk, de Kerkstraat is nu dichtbij.\nHet is over de brug de eerste straat rechts.\nKijk daar, aan de linkerkant, in dat hoge gebouw, daar woont Sara. Op de tweede verdieping. Nemen we de lift\nNee, kom, het zijn maar vier trappen.\n\nBoven gaan ze links de hoek om. Nummer 77 is de laatste deur aan de linkerkant.",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "moeten&",
+        "to": "moeten",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "travel"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-10",
+    "title": "Een leuk weekend",
+    "originalTitle": "Een leuk weekend",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 9,
+    "levelOrder": 10,
+    "sourceLine": 151,
+    "version": "m_1q5dw6r",
+    "corpusVersion": 2,
+    "originalText": "Hoi Katja, hoe gaat het?\nGoed. En met jou?\nOok goed. Heb je een leuk weekend gehada?\nJa zeker, maar het was erg druk. Ik ben op bezoek geweest bij vrienden. Die wonen pas drie maanden in Nederland. Ze wilden graag iets nieuws zien. Dus zondagmiddag zijn we naar het museum Beelden aan Zee gegaan. Dat is een prachtig museum. En er was geen lange rij, dus we waren snel binnen.\n\nDat klinkt goed. Hebben jullie daar ook gegeten?\nNee, we hebben bij hen thuis een Spaanse maaltija gekookt. En daarna hebben we een film gekeken. Het was erg gezellig. We hadden een interessant gesprek over de verschillen tussen de Franse en Nederlandse cultuur. Ook hebben we erg gelachen.\nIk was wel laat thuis.\n\nEn jüj, Nick? Wat heb jij gedaan?\nIk heb niets bijzonders gedaan. Ik slaap meestal uit op zaterdag. En dan ruim ik mijn kamer op en maak de badkamer schoon. Afgelopen zaterdag heb ik tot elf uur uitgeslapen. Daarna heb ik boodschappen gedaan op de markt, met mijn vriendin.\nIk heb ook een paar mails gestuurd en m'n ouders gebeld. Die sliepen al. Dom van me! Ik vergeet altijd dat het daar veel later is. Op zondag zijn we naar de kerk gegaan. Dat doen we elke zondag. En natuurlijk heb ik de teksten voor maandag geleerd.\n\nHad jü genoeg tijd om te leren?\nEigenlijk niet. Ik had het erg druk omdat ik op zaterdag moet werken. Ik heb Nederlands gesproken in de pauze. Ik heb een kwartier met een collega gepraat. Die stelde veel vragen. En weet je wat hij zei: \"Tjonge, wat spreek jij al goed Nederlands!\"",
+    "text": "Hoi Katja, hoe gaat het?\nGoed. En met jou?\nOok goed. Heb je een leuk weekend gehad?\nJa zeker, maar het was erg druk. Ik ben op bezoek geweest bij vrienden. Die wonen pas drie maanden in Nederland. Ze wilden graag iets nieuws zien. Dus zondagmiddag zijn we naar het museum Beelden aan Zee gegaan. Dat is een prachtig museum. En er was geen lange rij, dus we waren snel binnen.\n\nDat klinkt goed. Hebben jullie daar ook gegeten?\nNee, we hebben bij hen thuis een Spaanse maaltijd gekookt. En daarna hebben we een film gekeken. Het was erg gezellig. We hadden een interessant gesprek over de verschillen tussen de Franse en Nederlandse cultuur. Ook hebben we erg gelachen.\nIk was wel laat thuis.\n\nEn jij, Nick? Wat heb jij gedaan?\nIk heb niets bijzonders gedaan. Ik slaap meestal uit op zaterdag. En dan ruim ik mijn kamer op en maak de badkamer schoon. Afgelopen zaterdag heb ik tot elf uur uitgeslapen. Daarna heb ik boodschappen gedaan op de markt, met mijn vriendin.\nIk heb ook een paar mails gestuurd en m'n ouders gebeld. Die sliepen al. Dom van me! Ik vergeet altijd dat het daar veel later is. Op zondag zijn we naar de kerk gegaan. Dat doen we elke zondag. En natuurlijk heb ik de teksten voor maandag geleerd.\n\nHad jij genoeg tijd om te leren?\nEigenlijk niet. Ik had het erg druk omdat ik op zaterdag moet werken. Ik heb Nederlands gesproken in de pauze. Ik heb een kwartier met een collega gepraat. Die stelde veel vragen. En weet je wat hij zei: \"Tjonge, wat spreek jij al goed Nederlands!\"",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "gehada",
+        "to": "gehad",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "maaltija",
+        "to": "maaltijd",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "jüj",
+        "to": "jij",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "Had jü",
+        "to": "Had jij",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-11",
+    "title": "Familie",
+    "originalTitle": "Familie",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 10,
+    "levelOrder": 11,
+    "sourceLine": 169,
+    "version": "m_1o7f9vc",
+    "corpusVersion": 2,
+    "originalText": "Kom jij uit een groot gezin, Sara? Hoeveel broers en zussen heb je?\nIk heb drie broers en twee zussen. Een normaal gezin dus.\nNormaal? Dat vind ik groot! Twee of drie kinderen, dat is hier normaal. Vaak is er maar één kind.\nEén kind? Dat meen je niet, Mark! Niemand om mee te spelen? In mijn land zijn de gezinnen groter. Het voordeel is dat je veel familie hebt. Ik vind dat erg gezellig! Al die ooms, tantes, neven en nichten!\n\nNu woon je al een tijd in Nederland. Je mist je familie zeker wel?\nJa, heel erg! Ik kan alleen met ze bellen! Maar gelukkig heb ik hier ook familie: mijn schoonfamilie! Zoals je weet ben ik getrouwd met een Nederlander. Mijn schoonouders wonen dichtbij. Ze komen vaak op bezoek. Mijn eigen familie woont ver weg. Kijk, hier zie je ze allemaal op deze foto's. Dit is mijn jongste zus, dat zijn mijn oudste zus en haar man met hun zoon en op die bank zitten mijn broers. En dit zijn mijn ouders: mijn vader en mijn moeder.\n\nZijn dat je ouders? Echt waar? Ze zien er nog zo jong uit. Wat voor werk doen ze?\nMijn vader is de baas van een bedrijf. En mijn moeder is arts.\nDat is toevallig: mijn moeder ook. Maar ik zie haar niet zo vaak. Mijn ouders zijn gescheiden toen ik klein was. Mijn vader is docent op een school. Mijn oma paste op mij toen ik klein was. Ik houd veel van haar, en ik ga vaak naar haar toe. En we zien elkaar natuurlijk met de feestdagen en op verjaardagen.\n\nLeven jouw opa's en oma's nog?\nIk heb nog één oma. Zij is al 86. Mijn andere oma en mijn opa's zijn al gestorven.\nDie heb ik helaas nooit gekend. Maar ik heb veel over hen gehoord!",
+    "text": "Kom jij uit een groot gezin, Sara? Hoeveel broers en zussen heb je?\nIk heb drie broers en twee zussen. Een normaal gezin dus.\nNormaal? Dat vind ik groot! Twee of drie kinderen, dat is hier normaal. Vaak is er maar één kind.\nEén kind? Dat meen je niet, Mark! Niemand om mee te spelen? In mijn land zijn de gezinnen groter. Het voordeel is dat je veel familie hebt. Ik vind dat erg gezellig! Al die ooms, tantes, neven en nichten!\n\nNu woon je al een tijd in Nederland. Je mist je familie zeker wel?\nJa, heel erg! Ik kan alleen met ze bellen! Maar gelukkig heb ik hier ook familie: mijn schoonfamilie! Zoals je weet ben ik getrouwd met een Nederlander. Mijn schoonouders wonen dichtbij. Ze komen vaak op bezoek. Mijn eigen familie woont ver weg. Kijk, hier zie je ze allemaal op deze foto's. Dit is mijn jongste zus, dat zijn mijn oudste zus en haar man met hun zoon en op die bank zitten mijn broers. En dit zijn mijn ouders: mijn vader en mijn moeder.\n\nZijn dat je ouders? Echt waar? Ze zien er nog zo jong uit. Wat voor werk doen ze?\nMijn vader is de baas van een bedrijf. En mijn moeder is arts.\nDat is toevallig: mijn moeder ook. Maar ik zie haar niet zo vaak. Mijn ouders zijn gescheiden toen ik klein was. Mijn vader is docent op een school. Mijn oma paste op mij toen ik klein was. Ik houd veel van haar, en ik ga vaak naar haar toe. En we zien elkaar natuurlijk met de feestdagen en op verjaardagen.\n\nLeven jouw opa's en oma's nog?\nIk heb nog één oma. Zij is al 86. Mijn andere oma en mijn opa's zijn al gestorven.\nDie heb ik helaas nooit gekend. Maar ik heb veel over hen gehoord!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-12",
+    "title": "Pakje bij de buren",
+    "originalTitle": "Pakje bij de buren",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 11,
+    "levelOrder": 12,
+    "sourceLine": 187,
+    "version": "m_by75sg",
+    "corpusVersion": 2,
+    "originalText": "Dag buurman! Ik vond een briefje in de bus.\nEr staat op dat er een pakje voor mij bij u is gebracht. Klopt dat?\nHoi Fred. Inderdaad, hier ligt je pakje. Alsjeblieft.\nDank u wel. Ik zie het al: mijn nieuwe kleren zijn aangekomen.\nTjonge, Fred, koop jij je kleren online?\nDan kun je ze toch niet passen?\nJawel. Als ze niet passen stuur ik ze gewoon terug. En dan neem ik weer andere.\nIk vind online kopen heel makkelijk.\nHet is snel, goedkoop, en ik hoef niet naar de winkel.\nIk houd van winkelen. En ik houd ook van de markt. Ik vind het daar gezellig. Veel producten zijn op de markt goedkoper dan in de winkel, vooral aan het eind van de dag. Dan dalen vaak de prijzen. En vind je het nog te duur? Er is een goede kans dat de prijs nog verder zakt. Dan heb je dubbel voordeel. Wist je dat?\nJa, dat weet ik. Maar ik houd niet van de markt. De kwaliteit is vaak niet zo goed.\nBovendien moet je soms lang wachten op je beurt! Nee, ik kom er niet graag. Mijn boodschappen koop ik allemaal online. Twee keer in de week krijg ik vers fruit en verse groente thuis. Er zit zelfs een recept bij, dat is makkelijk bij het koken.\nIk dacht dat studenten alleen maar pizza's eten. Dat valt dus mee. Kom even binnen. Heb je zin in koffie?\nNee, ik heb nog veel te doen en ik moet koken vanavond. En daarna sporten.\nTja, dat kan nog niet online. Nou, misschien een andere keer dan.\nDat doen we, afgesproken! Het was gezellig om even te praten. Bedankt voor uw hulp!\nGeen probleem, graag gedaan. En succes met koken!",
+    "text": "Dag buurman! Ik vond een briefje in de bus.\nEr staat op dat er een pakje voor mij bij u is gebracht. Klopt dat?\nHoi Fred. Inderdaad, hier ligt je pakje. Alsjeblieft.\nDank u wel. Ik zie het al: mijn nieuwe kleren zijn aangekomen.\nTjonge, Fred, koop jij je kleren online?\nDan kun je ze toch niet passen?\nJawel. Als ze niet passen stuur ik ze gewoon terug. En dan neem ik weer andere.\nIk vind online kopen heel makkelijk.\nHet is snel, goedkoop, en ik hoef niet naar de winkel.\nIk houd van winkelen. En ik houd ook van de markt. Ik vind het daar gezellig. Veel producten zijn op de markt goedkoper dan in de winkel, vooral aan het eind van de dag. Dan dalen vaak de prijzen. En vind je het nog te duur? Er is een goede kans dat de prijs nog verder zakt. Dan heb je dubbel voordeel. Wist je dat?\nJa, dat weet ik. Maar ik houd niet van de markt. De kwaliteit is vaak niet zo goed.\nBovendien moet je soms lang wachten op je beurt! Nee, ik kom er niet graag. Mijn boodschappen koop ik allemaal online. Twee keer in de week krijg ik vers fruit en verse groente thuis. Er zit zelfs een recept bij, dat is makkelijk bij het koken.\nIk dacht dat studenten alleen maar pizza's eten. Dat valt dus mee. Kom even binnen. Heb je zin in koffie?\nNee, ik heb nog veel te doen en ik moet koken vanavond. En daarna sporten.\nTja, dat kan nog niet online. Nou, misschien een andere keer dan.\nDat doen we, afgesproken! Het was gezellig om even te praten. Bedankt voor uw hulp!\nGeen probleem, graag gedaan. En succes met koken!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-13",
+    "title": "School",
+    "originalTitle": "School",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 12,
+    "levelOrder": 13,
+    "sourceLine": 207,
+    "version": "m_ior5wq",
+    "corpusVersion": 2,
+    "originalText": "Ik heb twee kinderen. Mijn zoon Tom is vier en mijn dochter Kate is twaalf.\nZe zitten op een Nederlandse basisschool.\nTom zit in groep één en Kate zit in groep acht. Dat is het laatste jaar.\nPas vanaf vijf jaar moeten kinderen naar school.\nMaar bijna alle kinderen beginnen al als ze vier jaar zijn.\nEn Tom kon niet wachten om naar school te gaan!\nVoor sommige scholen moet je je kind al inschrijven als ze baby zijn.\nMaar gelukkig was er voor deze school géén wachtlijst.\nWe hebben gekozen voor een openbare school in de buurt.\nOmdat de afstand van huis naar school klein is, kan Kate zelf met de fiets naar school en hoeven wij alleen Tom te brengen.\nDe school organiseert ook opvang na school voor de leerlingen.\nDat is makkelijk als we allebei moeten werken.\nDe kinderen hebben het erg naar hun zin, zowel op de opvang als op school.\nZelf vond ik school vroeger helemaal niet leuk.\nIk was bang voor mijn juffrouw. Die was namelijk erg streng.\nWe moesten de hele dag stil zijn en de druk was erg hoog.\nDat is hier heel anders. In groep één en twee leren de leerlingen vooral samen spelen en hun handen goed gebruiken.\nZe luisteren naar verhalen en zingen liedjes.\nZo leren ze de betekenis van nieuwe woorden.\nPas in groep drie gaan ze echt schrijven, lezen en rekenen.\nVerder krijgen ze onder andere (o.a.) les in tekenen en leren ze over de wereld, de geschiedenis en de natuur: over allerlei bloemen, bomen en dieren.\nZe hoeven thuis niet zo veel te doen voor school.\nSommige ouders vinden dat slecht, maar de meeste ouders vinden het geluk van hun kinderen belangrijker dan hoge cijfers.\nIn de groep van Kate mogen de meeste kinderen zelf kiezen naar welke middelbare school ze willen.\nDat is een moeilijke keuze: er zijn veel verschillende scholen en elke school heeft zijn sterke en zwakke punten.",
+    "text": "Ik heb twee kinderen. Mijn zoon Tom is vier en mijn dochter Kate is twaalf.\nZe zitten op een Nederlandse basisschool.\nTom zit in groep één en Kate zit in groep acht. Dat is het laatste jaar.\nPas vanaf vijf jaar moeten kinderen naar school.\nMaar bijna alle kinderen beginnen al als ze vier jaar zijn.\nEn Tom kon niet wachten om naar school te gaan!\nVoor sommige scholen moet je je kind al inschrijven als ze baby zijn.\nMaar gelukkig was er voor deze school géén wachtlijst.\nWe hebben gekozen voor een openbare school in de buurt.\nOmdat de afstand van huis naar school klein is, kan Kate zelf met de fiets naar school en hoeven wij alleen Tom te brengen.\nDe school organiseert ook opvang na school voor de leerlingen.\nDat is makkelijk als we allebei moeten werken.\nDe kinderen hebben het erg naar hun zin, zowel op de opvang als op school.\nZelf vond ik school vroeger helemaal niet leuk.\nIk was bang voor mijn juffrouw. Die was namelijk erg streng.\nWe moesten de hele dag stil zijn en de druk was erg hoog.\nDat is hier heel anders. In groep één en twee leren de leerlingen vooral samen spelen en hun handen goed gebruiken.\nZe luisteren naar verhalen en zingen liedjes.\nZo leren ze de betekenis van nieuwe woorden.\nPas in groep drie gaan ze echt schrijven, lezen en rekenen.\nVerder krijgen ze onder andere (o.a.) les in tekenen en leren ze over de wereld, de geschiedenis en de natuur: over allerlei bloemen, bomen en dieren.\nZe hoeven thuis niet zo veel te doen voor school.\nSommige ouders vinden dat slecht, maar de meeste ouders vinden het geluk van hun kinderen belangrijker dan hoge cijfers.\nIn de groep van Kate mogen de meeste kinderen zelf kiezen naar welke middelbare school ze willen.\nDat is een moeilijke keuze: er zijn veel verschillende scholen en elke school heeft zijn sterke en zwakke punten.",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "work & study"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-14",
+    "title": "Wie doet het huishouden?",
+    "originalTitle": "Wie doet het huishouden?",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 13,
+    "levelOrder": 14,
+    "sourceLine": 235,
+    "version": "m_lq8o5d",
+    "corpusVersion": 2,
+    "originalText": "Meneer, doet u graag het huishouden?\nAbsoluut! Ik kook graag. Ik zet heerlijke koffie en ik doe wat dagelijkse dingen, zoals opruimen en afwassen.\nMaar schoonmaken, de was doen en dat soort zaken, daar heb ik een aardige mevrouw voor. Ze komt elke week. Ik betaal haar, uiteraard. Ik ben tevreden!\nMevrouw, mogen we u wat vragen? Hebt u plezier in het huishouden?\nNou nee, dat is niet mijn hobby. Maar iemand moet het doen! Het is wel makkelijk, tegenwoordig. Mijn moeder, die moest hard werken! Zes kinderen, en geen wasmachine. Mijn vader werkte tot laat in de avond. Die had geen tijd om te helpen. Maar dat is verleden tijd. Neem mijn dochter. Zij verdient het geld en haar man zorgt voor de kinderen en maakt het huis schoon. Een modern gezin!\nEn jij? Maak jij graag het huis schoon?\nIk woon met dertien studenten in een huis, allemaal vrouwen. We hebben een rooster, iedereen doet elke week iets. Maar het is onmogelijk om alles schoon te houden. De keuken blijft nooit lang schoon. Deze week moet ik de badkamer en het toilet doen. Dat soort taken, daar heb ik inderdaad niet zoveel zin in.\nMogen we jullie wat vragen? Hebben jullie de taken in het huishouden verdeeld?\nNiet echt. Vroeger deden we alles samen. Nu heeft mijn vrouw een volledige baan.\nIk werk halve dagen. Ik doe het grootste deel van het huishouden, denk ik. Wie er kookt? Degene die het eerst thuis is! Dat is meestal mijn vrouw. Zij kan heerlijk koken. En daarna wassen we gezellig samen af.",
+    "text": "Meneer, doet u graag het huishouden?\nAbsoluut! Ik kook graag. Ik zet heerlijke koffie en ik doe wat dagelijkse dingen, zoals opruimen en afwassen.\nMaar schoonmaken, de was doen en dat soort zaken, daar heb ik een aardige mevrouw voor. Ze komt elke week. Ik betaal haar, uiteraard. Ik ben tevreden!\nMevrouw, mogen we u wat vragen? Hebt u plezier in het huishouden?\nNou nee, dat is niet mijn hobby. Maar iemand moet het doen! Het is wel makkelijk, tegenwoordig. Mijn moeder, die moest hard werken! Zes kinderen, en geen wasmachine. Mijn vader werkte tot laat in de avond. Die had geen tijd om te helpen. Maar dat is verleden tijd. Neem mijn dochter. Zij verdient het geld en haar man zorgt voor de kinderen en maakt het huis schoon. Een modern gezin!\nEn jij? Maak jij graag het huis schoon?\nIk woon met dertien studenten in een huis, allemaal vrouwen. We hebben een rooster, iedereen doet elke week iets. Maar het is onmogelijk om alles schoon te houden. De keuken blijft nooit lang schoon. Deze week moet ik de badkamer en het toilet doen. Dat soort taken, daar heb ik inderdaad niet zoveel zin in.\nMogen we jullie wat vragen? Hebben jullie de taken in het huishouden verdeeld?\nNiet echt. Vroeger deden we alles samen. Nu heeft mijn vrouw een volledige baan.\nIk werk halve dagen. Ik doe het grootste deel van het huishouden, denk ik. Wie er kookt? Degene die het eerst thuis is! Dat is meestal mijn vrouw. Zij kan heerlijk koken. En daarna wassen we gezellig samen af.",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-15",
+    "title": "De huisarts",
+    "originalTitle": "De huisarts",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 14,
+    "levelOrder": 15,
+    "sourceLine": 248,
+    "version": "m_1ut8erj",
+    "corpusVersion": 2,
+    "originalText": "Als je ziek bent ga je eerst naar de huisarts. Die kijkt ook of je naar het ziekenhuis moet gaan. De huisarts kan veel problemen oplossen. Bijvoorbeeld oorpiin, of pijn in je rug, been of hand. Samen met jou zoekt hij naar de oorzaak van je ziekte en kijkt hoe je weer beter kunt worden.\n\nHij doet eerst goed onderzoek. Hij kijkt in je mond, luistert naar je hart, stelt vragen.\n\nHij zal je bijvoorbeeld vragen: \"Eet u wel gezond? Heeft u misschien spanning op uw werk? Beweegt u genoeg?\"\n\nOok kan de huisarts eerst je bloed laten onderzoeken.\nEn als je medicijnen nodig hebt dan schrijft hij een recept.\nHeb je nog geen huisarts? Kijk dan even op internet, daar vind je ze allemaal.\nJe belt en vraagt: \"Heeft u nog ruimte voor een nieuwe patiënt?\"\n\nAmber is al een paar dagen ziek. Ze belt daarom haar huisarts.\nGoedemorgen, met de assistente van dokter Jansen. Kan ik u helpen?\nGoedemorgen, met Amber Bakker. Ik wil graag zo snel mogelijk de dokter spreken.\nWat is er aan de hand? Is het ernstig?\nJa, ik ben al een paar dagen ziek. Mijn hele lichaam doet pijn. Volgens mij heb ik koorts. Mijn gezicht is helemaal rood! Bovendien heb ik erg veel last van hoofdpijn.\nEven kijken ... Vanochtend om tien over half elf kunt u langskomen.\nO, maar ik ben te ziek om& naar het spreekuur te komen. Kan de dokter niet zelf komen?\nEen momentje, ik overleg even met de dokter.\n\nDaar ben ik weer. De dokter komt vanmiddag bij u langs, vanochtend lukt niet meer, het spijt me.\nFijn, dank u wel. Wat kan ik ondertussen doen?\nU moet veel drinken. Dat is belangrijk bij koorts.\nDat zal ik doen. Dank u wel. Dag mevrouw.\nDag mevrouw. Beterschap!",
+    "text": "Als je ziek bent ga je eerst naar de huisarts. Die kijkt ook of je naar het ziekenhuis moet gaan. De huisarts kan veel problemen oplossen. Bijvoorbeeld oorpiin, of pijn in je rug, been of hand. Samen met jou zoekt hij naar de oorzaak van je ziekte en kijkt hoe je weer beter kunt worden.\n\nHij doet eerst goed onderzoek. Hij kijkt in je mond, luistert naar je hart, stelt vragen.\n\nHij zal je bijvoorbeeld vragen: \"Eet u wel gezond? Heeft u misschien spanning op uw werk? Beweegt u genoeg?\"\n\nOok kan de huisarts eerst je bloed laten onderzoeken.\nEn als je medicijnen nodig hebt dan schrijft hij een recept.\nHeb je nog geen huisarts? Kijk dan even op internet, daar vind je ze allemaal.\nJe belt en vraagt: \"Heeft u nog ruimte voor een nieuwe patiënt?\"\n\nAmber is al een paar dagen ziek. Ze belt daarom haar huisarts.\nGoedemorgen, met de assistente van dokter Jansen. Kan ik u helpen?\nGoedemorgen, met Amber Bakker. Ik wil graag zo snel mogelijk de dokter spreken.\nWat is er aan de hand? Is het ernstig?\nJa, ik ben al een paar dagen ziek. Mijn hele lichaam doet pijn. Volgens mij heb ik koorts. Mijn gezicht is helemaal rood! Bovendien heb ik erg veel last van hoofdpijn.\nEven kijken... Vanochtend om tien over half elf kunt u langskomen.\nO, maar ik ben te ziek om& naar het spreekuur te komen. Kan de dokter niet zelf komen?\nEen momentje, ik overleg even met de dokter.\n\nDaar ben ik weer. De dokter komt vanmiddag bij u langs, vanochtend lukt niet meer, het spijt me.\nFijn, dank u wel. Wat kan ik ondertussen doen?\nU moet veel drinken. Dat is belangrijk bij koorts.\nDat zal ik doen. Dank u wel. Dag mevrouw.\nDag mevrouw. Beterschap!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-16",
+    "title": "De bank",
+    "originalTitle": "De bank",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 15,
+    "levelOrder": 16,
+    "sourceLine": 276,
+    "version": "m_1mc0jx2",
+    "corpusVersion": 2,
+    "originalText": "De bank weet veel van mij. Ze weet waar ik werk en waar ik boodschappen doe.\nZe weet waar ik op vakantie ben en wat ik doe in mijn vrije tijd, en nog veel meer.\nEn toch ben ik er nog nooit geweest. Ik heb een rekening aangevraagd via de website van de bank. Dat gaat heel makkelijk. Je kiest een soort rekening, je geeft je burgerservicenummer en klaar is Kees. Bij sommige banken moet je daarna nog even langskomen.\nJe hebt een rekening nodig. Je werkgever kan zo elke maand je geld overmaken, van zijn rekening naar jouw rekening. Krijg je geld van de overheid? Ook dan is een rekening noodzakelijk. Studeer je in het buitenland? Je lieve ouders sturen je geld via je rekening. Met die rekening kun je ook van alles betalen. Parkeren bijvoorbeeld, dat regel je met je pasje of met je mobiel. Wil je de boodschappen betalen? Je gebruikt je pasje, je pint het bedrag. Je ov-kaart kun je met hetzelfde pasje opladen. Heb je contant geld nodig? De geldautomaat is 24 uur geopend. En de huur, en rekeningen die je elke maand moet betalen? Dat wordt automatisch overgemaakt. Als je naar het buitenland gaat heb je soms een creditcard nodig. Die werkt ongeveer op dezelfde manier. De bank stelt dan wel de eis data je genoeg verdient.",
+    "text": "De bank weet veel van mij. Ze weet waar ik werk en waar ik boodschappen doe.\nZe weet waar ik op vakantie ben en wat ik doe in mijn vrije tijd, en nog veel meer.\nEn toch ben ik er nog nooit geweest. Ik heb een rekening aangevraagd via de website van de bank. Dat gaat heel makkelijk. Je kiest een soort rekening, je geeft je burgerservicenummer en klaar is Kees. Bij sommige banken moet je daarna nog even langskomen.\nJe hebt een rekening nodig. Je werkgever kan zo elke maand je geld overmaken, van zijn rekening naar jouw rekening. Krijg je geld van de overheid? Ook dan is een rekening noodzakelijk. Studeer je in het buitenland? Je lieve ouders sturen je geld via je rekening. Met die rekening kun je ook van alles betalen. Parkeren bijvoorbeeld, dat regel je met je pasje of met je mobiel. Wil je de boodschappen betalen? Je gebruikt je pasje, je pint het bedrag. Je ov-kaart kun je met hetzelfde pasje opladen. Heb je contant geld nodig? De geldautomaat is 24 uur geopend. En de huur, en rekeningen die je elke maand moet betalen? Dat wordt automatisch overgemaakt. Als je naar het buitenland gaat heb je soms een creditcard nodig. Die werkt ongeveer op dezelfde manier. De bank stelt dan wel de eis dat je genoeg verdient.",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "eis data",
+        "to": "eis dat",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "society"
+    ]
+  },
+  {
+    "id": "nl-curated-a1-17",
+    "title": "De mooiste reis",
+    "originalTitle": "De mooiste reis",
+    "level": "A1",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 16,
+    "levelOrder": 17,
+    "sourceLine": 283,
+    "version": "m_1kvcstx",
+    "corpusVersion": 2,
+    "originalText": "Ik houd erg van reizen. Ik heb al veel reizen gemaakt, zowel voor mijn werk als voor mijn plezier. Soms moet ik met collega's voor een vergadering naar Londen of Brussel.\nWe gaan dan meestal met het vliegtuig en slapen daar in een hotel. Als kind vond ik vliegen heel bijzonder. Met ons gezin gingen we bijna altijd met de auto op vakantie.\nWe reden dan naar Frankrijk. Daar sliepen we in een tent en deden we spelletjes.\nMijn langste en verste reis was naar China, een paar jaar geleden. Eerst ging ik met de bus en de trein naar het vliegveld. Op internet vond ik alle informatie die ik nodig had: hoe lang het duurde, hoeveel het kostte. Alles ging mis die dag. De bus vertrok op tijd, maar kwam veel te laat op het station aan. Ook de trein had vertraging. Daardoor kwam ik te laat aan op het vliegveld en was mijn vliegtuig al weg. Het volgende vliegtuig ging pas's avonds laat. Ik zat veertien uur in het vliegtuig. Maar dat was het waard. Ik was al lang van plan om naar China te gaan. Ik reisde met een groep. We hadden een vol programma, want er was van alles te zien. We hebben ook een reis gemaakt met de boot over de langste rivier van China. De steden en dorpen die we bezochten waren erg interessant. Tijdens de reis heb ik enorm veel foto's gemaakt.\nOok heb ik veel aardige mensen ontmoet. Met sommigen heb ik nog steeds contact.\nDe mooiste reis die ik heb gemaakt was de reis die we direct na mijn huwelijk hebben gemaakt. We gingen naar een eiland met hoge bergen en prachtige natuur. Er waren ook geweldige feesten met muziek en theater in de open lucht. Het was echt fantastisch!",
+    "text": "Ik houd erg van reizen. Ik heb al veel reizen gemaakt, zowel voor mijn werk als voor mijn plezier. Soms moet ik met collega's voor een vergadering naar Londen of Brussel.\nWe gaan dan meestal met het vliegtuig en slapen daar in een hotel. Als kind vond ik vliegen heel bijzonder. Met ons gezin gingen we bijna altijd met de auto op vakantie.\nWe reden dan naar Frankrijk. Daar sliepen we in een tent en deden we spelletjes.\nMijn langste en verste reis was naar China, een paar jaar geleden. Eerst ging ik met de bus en de trein naar het vliegveld. Op internet vond ik alle informatie die ik nodig had: hoe lang het duurde, hoeveel het kostte. Alles ging mis die dag. De bus vertrok op tijd, maar kwam veel te laat op het station aan. Ook de trein had vertraging. Daardoor kwam ik te laat aan op het vliegveld en was mijn vliegtuig al weg. Het volgende vliegtuig ging pas's avonds laat. Ik zat veertien uur in het vliegtuig. Maar dat was het waard. Ik was al lang van plan om naar China te gaan. Ik reisde met een groep. We hadden een vol programma, want er was van alles te zien. We hebben ook een reis gemaakt met de boot over de langste rivier van China. De steden en dorpen die we bezochten waren erg interessant. Tijdens de reis heb ik enorm veel foto's gemaakt.\nOok heb ik veel aardige mensen ontmoet. Met sommigen heb ik nog steeds contact.\nDe mooiste reis die ik heb gemaakt was de reis die we direct na mijn huwelijk hebben gemaakt. We gingen naar een eiland met hoge bergen en prachtige natuur. Er waren ook geweldige feesten met muziek en theater in de open lucht. Het was echt fantastisch!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "travel"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-01",
     "title": "Een dagje uit",
-    "source": "Textbook adapted",
+    "originalTitle": "Een dagje uit",
     "level": "A2",
-    "tags": ["travel", "culture", "food"],
-    "text": "Alex wil met de groep uitgaan in Rotterdam. Eerst kunnen ze naar de Markthal gaan. Daarna eten ze samen in een Italiaans restaurant. Na het eten willen ze naar de Euromast. Vanaf die toren zie je de stad, de haven en alle lichtjes."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 17,
+    "levelOrder": 1,
+    "sourceLine": 296,
+    "version": "m_1jxjfiz",
+    "corpusVersion": 2,
+    "originalText": "Aan het begin van de les gaat Alex staan.\n\nMevrouw, mag ik iets vragen aan de hele groep? Ik dacht, misschien kunnen we binnenkort een keer samen uitgaan. In Rotterdam, bijvoorbeeld. We kunnen eerst naar de Markthal gaan. Dat schijnt een prachtig gebouw te zijn. Daarna kunnen we ergens samen eten. En na het eten kunnen we naar de film. Er draait zaterdag een spannende film. Hebben jullie daar zin in? Wie gaat er mee?\nEen uitstekend plan. Behalve de film. We zitten dan in het donker naast elkaar.\nPraten met elkaar is onmogelijk. Dat is niet zo gezellig.\nDat is waar. Je hebt gelijk. Heb je een beter voorstel?\nMisschien ... Laten we na het eten een bezoek brengen aan de Euromast. De hoogste toren van Nederland. Vanaf die toren zie je heel Rotterdam inclusief de haven. 's Avonds als het donker is zien we de stad en alle lichtjes.\nDat vind ik een perfect voorstel. ledereen akkoord, hoop ik? Oké. Afgesproken.\nWaar gaan we eten? Achter de Markthal is een Italiaans restaurant. Het eten is daar erg lekker en niet zo duur. Is iedereen het ermee eens?\nWe zijn met z'n tienen. Ik denk dat we met tien personen wel moeten reserveren.\nDat lijkt me beter. Dan weten we zeker dat we een tafel hebben.\nWat gaan we eten? Kiest iedereen apart wat hij of zij lekker vindt? Of zal ik proberen een menu afte spreken met keuze uit vlees, vis of vegetarisch? Ik hoor wel wat jullie keuze is.\nJa, prima. Ik stel voor dat we elkaar ontmoeten op het centraal station van Rotterdam rond vier uur.\nNiet met de auto komen, hoor. Parkeren is heel erg duur midden in het centrum.\n\nO, het is al laat! Als iedereen voor zichzelf gaat betalen verliezen we te veel tijd.\nIk betaal alles met miin creditcard. Straks delen we het totale bedras door tien.\nOké? En nu onmiddellijk naar de Euromast!",
+    "text": "Aan het begin van de les gaat Alex staan.\n\nMevrouw, mag ik iets vragen aan de hele groep? Ik dacht, misschien kunnen we binnenkort een keer samen uitgaan. In Rotterdam, bijvoorbeeld. We kunnen eerst naar de Markthal gaan. Dat schijnt een prachtig gebouw te zijn. Daarna kunnen we ergens samen eten. En na het eten kunnen we naar de film. Er draait zaterdag een spannende film. Hebben jullie daar zin in? Wie gaat er mee?\nEen uitstekend plan. Behalve de film. We zitten dan in het donker naast elkaar.\nPraten met elkaar is onmogelijk. Dat is niet zo gezellig.\nDat is waar. Je hebt gelijk. Heb je een beter voorstel?\nMisschien... Laten we na het eten een bezoek brengen aan de Euromast. De hoogste toren van Nederland. Vanaf die toren zie je heel Rotterdam inclusief de haven. 's Avonds als het donker is zien we de stad en alle lichtjes.\nDat vind ik een perfect voorstel. Iedereen akkoord, hoop ik? Oké. Afgesproken.\nWaar gaan we eten? Achter de Markthal is een Italiaans restaurant. Het eten is daar erg lekker en niet zo duur. Is iedereen het ermee eens?\nWe zijn met z'n tienen. Ik denk dat we met tien personen wel moeten reserveren.\nDat lijkt me beter. Dan weten we zeker dat we een tafel hebben.\nWat gaan we eten? Kiest iedereen apart wat hij of zij lekker vindt? Of zal ik proberen een menu af te spreken met keuze uit vlees, vis of vegetarisch? Ik hoor wel wat jullie keuze is.\nJa, prima. Ik stel voor dat we elkaar ontmoeten op het centraal station van Rotterdam rond vier uur.\nNiet met de auto komen, hoor. Parkeren is heel erg duur midden in het centrum.\n\nO, het is al laat! Als iedereen voor zichzelf gaat betalen verliezen we te veel tijd.\nIk betaal alles met mijn creditcard. Straks delen we het totale bedrag door tien.\nOké? En nu onmiddellijk naar de Euromast!",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "ledereen akkoord",
+        "to": "Iedereen akkoord",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "miin creditcard",
+        "to": "mijn creditcard",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "totale bedras",
+        "to": "totale bedrag",
+        "occurrences": 1
+      },
+      {
+        "field": "text",
+        "from": "afte spreken",
+        "to": "af te spreken",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "travel"
+    ]
   },
   {
-    "title": "Een feest",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a2-02",
+    "title": "De Nederlandse bevolking",
+    "originalTitle": "De Nederlandse bevolking",
     "level": "A2",
-    "tags": ["daily life", "culture", "food"],
-    "text": "Anita viert haar verjaardag. Haar vrienden komen op bezoek en brengen een klein cadeau mee. Het eten en drinken staan op tafel. Iedereen pakt zelf iets. Later praten ze samen en luisteren ze naar muziek. Het feest is eenvoudig, maar gezellig."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 18,
+    "levelOrder": 2,
+    "sourceLine": 317,
+    "version": "m_q4ltvt",
+    "corpusVersion": 2,
+    "originalText": "Wonen er veel mensen in Nederland? Het hangt ervan af hoe je het bekijkt.\nNederland heeft ruim zeventien miljoen inwoners. Dat is veel minder dan het aantal inwoners van steden als Tokio of Delhi. Maar dit kleine land heeft een relatief dichte bevolking. Er wonen gemiddeld ruim 400 mensen per vierkante kilometer. In figuur 1 zie je dat de bevolking de afgelopen 70 jaar nogal gegroeid is. Die groei van de bevolking gaat nu nog steeds door, vooral in de grote steden. Wat zijn de oorzaken daarvan?\nVrouwen in Nederland krijgen gemiddeld 1,7 kinderen. Dat is veel minder dan vroeger, maar hoger dan het gemiddelde in de EU. De bevolking groeit ook doordat mensen steeds langer leven (zie figuur 2). Een andere belangrijke oorzaak is de immigratie.\nIn figuur 3 kun je zien waarom mensen naar Nederland komen. Sommigen komen uit behoefte aan vrijheid en veiligheid. Anderen willen hier werken of studeren aan een universiteit. Weer anderen volgen de liefde. Sommige Nederlanders verlaten Nederland juist. Wat is de verklaring daarvoor? Waarom vertrekken zij? Zoeken ze hun geluk in een land met minder regels en meer vrijheid en ruimte? Of is het weer de liefde?\n\nIs Nederland eigenlijk een christelijk land? Vroeger wel. De protestantse kerk was de officiële kerk. Er waren veel minder rechten voor mensen met een andere godsdienst, zoals katholieken en joden. Nu zijn kerk en staat gescheiden. Alle godsdiensten hebben gelijke rechten. Het aantal christenen is afgenomen. Tegenwoordig zijn er minder mensen die in God geloven. Zoals je op basis van figuur 4 kunt vaststellen, is deze groep nu het grootst. Wat is volgens jou de verklaring daarvoor?",
+    "text": "Wonen er veel mensen in Nederland? Het hangt ervan af hoe je het bekijkt.\nNederland heeft ruim zeventien miljoen inwoners. Dat is veel minder dan het aantal inwoners van steden als Tokio of Delhi. Maar dit kleine land heeft een relatief dichte bevolking. Er wonen gemiddeld ruim 400 mensen per vierkante kilometer. In figuur 1 zie je dat de bevolking de afgelopen 70 jaar nogal gegroeid is. Die groei van de bevolking gaat nu nog steeds door, vooral in de grote steden. Wat zijn de oorzaken daarvan?\nVrouwen in Nederland krijgen gemiddeld 1,7 kinderen. Dat is veel minder dan vroeger, maar hoger dan het gemiddelde in de EU. De bevolking groeit ook doordat mensen steeds langer leven (zie figuur 2). Een andere belangrijke oorzaak is de immigratie.\nIn figuur 3 kun je zien waarom mensen naar Nederland komen. Sommigen komen uit behoefte aan vrijheid en veiligheid. Anderen willen hier werken of studeren aan een universiteit. Weer anderen volgen de liefde. Sommige Nederlanders verlaten Nederland juist. Wat is de verklaring daarvoor? Waarom vertrekken zij? Zoeken ze hun geluk in een land met minder regels en meer vrijheid en ruimte? Of is het weer de liefde?\n\nIs Nederland eigenlijk een christelijk land? Vroeger wel. De protestantse kerk was de officiële kerk. Er waren veel minder rechten voor mensen met een andere godsdienst, zoals katholieken en joden. Nu zijn kerk en staat gescheiden. Alle godsdiensten hebben gelijke rechten. Het aantal christenen is afgenomen. Tegenwoordig zijn er minder mensen die in God geloven. Zoals je op basis van figuur 4 kunt vaststellen, is deze groep nu het grootst. Wat is volgens jou de verklaring daarvoor?",
+    "corrections": [],
+    "contextWarnings": [
+      "References figures not included in the source"
+    ],
+    "tags": [
+      "daily life",
+      "society"
+    ]
   },
   {
+    "id": "nl-curated-a2-03",
+    "title": "Op de helft",
+    "originalTitle": "Op de helft",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 19,
+    "levelOrder": 3,
+    "sourceLine": 326,
+    "version": "m_1y96vti",
+    "corpusVersion": 2,
+    "originalText": "Het gaat hard! We zijn al op de helft van het Groene Boek. Sinds we met hoofdstuk 1 begonnen zijn hebben we allerlei onderwerpen behandeld. We hebben het gehad over Nederland en over Nederlands leren. Over familie, de seizoenen en het eten in Nederland. En over nog veel meer. Inmiddels kun je over al deze onderwerpen veel beter praten. En je hebt het vast al gemerkt: Nederlands is niet moeilijk, Nederlands is gemakkelijk! Alle talen zijn trouwens gemakkelijk. Kijk maar naar kleine kinderen. Ondanks dat ze veel dingen nog niet kunnen, begrijpen ze hun ouders al behoorlijk snel. En na ongeveer een jaar beginnen ze zelf al met praten. Maar hoe kan dat? Hoe verklaar je dat een taal leren zo simpel is?\n\nEr zijn twee redenen. Elke taal heeft heel veel woorden. Een deel daarvan gebruik je regelmatig, de rest nauwelijks. Je kunt dus met een klein aantal woorden al heel veel zeggen en begrijpen. En dan de grammatica. Grammatica lijkt lastig maar is het niet. Er zijn immers maar weinig regels. En maak je een fout: geen probleem.\nOok kleine kinderen maken nog veel fouten. Door veel luisteren en praten verdwijnen zulke fouten in de loop van de tijd.\n\nTellen en rekenen, dat vinden kinderen moeilijk. Vraag maar eens aan een kind hoeveel 5 plus 3 is of 11 min 8. Dat kan een kind van twee jaar niet. Ondanks het feit dat er slechts tien cijfers zijn.\nU zegt dat Nederlands leren makkelijk is. Maar eerlijk gezegd ben ik het daar niet mee eens. Gewoon luisteren en proberen? Dat is makkelijker gezegd dan gedaan!\nBeseft u wel dat we bij elke tekst zowat 50 nieuwe woorden moeten leren? En die moeten we allemaal proberen te onthouden.\n\nJe moet inderdaad veel woorden leren. Dat gaat het beste als je de teksten vaak herhaalt. Heb je dat al gedaan? Ja, dat kost tijd! Je moet voldoende tijd besteden aan het leren van een nieuwe taal. Is Nederlands leren dus makkelijk of moeilijk?\nDat« is een mooi onderwerp voor een discussie! Wat vind jij? Wat is jouw mening?",
+    "text": "Het gaat hard! We zijn al op de helft van het Groene Boek. Sinds we met hoofdstuk 1 begonnen zijn hebben we allerlei onderwerpen behandeld. We hebben het gehad over Nederland en over Nederlands leren. Over familie, de seizoenen en het eten in Nederland. En over nog veel meer. Inmiddels kun je over al deze onderwerpen veel beter praten. En je hebt het vast al gemerkt: Nederlands is niet moeilijk, Nederlands is gemakkelijk! Alle talen zijn trouwens gemakkelijk. Kijk maar naar kleine kinderen. Ondanks dat ze veel dingen nog niet kunnen, begrijpen ze hun ouders al behoorlijk snel. En na ongeveer een jaar beginnen ze zelf al met praten. Maar hoe kan dat? Hoe verklaar je dat een taal leren zo simpel is?\n\nEr zijn twee redenen. Elke taal heeft heel veel woorden. Een deel daarvan gebruik je regelmatig, de rest nauwelijks. Je kunt dus met een klein aantal woorden al heel veel zeggen en begrijpen. En dan de grammatica. Grammatica lijkt lastig maar is het niet. Er zijn immers maar weinig regels. En maak je een fout: geen probleem.\nOok kleine kinderen maken nog veel fouten. Door veel luisteren en praten verdwijnen zulke fouten in de loop van de tijd.\n\nTellen en rekenen, dat vinden kinderen moeilijk. Vraag maar eens aan een kind hoeveel 5 plus 3 is of 11 min 8. Dat kan een kind van twee jaar niet. Ondanks het feit dat er slechts tien cijfers zijn.\nU zegt dat Nederlands leren makkelijk is. Maar eerlijk gezegd ben ik het daar niet mee eens. Gewoon luisteren en proberen? Dat is makkelijker gezegd dan gedaan!\nBeseft u wel dat we bij elke tekst zowat 50 nieuwe woorden moeten leren? En die moeten we allemaal proberen te onthouden.\n\nJe moet inderdaad veel woorden leren. Dat gaat het beste als je de teksten vaak herhaalt. Heb je dat al gedaan? Ja, dat kost tijd! Je moet voldoende tijd besteden aan het leren van een nieuwe taal. Is Nederlands leren dus makkelijk of moeilijk?\nDat is een mooi onderwerp voor een discussie! Wat vind jij? Wat is jouw mening?",
+    "corrections": [
+      {
+        "field": "text",
+        "from": "Dat«",
+        "to": "Dat",
+        "occurrences": 1
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-04",
+    "title": "Trouwen, samenwonen of liever alleen blijven?",
+    "originalTitle": "Trouwen, samenwonen of liever alleen blijven?",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 20,
+    "levelOrder": 4,
+    "sourceLine": 340,
+    "version": "m_1j2ueqd",
+    "corpusVersion": 2,
+    "originalText": "Hallo Fred, waar was je vrijdag? Ik heb je gemist in de les.\nHallo Anita. Een goede vriend van mij ging trouwen en ik was zijn getuige. Daarom kon ik niet naar de les komen.\nWas het een mooie dag?\nJa zeker. Eerst gingen we naar het gemeentehuis voor het officiële deel. Dat is verplicht in Nederland. De ambtenaar vertelde hoe het paar elkaar had ontmoet.\nDaarna was er een dienst in de kerk. Die maakte veel indruk op mij. Mijn vriend en zijn man beloofden om altijd bij elkaar te blijven en voor elkaar te zorgen.\n\nTrouwde je vriend met een man? Dat hoor je niet zo vaak! Kun je dat eigenlijk wel beloven? Dat je altijd bij elkaar blijft? Ik heb gehoord dat 40% van alle huwelifken eindigt in een scheiding.\nWat ben jij negatief! Mijn vrienden zijn zo gelukkig samen. Ik vond het geweldig en ga het zelf ooit ook zo doen.\nWas er ook een feest?\nJa zeker. Er was een groot feest. De zaal was helemaal vol. Er waren wel 150 gasten aanwezig. De ouders vertelden over vroeger en alle gasten moesten een lied zingen. Natuurlijk was er ook wat te eten en was er gezellige muziek.\n\nIk vind zulke feesten vreselijk. Ik zou zelf nooit trouwen. Mijn doel is om eerst mijn opleiding afte maken. Daarna wil ik pas een relatie. Trouwen is helemaal niet nodig. Als je gaat samenwonen kun je alle belangrijke zaken regelen. Als je dat officieel registreert, heb je dezelfde rechten als bij een huwelijk. Of je kunt een relatie hebben, maar apart blijven wonen. Dat lijkt me heerlijk rustig!\nIk wil wel trouwen. Ik vind het huwelijk een prachtig symbool voor de bijzondere band tussen twee mensen. En ik houd van tradities. In onze samenleving spelen tradities een belangrijke rol. Ik wil ook niet te lang wachten met kinderen krijgen.\nHet is voor de kinderen toch veel leuker om een jonge vader en moeder te hebben?",
+    "text": "Hallo Fred, waar was je vrijdag? Ik heb je gemist in de les.\nHallo Anita. Een goede vriend van mij ging trouwen en ik was zijn getuige. Daarom kon ik niet naar de les komen.\nWas het een mooie dag?\nJa zeker. Eerst gingen we naar het gemeentehuis voor het officiële deel. Dat is verplicht in Nederland. De ambtenaar vertelde hoe het paar elkaar had ontmoet.\nDaarna was er een dienst in de kerk. Die maakte veel indruk op mij. Mijn vriend en zijn man beloofden om altijd bij elkaar te blijven en voor elkaar te zorgen.\n\nTrouwde je vriend met een man? Dat hoor je niet zo vaak! Kun je dat eigenlijk wel beloven? Dat je altijd bij elkaar blijft? Ik heb gehoord dat 40% van alle huwelifken eindigt in een scheiding.\nWat ben jij negatief! Mijn vrienden zijn zo gelukkig samen. Ik vond het geweldig en ga het zelf ooit ook zo doen.\nWas er ook een feest?\nJa zeker. Er was een groot feest. De zaal was helemaal vol. Er waren wel 150 gasten aanwezig. De ouders vertelden over vroeger en alle gasten moesten een lied zingen. Natuurlijk was er ook wat te eten en was er gezellige muziek.\n\nIk vind zulke feesten vreselijk. Ik zou zelf nooit trouwen. Mijn doel is om eerst mijn opleiding afte maken. Daarna wil ik pas een relatie. Trouwen is helemaal niet nodig. Als je gaat samenwonen kun je alle belangrijke zaken regelen. Als je dat officieel registreert, heb je dezelfde rechten als bij een huwelijk. Of je kunt een relatie hebben, maar apart blijven wonen. Dat lijkt me heerlijk rustig!\nIk wil wel trouwen. Ik vind het huwelijk een prachtig symbool voor de bijzondere band tussen twee mensen. En ik houd van tradities. In onze samenleving spelen tradities een belangrijke rol. Ik wil ook niet te lang wachten met kinderen krijgen.\nHet is voor de kinderen toch veel leuker om een jonge vader en moeder te hebben?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "culture"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-05",
+    "title": "De kaart van Nederland",
+    "originalTitle": "De kaart van Nederland",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 21,
+    "levelOrder": 5,
+    "sourceLine": 357,
+    "version": "m_1etwue8",
+    "corpusVersion": 2,
+    "originalText": "Hoe ziet Nederland eruit? Ten eerste: het is een klein land op de kaart van de wereld.\nVan noord naar zuid is de afstand ongeveer 300 kilometer, van west naar oost is de afstand ongeveer 200 kilometer. De grens met België en Duitsland is overal dichtbij.\n\nTen tweede: het is een vlak land. Bergen vind je hier niet. Behalve in het zuiden, in de provincie Limburg. Daar is één bergje. En daar zijn we trots op. Ik zag er een hotel met de naam Klein Zwitserland.\n\nTen derde: het is een laag land. De laagste gebieden liggen in het westen. Een groot deel van ons land ligt onder zeeniveau: bijna de helft. Met dijken en dammen houden we het land droog. Sommige stukken land liggen in zee. Dat zijn de eilanden in het noorden en het zuidwesten.\n\nTen vierde: het is een land met veel water. Overal lopen rivieren, overal zie je schepen.\nWe hebben niet alleen veel wegen over land in Nederland, maar ook veel wegen over water. Ook daar zijn we trots op. Maar al dat water vormt ook een enorm gevaar. Als de dijken of dammen breken, gebeurt er een ramp. De laatste keer dat dat gebeurde was in 1953. Kan dat nog eens gebeuren? Tja, het zeeniveau stijgt, dus ...\n\nIs Nederland ook een groen land? Misschien moeten we over enkele jaren zeggen:\nNederland wás groen. Overal wordt gebouwd. Hier en daar zie je nog wel wat groene gebieden. Maar die worden steeds kleiner, doordat de dorpen en steden groeien. Er is veel ruimte nodig voor al die woningen, wegen en bedrijven. Daardoor is er niet genoeg ruimte voor natuur.\n\nTen slotte: is het een mooi land? Tja, wat noem je mooi? Ik zelf vind de stranden 't mooiste. Die brede stranden. Waar vind je zoiets?",
+    "text": "Hoe ziet Nederland eruit? Ten eerste: het is een klein land op de kaart van de wereld.\nVan noord naar zuid is de afstand ongeveer 300 kilometer, van west naar oost is de afstand ongeveer 200 kilometer. De grens met België en Duitsland is overal dichtbij.\n\nTen tweede: het is een vlak land. Bergen vind je hier niet. Behalve in het zuiden, in de provincie Limburg. Daar is één bergje. En daar zijn we trots op. Ik zag er een hotel met de naam Klein Zwitserland.\n\nTen derde: het is een laag land. De laagste gebieden liggen in het westen. Een groot deel van ons land ligt onder zeeniveau: bijna de helft. Met dijken en dammen houden we het land droog. Sommige stukken land liggen in zee. Dat zijn de eilanden in het noorden en het zuidwesten.\n\nTen vierde: het is een land met veel water. Overal lopen rivieren, overal zie je schepen.\nWe hebben niet alleen veel wegen over land in Nederland, maar ook veel wegen over water. Ook daar zijn we trots op. Maar al dat water vormt ook een enorm gevaar. Als de dijken of dammen breken, gebeurt er een ramp. De laatste keer dat dat gebeurde was in 1953. Kan dat nog eens gebeuren? Tja, het zeeniveau stijgt, dus...\n\nIs Nederland ook een groen land? Misschien moeten we over enkele jaren zeggen:\nNederland wás groen. Overal wordt gebouwd. Hier en daar zie je nog wel wat groene gebieden. Maar die worden steeds kleiner, doordat de dorpen en steden groeien. Er is veel ruimte nodig voor al die woningen, wegen en bedrijven. Daardoor is er niet genoeg ruimte voor natuur.\n\nTen slotte: is het een mooi land? Tja, wat noem je mooi? Ik zelf vind de stranden 't mooiste. Die brede stranden. Waar vind je zoiets?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "travel"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-06",
+    "title": "De politie: (net) m’n beste vriend!",
+    "originalTitle": "De politie: (net) m’n beste vriend!",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 22,
+    "levelOrder": 6,
+    "sourceLine": 374,
+    "version": "m_9ei1rt",
+    "corpusVersion": 2,
+    "originalText": "Laatst reed de politie achter mij op de weg. Toen ik die zag dacht ik direct: \"O, help, deed ik iets verkeerd?\" Vreemd hè, dat gevoel dat je iets verkeerds doet als je de politie ziet? Eigenlijk is dat raar, want de politie helpt ons vaak. Als® er een ongeluk is gebeurd, belt de politie het ziekenhuis. Rijd je te hard of door rood? Dan maakt de politie een mooie foto van je. Fiets je zonder licht? De politie wijst je op de gevaren, als je tenminste eerst een kleine boete betaalt. Heb je vijf biertjes gedronken, en denk je dat je nog kan rijden? Een agent zorgt dat je auto veilig aankomt ... bij het politiebureau! Geef je een feestje en is de muziek overal te horen? Een agent toont belangstelling: hoe lang gaat het nog duren? Koop je een fiets voor tien euro van een onbekende op straat? De politie legt uit: je mag niet stelen, maar een gestolen fiets kopen mag ook niet. Mijn conclusie is dus: de politie is je beste vriend!\nDaar ben ik het helemaal mee eens. Vorige maand is er bij ons ingebroken. De politie kwam meteen en was zeer aardig. De volgende dag kwam een andere agent bij ons thuis onderzoek doen. Dat is nog niet klaar, maar ik hoop dat ze de zaak snel oplossen.\nDe politie m'n beste vriend? Laat me niet lachen. Ik heb slechte ervaringen met de politie. Een paar maanden geleden was mijn fiets gestolen. Een vriend van me zei dat ik aangifte moest doen. Het schijnt dat er ieder jaar duizenden gestolen fietsen op het politiebureau blijven staan omdat niemand ze komt halen. Nou, ik heb via internet aangifte gedaan en er niets meer van gehoord. Zoiets doet een vriend toch niet?!",
+    "text": "Laatst reed de politie achter mij op de weg. Toen ik die zag dacht ik direct: \"O, help, deed ik iets verkeerd?\" Vreemd hè, dat gevoel dat je iets verkeerds doet als je de politie ziet? Eigenlijk is dat raar, want de politie helpt ons vaak. Als® er een ongeluk is gebeurd, belt de politie het ziekenhuis. Rijd je te hard of door rood? Dan maakt de politie een mooie foto van je. Fiets je zonder licht? De politie wijst je op de gevaren, als je tenminste eerst een kleine boete betaalt. Heb je vijf biertjes gedronken, en denk je dat je nog kan rijden? Een agent zorgt dat je auto veilig aankomt... bij het politiebureau! Geef je een feestje en is de muziek overal te horen? Een agent toont belangstelling: hoe lang gaat het nog duren? Koop je een fiets voor tien euro van een onbekende op straat? De politie legt uit: je mag niet stelen, maar een gestolen fiets kopen mag ook niet. Mijn conclusie is dus: de politie is je beste vriend!\nDaar ben ik het helemaal mee eens. Vorige maand is er bij ons ingebroken. De politie kwam meteen en was zeer aardig. De volgende dag kwam een andere agent bij ons thuis onderzoek doen. Dat is nog niet klaar, maar ik hoop dat ze de zaak snel oplossen.\nDe politie m'n beste vriend? Laat me niet lachen. Ik heb slechte ervaringen met de politie. Een paar maanden geleden was mijn fiets gestolen. Een vriend van me zei dat ik aangifte moest doen. Het schijnt dat er ieder jaar duizenden gestolen fietsen op het politiebureau blijven staan omdat niemand ze komt halen. Nou, ik heb via internet aangifte gedaan en er niets meer van gehoord. Zoiets doet een vriend toch niet?!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "society"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-07",
+    "title": "Feest vieren",
+    "originalTitle": "Fest vieren",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 23,
+    "levelOrder": 7,
+    "sourceLine": 380,
+    "version": "m_1j7woyo",
+    "corpusVersion": 2,
+    "originalText": "Gefeliciteerd met je verjaardag! En nog vele jaren, hè!\nDank je wel. Leuk dat je er bent.\nAlsjeblieft, ik heb een cadeautje voor je meegebracht.\nO wat aardig. Ik kijk meteen even ... O, daar ben ik erg blij mee. Bedankt! Het eten en drinken staat op die tafel daar. Het is de bedoeling dat je alles zelf pakt. We spreken elkaar straks nog uitgebreid.\n\nWanneer geven we in Nederland een feest? Meestal vanwege een verjaardag of ter gelegenheid van een examen. Soms vanwege een andere bijzondere gebeurtenis.\nJe hebt bijvoorbeeld een mooie baan gevonden. Of een van je kinderen is 18 jaar geworden. Of je bent 25 jaar getrouwd. En zo kun je nog meer redenen voor een feest bedenken.\n\nNaast dit soort feesten kennen we ook nationale feestdagen. Op 27 april is het Koningsdag. ledereen heeft dan vrij. Er gebeurt van alles op straat. De koning en koningin bezoeken elk jaar een bepaalde stad. Op 5 mei vieren we het einde van de Tweede Wereldoorlog. Op 4 mei zijn we om acht uur twee minuten stil ter herinnering aan de slachtoffers van die oorlog. Op 5 december is het Sinterklaas. Sinterklaas brengt cadeautjes uit Spanje voor alle kinderen en veel volwassenen. Soms brengt Sinterklaas ze persoonlijk. En hij schrijft ook bij elk cadeau een gedicht in het Nederlands. Knap hè?\n\nKerst, op 25 december, is een belangrijk christelijk feest. Veel mensen gaan tussen Kerst en Nieuwjaar op vakantie vanwege de vele vrije dagen. Een belangrijke feestdag voor moslims is het Suikerfeest. De datum van dat feest verschilt echter van jaar tot jaar.",
+    "text": "Gefeliciteerd met je verjaardag! En nog vele jaren, hè!\nDank je wel. Leuk dat je er bent.\nAlsjeblieft, ik heb een cadeautje voor je meegebracht.\nO wat aardig. Ik kijk meteen even... O, daar ben ik erg blij mee. Bedankt! Het eten en drinken staat op die tafel daar. Het is de bedoeling dat je alles zelf pakt. We spreken elkaar straks nog uitgebreid.\n\nWanneer geven we in Nederland een feest? Meestal vanwege een verjaardag of ter gelegenheid van een examen. Soms vanwege een andere bijzondere gebeurtenis.\nJe hebt bijvoorbeeld een mooie baan gevonden. Of een van je kinderen is 18 jaar geworden. Of je bent 25 jaar getrouwd. En zo kun je nog meer redenen voor een feest bedenken.\n\nNaast dit soort feesten kennen we ook nationale feestdagen. Op 27 april is het Koningsdag. ledereen heeft dan vrij. Er gebeurt van alles op straat. De koning en koningin bezoeken elk jaar een bepaalde stad. Op 5 mei vieren we het einde van de Tweede Wereldoorlog. Op 4 mei zijn we om acht uur twee minuten stil ter herinnering aan de slachtoffers van die oorlog. Op 5 december is het Sinterklaas. Sinterklaas brengt cadeautjes uit Spanje voor alle kinderen en veel volwassenen. Soms brengt Sinterklaas ze persoonlijk. En hij schrijft ook bij elk cadeau een gedicht in het Nederlands. Knap hè?\n\nKerst, op 25 december, is een belangrijk christelijk feest. Veel mensen gaan tussen Kerst en Nieuwjaar op vakantie vanwege de vele vrije dagen. Een belangrijke feestdag voor moslims is het Suikerfeest. De datum van dat feest verschilt echter van jaar tot jaar.",
+    "corrections": [
+      {
+        "field": "title",
+        "from": "Fest vieren",
+        "to": "Feest vieren"
+      }
+    ],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "culture"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-08",
+    "title": "De Randstad",
+    "originalTitle": "De Randstad",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 24,
+    "levelOrder": 8,
+    "sourceLine": 394,
+    "version": "m_13bmcx6",
+    "corpusVersion": 2,
+    "originalText": "In het westen van Nederland ligt een gebied dat de Randstad heet. Het bestaat uit Zuid-Holland, delen van Noord-Holland en Utrecht. De vier grote steden liggen erin: Amsterdam, Rotterdam, Den Haag en Utrecht. In feite kun je de Randstad beschouwen als één geheel. De Randstad ligt op een goede plek, direct aan zee.\nDe haven van Rotterdam is niet toevallig de grootste van heel Europa. Amsterdam heeft een vliegveld - Schiphol - dat tot de grootste van de wereld behoort. Zowel per schip als per vliegtuig is dit gebied vanuit de hele wereld dus simpel te bereiken.\nJe begrijpt dat veel bedrijven om die reden hier zijn gevestigd. Voor de handel zijn groente en fruit zeer belangrijk. En bloemen. Ga maar eens naar de Keukenhof. Daar zie je al die bloemen bij elkaar. Het logische gevolg hiervan is dat er veel werk is.\nDaardoor kan je hier gemakkelijk werk vinden.\n\nHet gevolg daarvan is dat er veel mensen in de Randstad wonen. In de Randstad woont 40 procent van de Nederlandse bevolking, terwijl het gebied 1/5 deel van Nederland is. Er is weinig ruimte voor al die mensen. Een groot probleem is het gebrek aan geschikte woningen. Ook de prijzen van woningen in dit gebied zijn veel hoger dan elders. In de grote steden moet je lang zoeken. Gezinnen met kinderen willen graag een huis met een tuin. Maar die zijn er nauwelijks, of ze zijn te duur. Om die reden gaan veel mensen buiten de stad wonen, terwijl ze in de stad werken. Vandaar dat het op de wegen bijna altijd druk is. De file is een lastig probleem. Twee keer per dag zit het verkeer volledig vast. En dat heeft negatieve gevolgen, onder andere (o.a.) voor de kwaliteit van de lucht. En men verliest enorm veel tijd.\n\nIn de Randstad wonen veel mensen uit het buitenland. Neem Amsterdam, met 176 nationaliteiten! Mensen uit allerlei landen, van Angola tot Zweden. Neem de tram en luister. Je hoort heel wat verschillende talen. Herken je ze? Zit jouw taal er ook bij?",
+    "text": "In het westen van Nederland ligt een gebied dat de Randstad heet. Het bestaat uit Zuid-Holland, delen van Noord-Holland en Utrecht. De vier grote steden liggen erin: Amsterdam, Rotterdam, Den Haag en Utrecht. In feite kun je de Randstad beschouwen als één geheel. De Randstad ligt op een goede plek, direct aan zee.\nDe haven van Rotterdam is niet toevallig de grootste van heel Europa. Amsterdam heeft een vliegveld - Schiphol - dat tot de grootste van de wereld behoort. Zowel per schip als per vliegtuig is dit gebied vanuit de hele wereld dus simpel te bereiken.\nJe begrijpt dat veel bedrijven om die reden hier zijn gevestigd. Voor de handel zijn groente en fruit zeer belangrijk. En bloemen. Ga maar eens naar de Keukenhof. Daar zie je al die bloemen bij elkaar. Het logische gevolg hiervan is dat er veel werk is.\nDaardoor kan je hier gemakkelijk werk vinden.\n\nHet gevolg daarvan is dat er veel mensen in de Randstad wonen. In de Randstad woont 40 procent van de Nederlandse bevolking, terwijl het gebied 1/5 deel van Nederland is. Er is weinig ruimte voor al die mensen. Een groot probleem is het gebrek aan geschikte woningen. Ook de prijzen van woningen in dit gebied zijn veel hoger dan elders. In de grote steden moet je lang zoeken. Gezinnen met kinderen willen graag een huis met een tuin. Maar die zijn er nauwelijks, of ze zijn te duur. Om die reden gaan veel mensen buiten de stad wonen, terwijl ze in de stad werken. Vandaar dat het op de wegen bijna altijd druk is. De file is een lastig probleem. Twee keer per dag zit het verkeer volledig vast. En dat heeft negatieve gevolgen, onder andere (o.a.) voor de kwaliteit van de lucht. En men verliest enorm veel tijd.\n\nIn de Randstad wonen veel mensen uit het buitenland. Neem Amsterdam, met 176 nationaliteiten! Mensen uit allerlei landen, van Angola tot Zweden. Neem de tram en luister. Je hoort heel wat verschillende talen. Herken je ze? Zit jouw taal er ook bij?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-09",
     "title": "Vrije tijd",
-    "source": "Textbook adapted",
+    "originalTitle": "Vrije tijd",
     "level": "A2",
-    "tags": ["daily life", "culture", "technology"],
-    "text": "In zijn vrije tijd is Mark graag actief. Hij gaat soms naar de film en luistert vaak naar muziek. Thuis leest hij de krant op internet. Ook stuurt hij berichten naar vrienden. Als er voetbal op tv is, kijkt hij samen met zijn kinderen."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 25,
+    "levelOrder": 9,
+    "sourceLine": 405,
+    "version": "m_eq4j1r",
+    "corpusVersion": 2,
+    "originalText": "Wat betekent vrije tijd voor jou? Van je rust genieten of juist actief zijn?\nIk ben erg actief in mijn vrije tijd. Ik heb 't drukker dan op m'n werk.\n\nWie of wat bepaalt de manier waarop je je vrije tijd besteedt? Familie, vrienden, de media?\nMijn vrienden hebben daar invloed op maar ook de media. Via de media weet ik precies wat er te doen is.\n\nBesteed je normaal gesproken meer tijd aan cultuur of aan sport?\nIk heb voor allebei belangstelling, zowel voor cultuur als voor sport.\nKom je wel eens in een museum? Ga je wel eens naar een film of bezoek je een concert?\nIk ga vaak naar de film, bij voorkeur naar serieuze films. Verder hou ik enorm van muziek. Ik ga regelmatig naar een concert.\n\nAls je sport, waar doe je dat?\nIk voetbal graag. In de winter binnen en in de zomer buiten op het veld. Mijn kinderen zitten ook op voetbal samen met hun vrienden. Ik wandel ook graag. Het liefst alleen. Een mooie gelegenheid om rustig na te denken.\n\nGa je vaak uit? Naar het café, of uit eten in een restaurant?\nIk ga vrijwel elke zaterdag uit met vrienden. We drinken wat, praten veel en gaan vaak dansen. Dan zijn we gezellig samen en we krijgen ook nog veel beweging.\nRestaurants vind ik te duur. Ik nodig liever gasten bij mij thuis uit. Dan kook ik extra lekker.\n\nWaarmee vul je in het algemeen je vrije tijd als je thuis blijft?\nIk zit vaak achter mijn computer. Ik lees de krant via internet.\nIk stuur berichten naar vrienden en bel met familie. Ik kijk tv als er een spannende voetbalwedstrijd is. Bijvoorbeeld tegen de Belgen. Of ik lees een boek. In het Nederlands!\n\nHeb je nog hobby's die we niet genoemd hebben? Ben je bijvoorbeeld veel bezig in de tuin?\nNee, de tuin is een hobby van mijn vrouw. Mijn hobby is mobieltjes en computers die kapot zijn weer in orde maken. Al mijn buren zijn klant bij mij. Goed voor de sociale contacten.",
+    "text": "Wat betekent vrije tijd voor jou? Van je rust genieten of juist actief zijn?\nIk ben erg actief in mijn vrije tijd. Ik heb 't drukker dan op m'n werk.\n\nWie of wat bepaalt de manier waarop je je vrije tijd besteedt? Familie, vrienden, de media?\nMijn vrienden hebben daar invloed op maar ook de media. Via de media weet ik precies wat er te doen is.\n\nBesteed je normaal gesproken meer tijd aan cultuur of aan sport?\nIk heb voor allebei belangstelling, zowel voor cultuur als voor sport.\nKom je wel eens in een museum? Ga je wel eens naar een film of bezoek je een concert?\nIk ga vaak naar de film, bij voorkeur naar serieuze films. Verder hou ik enorm van muziek. Ik ga regelmatig naar een concert.\n\nAls je sport, waar doe je dat?\nIk voetbal graag. In de winter binnen en in de zomer buiten op het veld. Mijn kinderen zitten ook op voetbal samen met hun vrienden. Ik wandel ook graag. Het liefst alleen. Een mooie gelegenheid om rustig na te denken.\n\nGa je vaak uit? Naar het café, of uit eten in een restaurant?\nIk ga vrijwel elke zaterdag uit met vrienden. We drinken wat, praten veel en gaan vaak dansen. Dan zijn we gezellig samen en we krijgen ook nog veel beweging.\nRestaurants vind ik te duur. Ik nodig liever gasten bij mij thuis uit. Dan kook ik extra lekker.\n\nWaarmee vul je in het algemeen je vrije tijd als je thuis blijft?\nIk zit vaak achter mijn computer. Ik lees de krant via internet.\nIk stuur berichten naar vrienden en bel met familie. Ik kijk tv als er een spannende voetbalwedstrijd is. Bijvoorbeeld tegen de Belgen. Of ik lees een boek. In het Nederlands!\n\nHeb je nog hobby's die we niet genoemd hebben? Ben je bijvoorbeeld veel bezig in de tuin?\nNee, de tuin is een hobby van mijn vrouw. Mijn hobby is mobieltjes en computers die kapot zijn weer in orde maken. Al mijn buren zijn klant bij mij. Goed voor de sociale contacten.",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
   },
   {
-    "title": "Gezond blijven",
-    "source": "Textbook adapted",
+    "id": "nl-curated-a2-10",
+    "title": "Werk",
+    "originalTitle": "Werk",
     "level": "A2",
-    "tags": ["daily life", "society"],
-    "text": "Gezond blijven is belangrijk. Je moet goed eten en genoeg bewegen. Veel suiker en vet zijn niet goed voor je lichaam. Wandelen is makkelijk en helpt je hart. Ook slapen is belangrijk. Wie moe is, leert en werkt vaak minder goed."
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 26,
+    "levelOrder": 10,
+    "sourceLine": 432,
+    "version": "m_zg8ous",
+    "corpusVersion": 2,
+    "originalText": "Werkt iedereen in Nederland?\nNee, lang niet iedereen. Tot zestien jaar gaat iedereen verplicht naar school. Vanaf ongeveer 67 jaar werkt men meestal niet meer. ledereen krijgt dan een pensioen van de staat (AOW) en vaak ook een pensioen van het bedrijf waar men gewerkt heeft. Ook zijn er veel mensen die in deeltijd werken, en mensen die te ziek zijn om te werken of die iedere dag voor hun kinderen willen zorgen.\nWat zijn de mogelijkheden om hier in Nederland werk te vinden? Is dat moeilijk?\nHet hangt ten eerste af van je beroep. In de zorg, het onderwijs en de techniek is meestal grote behoefte aan personeel. Eenvoudig werk verdwijnt vrijwel geheel.\nDat soort werk wordt gedaan door machines. Opleiding is daarom van groot belang. Vaak vind je geen vast maar tijdelijk werk. Dan moet je telkens opnieuw naar werk zoeken.\nZijn leeftijd en ervaring belangrijk?\nJa, absoluut. Alles wat je ooit gedaan hebt is van belang voor je toekomst, betaald en niet betaald. Dus stages en vakantiewerk, een baan tijdens je studie of werk voor je ouders. Alles telt! Jonge mensen hebben als voordeel dat ze nieuwe kennis bezitten. Ze komen net van school of van de universiteit. Bovendien verdienen ze nog niet zoveel. Natuurlijk hebben bedrijven ook mensen met ervaring nodig. Die zijn meestal wat ouder. Zo zie je maar: jong en oud zijn beide belangrijk.\nWat gebeurt er als je ineens werkloos bent of ontslagen? Waarvan moet je dan leven?\nAls je wordt ontslagen moet de werkgever je meestal nog een aantal maanden loon betalen. Vind je niet snel een nieuwe baan, dan krijg je gedurende enige tijd 70% van je oude loon. Als je dan nog steeds geen werk hebt gevonden, krijg je een uitkering van de regering. Sommigen vinden dat bedrag te laag, anderen te hoog.\nDaar is discussie over.\nHeb jüj eigenlijk al werkervaring? Wat voor werk doe je, of heb je gedaan?",
+    "text": "Werkt iedereen in Nederland?\nNee, lang niet iedereen. Tot zestien jaar gaat iedereen verplicht naar school. Vanaf ongeveer 67 jaar werkt men meestal niet meer. ledereen krijgt dan een pensioen van de staat (AOW) en vaak ook een pensioen van het bedrijf waar men gewerkt heeft. Ook zijn er veel mensen die in deeltijd werken, en mensen die te ziek zijn om te werken of die iedere dag voor hun kinderen willen zorgen.\nWat zijn de mogelijkheden om hier in Nederland werk te vinden? Is dat moeilijk?\nHet hangt ten eerste af van je beroep. In de zorg, het onderwijs en de techniek is meestal grote behoefte aan personeel. Eenvoudig werk verdwijnt vrijwel geheel.\nDat soort werk wordt gedaan door machines. Opleiding is daarom van groot belang. Vaak vind je geen vast maar tijdelijk werk. Dan moet je telkens opnieuw naar werk zoeken.\nZijn leeftijd en ervaring belangrijk?\nJa, absoluut. Alles wat je ooit gedaan hebt is van belang voor je toekomst, betaald en niet betaald. Dus stages en vakantiewerk, een baan tijdens je studie of werk voor je ouders. Alles telt! Jonge mensen hebben als voordeel dat ze nieuwe kennis bezitten. Ze komen net van school of van de universiteit. Bovendien verdienen ze nog niet zoveel. Natuurlijk hebben bedrijven ook mensen met ervaring nodig. Die zijn meestal wat ouder. Zo zie je maar: jong en oud zijn beide belangrijk.\nWat gebeurt er als je ineens werkloos bent of ontslagen? Waarvan moet je dan leven?\nAls je wordt ontslagen moet de werkgever je meestal nog een aantal maanden loon betalen. Vind je niet snel een nieuwe baan, dan krijg je gedurende enige tijd 70% van je oude loon. Als je dan nog steeds geen werk hebt gevonden, krijg je een uitkering van de regering. Sommigen vinden dat bedrag te laag, anderen te hoog.\nDaar is discussie over.\nHeb jüj eigenlijk al werkervaring? Wat voor werk doe je, of heb je gedaan?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "work & study"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-11",
+    "title": "Blijf gezond!",
+    "originalTitle": "Blijf gezond!",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 27,
+    "levelOrder": 11,
+    "sourceLine": 446,
+    "version": "m_16v7250",
+    "corpusVersion": 2,
+    "originalText": "Nederlanders zijn de langste mensen van Europa. Ze worden bovendien steeds ouder.\nZe bereiken een hoge leeftijd. Gemiddeld zijn de mensen ongeveer 80 als ze overlijden. Ze blijven langer gezond.\n\nWat kun je doen om dat te bereiken? Ten eerste moet je goed eten. Ik haal vaak complete maaltijden. Maar het schijnt dat je dan te weinig groente eet, en te veel vet.\nOok veel suiker is slecht. Jammer, je wordt te dik en je kunt er ziek van worden.\nTen tweede is bewegen belangrijk. We hebben benen en voeten om te lopen. Dus dat moeten we ook doen! Goed voor ons hart, en minder kans op rugproblemen.\n\nTen derde: veel mensen luisteren naar veel te harde muziek. Ze krijgen last van hun oren en ze horen daardoor niet meer goed.\n\nTen vierde: veel alcohol is niet gezond. Bovendien is alcohol in het verkeer gevaarlijk.\nHet leidt tot veel ongelukken. Toch neemt het gebruik ervan toe, vooral onder de jeugd. De overheid geeft goede raad: drink geen alcohol! Sommige artsen beweren echter dat rode wijn goed is voor het hart en het bloed. Maar hebben ze gelijk? Is het wetenschappelijk bewezen? Waarschijnlijk is er geen verband, maar ik wil het graag geloven. Ik geniet namelijk graag van het leven.\n\nRoken is slecht, staat op elk pakje. Voor je hart, maar bijvoorbeeld ook voor je stem.\nNiet alleen voor jezelf maar ook voor anderen in je buurt. Aan jongeren onder de 18 jaar worden geen sigaretten verkocht.\n\nOp stations, in cafés, in restaurants, in de bus en de trein en op nog veel meer plaatsen is roken verboden. Maar stoppen is moeilijk. Waarom verbiedt de overheid het dan niet helemaal? Wellicht denken ze daar: niet roken, geen vet eten, geen suiker, geen wijn en geen bier, weg is al het plezier. Daar worden mensen niet gelukkig van. En is dat zo gezond?",
+    "text": "Nederlanders zijn de langste mensen van Europa. Ze worden bovendien steeds ouder.\nZe bereiken een hoge leeftijd. Gemiddeld zijn de mensen ongeveer 80 als ze overlijden. Ze blijven langer gezond.\n\nWat kun je doen om dat te bereiken? Ten eerste moet je goed eten. Ik haal vaak complete maaltijden. Maar het schijnt dat je dan te weinig groente eet, en te veel vet.\nOok veel suiker is slecht. Jammer, je wordt te dik en je kunt er ziek van worden.\nTen tweede is bewegen belangrijk. We hebben benen en voeten om te lopen. Dus dat moeten we ook doen! Goed voor ons hart, en minder kans op rugproblemen.\n\nTen derde: veel mensen luisteren naar veel te harde muziek. Ze krijgen last van hun oren en ze horen daardoor niet meer goed.\n\nTen vierde: veel alcohol is niet gezond. Bovendien is alcohol in het verkeer gevaarlijk.\nHet leidt tot veel ongelukken. Toch neemt het gebruik ervan toe, vooral onder de jeugd. De overheid geeft goede raad: drink geen alcohol! Sommige artsen beweren echter dat rode wijn goed is voor het hart en het bloed. Maar hebben ze gelijk? Is het wetenschappelijk bewezen? Waarschijnlijk is er geen verband, maar ik wil het graag geloven. Ik geniet namelijk graag van het leven.\n\nRoken is slecht, staat op elk pakje. Voor je hart, maar bijvoorbeeld ook voor je stem.\nNiet alleen voor jezelf maar ook voor anderen in je buurt. Aan jongeren onder de 18 jaar worden geen sigaretten verkocht.\n\nOp stations, in cafés, in restaurants, in de bus en de trein en op nog veel meer plaatsen is roken verboden. Maar stoppen is moeilijk. Waarom verbiedt de overheid het dan niet helemaal? Wellicht denken ze daar: niet roken, geen vet eten, geen suiker, geen wijn en geen bier, weg is al het plezier. Daar worden mensen niet gelukkig van. En is dat zo gezond?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-12",
+    "title": "Mooi Nederland",
+    "originalTitle": "Mooi Nederland",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 28,
+    "levelOrder": 12,
+    "sourceLine": 465,
+    "version": "m_17cl67q",
+    "corpusVersion": 2,
+    "originalText": "Elk jaar bezoeken mensen uit veel verschillende landen Nederland. Die komen natuurlijk niet speciaal voor het mooie weer. Wat heeft dit land hun te bieden? En wat hebben jullie ondertussen gezien van Nederland? Wie begint? Wie durft? Jij Lisa?\n\nJa, ik ben samen met een paar vrienden naar Amsterdam geweest. We hebben de trein genomen. Die rijdt vanuit Almere in slechts een half uur rechtstreeks naar Amsterdam. Ideaal! We gingen met de boot door de grachten. Dat wilden we een keer meemaken. Prachtig al die oude gebouwen uit de zeventiende eeuw langs die grachten! Vervolgens zijn we naar het Van Gogh Museum gegaan. Je kunt niet zomaar naar binnen, je moet een afspraak maken voor een bepaalde tijd. Hoewel we zo'n afspraak hadden, moesten we minstens een half uur wachten voordat we naar binnen konden. Grote musea trekken nu eenmaal veel publiek. Maar de kunst was de moeite waard. Daarna hebben we ergens lekker gegeten en zijn weer naar huis gegaan. Binnen de stad namen we telkens de tram. Die stopt overal.\n\nBedankt voor je verhaal. Wie volgt?\n\nFred is de volgende.\n\nIn de les over de Randstad hebben we geleerd dat bloemen heel belangrijk zijn voor de Nederlandse handel. Dat was een goede aanleiding om met mijn vriendin naar de Keukenhof te gaan. Dat is een grote tuin bij Lisse waar bedrijven al die mooie bloemen tonen. Prachtig, wat we daar hebben gezien. Heel veel soorten tulpen in wel 100 kleuren. We hebben uiteraard heel wat foto's gemaakt. En we hebben ook een bekend lied geleerd over tulpen, Amsterdam en liefde.\n\nNou, dat lied heb je vast wel gezongen& voor je vriendin. Bedankt! Een volgende keer hoor ik graag of iemand het Deltapark heeft bezocht®. Daar zie je hoe Zeeland wordt beschermd tegen het water van de zee. Men beschouwt dat systeem als een van de zeven moderne wereldwonderen. Vinden jullie dat terecht?",
+    "text": "Elk jaar bezoeken mensen uit veel verschillende landen Nederland. Die komen natuurlijk niet speciaal voor het mooie weer. Wat heeft dit land hun te bieden? En wat hebben jullie ondertussen gezien van Nederland? Wie begint? Wie durft? Jij Lisa?\n\nJa, ik ben samen met een paar vrienden naar Amsterdam geweest. We hebben de trein genomen. Die rijdt vanuit Almere in slechts een half uur rechtstreeks naar Amsterdam. Ideaal! We gingen met de boot door de grachten. Dat wilden we een keer meemaken. Prachtig al die oude gebouwen uit de zeventiende eeuw langs die grachten! Vervolgens zijn we naar het Van Gogh Museum gegaan. Je kunt niet zomaar naar binnen, je moet een afspraak maken voor een bepaalde tijd. Hoewel we zo'n afspraak hadden, moesten we minstens een half uur wachten voordat we naar binnen konden. Grote musea trekken nu eenmaal veel publiek. Maar de kunst was de moeite waard. Daarna hebben we ergens lekker gegeten en zijn weer naar huis gegaan. Binnen de stad namen we telkens de tram. Die stopt overal.\n\nBedankt voor je verhaal. Wie volgt?\n\nFred is de volgende.\n\nIn de les over de Randstad hebben we geleerd dat bloemen heel belangrijk zijn voor de Nederlandse handel. Dat was een goede aanleiding om met mijn vriendin naar de Keukenhof te gaan. Dat is een grote tuin bij Lisse waar bedrijven al die mooie bloemen tonen. Prachtig, wat we daar hebben gezien. Heel veel soorten tulpen in wel 100 kleuren. We hebben uiteraard heel wat foto's gemaakt. En we hebben ook een bekend lied geleerd over tulpen, Amsterdam en liefde.\n\nNou, dat lied heb je vast wel gezongen& voor je vriendin. Bedankt! Een volgende keer hoor ik graag of iemand het Deltapark heeft bezocht®. Daar zie je hoe Zeeland wordt beschermd tegen het water van de zee. Men beschouwt dat systeem als een van de zeven moderne wereldwonderen. Vinden jullie dat terecht?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-13",
+    "title": "De papieren",
+    "originalTitle": "De papieren",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 29,
+    "levelOrder": 13,
+    "sourceLine": 479,
+    "version": "m_536f7t",
+    "corpusVersion": 2,
+    "originalText": "Je kunt Nederland bezoeken met een paspoort of een visum. Maar Alex wilde langer blijven en komt niet uit een EU-land. Daarom had hij een verblijfsvergunning nodig.\nDie kreeg hij van de IND, de immigratiedienst. Hij moest ook een inburgeringstoets doen. Ze zeiden dat hij kennis van de taal en van het land moest bezitten. Dat is voor sommigen verplicht.\n\nNadat hij in Nederland was aangekomen liet hij zich inschrijven bij de gemeente Den Haag. ledereen moet zich immers laten registreren. Tegelijk kreeg hij er ook zijn burgerservicenummer (bsn). Wellicht moet Alex nu, straks of in de toekomst belasting betalen. Daarom heeft de gemeente zijn gegevens eveneens naar de belastingdienst gestuurd. Bij de gemeente hoorde hij ook, of hij hier met zijn buitenlandse rijbewijs mocht rijden. Voorlopig kan dat, zeiden ze. Maar hoe lang? \"Dat hangt ervan af in welk land u uw rijbewijs hebt gehaald, meneer\", zeiden ze. \"In uw geval een half jaar. Een Nederlands rijbewijs kunt u hier bij de gemeente aanvragen.\"\n\nMocht hij hier werken? Dat bleek afhankelijk te zijn van je nationaliteit. Alex bleek een vergunning te moeten hebben. Zijn werkgever heeft de vergunning geregeld bij het UW. Bij die dienst kun je terecht als je werk zoekt. En daar regelen ze ook je uitkering, als je werkloos bent. Was alles toen geregeld? Nee, natuurlijk moest hij een huisarts zoeken. En hij moest een verzekering tegen ziektekosten afsluiten.\nGelukkig heeft hij nog geen kinderen, want anders moest hij ook zo snel mogelijk een geschikte school zoeken. Over een jaar wil hij een opleiding volgen. Dan moet hij zijn diploma's met Nederlandse diploma's laten vergelijken. Maar gelukkig is nu alles voorlopig geregeld.",
+    "text": "Je kunt Nederland bezoeken met een paspoort of een visum. Maar Alex wilde langer blijven en komt niet uit een EU-land. Daarom had hij een verblijfsvergunning nodig.\nDie kreeg hij van de IND, de immigratiedienst. Hij moest ook een inburgeringstoets doen. Ze zeiden dat hij kennis van de taal en van het land moest bezitten. Dat is voor sommigen verplicht.\n\nNadat hij in Nederland was aangekomen liet hij zich inschrijven bij de gemeente Den Haag. ledereen moet zich immers laten registreren. Tegelijk kreeg hij er ook zijn burgerservicenummer (bsn). Wellicht moet Alex nu, straks of in de toekomst belasting betalen. Daarom heeft de gemeente zijn gegevens eveneens naar de belastingdienst gestuurd. Bij de gemeente hoorde hij ook, of hij hier met zijn buitenlandse rijbewijs mocht rijden. Voorlopig kan dat, zeiden ze. Maar hoe lang? \"Dat hangt ervan af in welk land u uw rijbewijs hebt gehaald, meneer\", zeiden ze. \"In uw geval een half jaar. Een Nederlands rijbewijs kunt u hier bij de gemeente aanvragen.\"\n\nMocht hij hier werken? Dat bleek afhankelijk te zijn van je nationaliteit. Alex bleek een vergunning te moeten hebben. Zijn werkgever heeft de vergunning geregeld bij het UW. Bij die dienst kun je terecht als je werk zoekt. En daar regelen ze ook je uitkering, als je werkloos bent. Was alles toen geregeld? Nee, natuurlijk moest hij een huisarts zoeken. En hij moest een verzekering tegen ziektekosten afsluiten.\nGelukkig heeft hij nog geen kinderen, want anders moest hij ook zo snel mogelijk een geschikte school zoeken. Over een jaar wil hij een opleiding volgen. Dan moet hij zijn diploma's met Nederlandse diploma's laten vergelijken. Maar gelukkig is nu alles voorlopig geregeld.",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "society"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-14",
+    "title": "Van republiek naar koninkrijk",
+    "originalTitle": "Van republiek naar koninkrijk",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 30,
+    "levelOrder": 14,
+    "sourceLine": 489,
+    "version": "m_2a819b",
+    "corpusVersion": 2,
+    "originalText": "Waar nu Nederland is, waren vroeger een aantal aparte staten. Ze waren een deel van het Spaanse rijk. Onder leiding van Willem van Oranje voerden ze oorlog met Spanje.\nUiteindelijk wonnen ze die oorlog. En zo kwam de Republiek der Verenigde Nederlanden tot stand.\n\nEr was veel handel met andere landen in deze periode. Nederlandse schepen gingen naar verre landen. Soms namen de Nederlanders land in bezit. Zo is New York korte tijd Nederlands bezit geweest. Enkele namen in die stad herinneren daaraan.\nIndonesië en Suriname zijn langer Nederlands bezit geweest. Zes eilanden boven Zuid-Amerika eveneens. Drie ervan zijn nu bijzondere gemeentes van Nederland. De andere drie zijn aparte staten, maar horen wel bij het Koninkrijk der Nederlanden.\n\nBegin negentiende eeuw werd Nederland een deel van het Franse rijk van Napoleon.\nNadat hieraan een eind gekomen was, werd Nederland een koninkrijk, met aan het hoofd een koning. Dat was een lid van de familie Van Oranje. Sinds die tijd is de nationale vlag in gebruik: rood, wit, blauw. Nederland heeft zich dus ontwikkeld van republiek tot koninkrijk. In tegenstelling tot andere landen. Die hebben vaak een andere ontwikkeling meegemaakt.\n\nLaten we nu kijken naar de moderne geschiedenis. In 1940 werd Nederland in bezit genomen door het Duitse rijk. Hitler wilde heel Europa in bezit nemen. Dit leidde tot de Tweede Wereldoorlog, waarbij tientallen miljoenen mensen stierven. Onder hen waren zes miljoen joden. Duitsland verloor de oorlog, waardoor het Nederlandse volk in 1945 weer in vrijheid kon leven.\n\nNu hoort Nederland opnieuw bij een groter geheel: de EU. Is dat weer een rijk? Nee!\nWerken de landen dan alleen samen op het gebied van handel? Ook niet. De waarheid ligt in het midden.",
+    "text": "Waar nu Nederland is, waren vroeger een aantal aparte staten. Ze waren een deel van het Spaanse rijk. Onder leiding van Willem van Oranje voerden ze oorlog met Spanje.\nUiteindelijk wonnen ze die oorlog. En zo kwam de Republiek der Verenigde Nederlanden tot stand.\n\nEr was veel handel met andere landen in deze periode. Nederlandse schepen gingen naar verre landen. Soms namen de Nederlanders land in bezit. Zo is New York korte tijd Nederlands bezit geweest. Enkele namen in die stad herinneren daaraan.\nIndonesië en Suriname zijn langer Nederlands bezit geweest. Zes eilanden boven Zuid-Amerika eveneens. Drie ervan zijn nu bijzondere gemeentes van Nederland. De andere drie zijn aparte staten, maar horen wel bij het Koninkrijk der Nederlanden.\n\nBegin negentiende eeuw werd Nederland een deel van het Franse rijk van Napoleon.\nNadat hieraan een eind gekomen was, werd Nederland een koninkrijk, met aan het hoofd een koning. Dat was een lid van de familie Van Oranje. Sinds die tijd is de nationale vlag in gebruik: rood, wit, blauw. Nederland heeft zich dus ontwikkeld van republiek tot koninkrijk. In tegenstelling tot andere landen. Die hebben vaak een andere ontwikkeling meegemaakt.\n\nLaten we nu kijken naar de moderne geschiedenis. In 1940 werd Nederland in bezit genomen door het Duitse rijk. Hitler wilde heel Europa in bezit nemen. Dit leidde tot de Tweede Wereldoorlog, waarbij tientallen miljoenen mensen stierven. Onder hen waren zes miljoen joden. Duitsland verloor de oorlog, waardoor het Nederlandse volk in 1945 weer in vrijheid kon leven.\n\nNu hoort Nederland opnieuw bij een groter geheel: de EU. Is dat weer een rijk? Nee!\nWerken de landen dan alleen samen op het gebied van handel? Ook niet. De waarheid ligt in het midden.",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "culture"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-15",
+    "title": "Gelukkige kinderen",
+    "originalTitle": "Gelukkige kinderen",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 31,
+    "levelOrder": 15,
+    "sourceLine": 505,
+    "version": "m_1lu2suj",
+    "corpusVersion": 2,
+    "originalText": "Nederlandse kinderen behoren tot de gelukkigste ter wereld. Dat blijkt uit onderzoek uit 2016. Kinderen uit in totaal 42 landen waren bij het onderzoek betrokken. Jongens blijken in het algemeen gelukkiger dan meisjes. Ik las dit bericht gisteravond op internet. Heb jij het ook gelezen? Goed nieuws, vind je niet? Nederlandse kinderen zijn dus in het algemeen blije, tevreden kinderen. Dat verbaast me niet.\n\nElk kind mag vanaf vier jaar en moet vanaf vijf jaar naar school. Het onderwijs is zeker niet slecht. Een speciale organisatie van de overheid controleert de kwaliteit.\n\nRelatief weinig kinderen wonen in echt slechte huizen. En de omgeving van het huis is meestal veilig en schoon. Ze kunnen op hun eigen fiets naar school gaan, of naar vriendjes en vriendinnetjes. Een veilige situatie is belangrijk, dat geeft hun een gevoel van vrijheid.\n\nVerder is Nederland een rijk land. Veel kinderen leven in een gezin met voldoende geld. Meestal gaan ze zelfs meer dan één keer op een korte of lange vakantie. De opvoeding is eveneens een belangrijk punt. De mening van kinderen is belangrijker geworden. Thuis, maar ook op school, houdt men rekening met de meningen en gevoelens van kinderen.\n\nJe hebt dus geluk als je in Nederland wordt geboren. Geldt dat voor alle kinderen?\nHelaas leven nog te veel kinderen in een slechte situatie wat betreft wonen, eten, opvoeding, aandacht en zorg. Een voorbeeld: een op de acht kinderen in ons land leeft in een arm gezin! Zo'n kind kan niet meedoen met leuke dingen op school en elders.\nDaardoor heeft het minder kansen in het leven. Overigens: zelfs een tevreden kind is niet altijd gelukkig en heeft af en toe gewoon saaie momenten. Zoals het kind in dat gedicht. Het verveelt zich vreselijk en denkt: \"Ik wou dat ik twee hondjes was, dan kon ik samen spelen.\"",
+    "text": "Nederlandse kinderen behoren tot de gelukkigste ter wereld. Dat blijkt uit onderzoek uit 2016. Kinderen uit in totaal 42 landen waren bij het onderzoek betrokken. Jongens blijken in het algemeen gelukkiger dan meisjes. Ik las dit bericht gisteravond op internet. Heb jij het ook gelezen? Goed nieuws, vind je niet? Nederlandse kinderen zijn dus in het algemeen blije, tevreden kinderen. Dat verbaast me niet.\n\nElk kind mag vanaf vier jaar en moet vanaf vijf jaar naar school. Het onderwijs is zeker niet slecht. Een speciale organisatie van de overheid controleert de kwaliteit.\n\nRelatief weinig kinderen wonen in echt slechte huizen. En de omgeving van het huis is meestal veilig en schoon. Ze kunnen op hun eigen fiets naar school gaan, of naar vriendjes en vriendinnetjes. Een veilige situatie is belangrijk, dat geeft hun een gevoel van vrijheid.\n\nVerder is Nederland een rijk land. Veel kinderen leven in een gezin met voldoende geld. Meestal gaan ze zelfs meer dan één keer op een korte of lange vakantie. De opvoeding is eveneens een belangrijk punt. De mening van kinderen is belangrijker geworden. Thuis, maar ook op school, houdt men rekening met de meningen en gevoelens van kinderen.\n\nJe hebt dus geluk als je in Nederland wordt geboren. Geldt dat voor alle kinderen?\nHelaas leven nog te veel kinderen in een slechte situatie wat betreft wonen, eten, opvoeding, aandacht en zorg. Een voorbeeld: een op de acht kinderen in ons land leeft in een arm gezin! Zo'n kind kan niet meedoen met leuke dingen op school en elders.\nDaardoor heeft het minder kansen in het leven. Overigens: zelfs een tevreden kind is niet altijd gelukkig en heeft af en toe gewoon saaie momenten. Zoals het kind in dat gedicht. Het verveelt zich vreselijk en denkt: \"Ik wou dat ik twee hondjes was, dan kon ik samen spelen.\"",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-16",
+    "title": "De twaalf provincies",
+    "originalTitle": "De twaalf provincies",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 32,
+    "levelOrder": 16,
+    "sourceLine": 519,
+    "version": "m_ypslg1",
+    "corpusVersion": 2,
+    "originalText": "Aan de muur hangt de kaart van Nederland. Kun je ons laten zien waar je woont?\nJe ziet op de kaart dat Nederland verdeeld is in twaalf provincies. Ze hebben allemaal hun eigen geschiedenis en hun eigen karakter. Friesland heeft zelfs een eigen officiële taal!\n\nIn het westen liggen Noord- en Zuid-Holland. Samen met een deel van Utrecht vormen ze de Randstad. Die hebben we al in een eerdere tekst behandeld. Zeeland, in het zuidwesten, is een verhaal apart. Een verhaal over water. Weet je nog wat we daarover hebben gezegd in les 25 en 32?\n\nIn het noorden liggen Groningen, Friesland en Drenthe. Groningen is vooral bekend door het gas dat in de grond zit. Dat gas is ruim een halve eeuw geleden ontdekt.\nNederland was daardoor niet langer afhankelijk van andere landen voor zijn energie.\nMaar gas uit de grond halen veroorzaakt eveneens problemen. De grond daalt en beweegt: slecht voor huizen en gebouwen.\n\nFriesland levert veel melk voor de Nederlandse melkproducten. De Friese meren zijn een ideale plek om je vrije tijd te besteden. Dat geldt overigens eveneens voor de eilanden in de Noordzee.\n\nDe provincie Flevoland bestaat pas sinds 1985. Van een stuk zee werd land gemaakt.\nZo is de provincie ontstaan. In dit lege land is veel ruimte waardoor de woningen een stuk goedkoper zijn dan in Amsterdam.\n\nIn het midden van het land ligt de provincie Utrecht, met de hoofdstad Utrecht.\nUtrecht 'vergaderstad': voor iedereen even ver weg. Naar de provincies Overijssel en Gelderland, in het oosten, ga je graag op vakantie, als je houdt van wandelen en fietsen in de mooie natuur.\n\nNoord-Brabant en Limburg noemen we het zuiden. Rond Eindhoven staan enkele bekende bedrijven. Die bedenken slimme oplossingen voor allerlei technische en maatschappelijke problemen. In Limburg worden o.a. auto's geproduceerd die in andere landen zijn ontwikkeld. En er zijn ook nog bergen en een mooie oude stad.\nTrouwens: in het zuiden spreekt men het Nederlands anders uit. Heb je dat wel eens gemerkt? Zulke grote verschillen in zo'n klein landje!",
+    "text": "Aan de muur hangt de kaart van Nederland. Kun je ons laten zien waar je woont?\nJe ziet op de kaart dat Nederland verdeeld is in twaalf provincies. Ze hebben allemaal hun eigen geschiedenis en hun eigen karakter. Friesland heeft zelfs een eigen officiële taal!\n\nIn het westen liggen Noord- en Zuid-Holland. Samen met een deel van Utrecht vormen ze de Randstad. Die hebben we al in een eerdere tekst behandeld. Zeeland, in het zuidwesten, is een verhaal apart. Een verhaal over water. Weet je nog wat we daarover hebben gezegd in les 25 en 32?\n\nIn het noorden liggen Groningen, Friesland en Drenthe. Groningen is vooral bekend door het gas dat in de grond zit. Dat gas is ruim een halve eeuw geleden ontdekt.\nNederland was daardoor niet langer afhankelijk van andere landen voor zijn energie.\nMaar gas uit de grond halen veroorzaakt eveneens problemen. De grond daalt en beweegt: slecht voor huizen en gebouwen.\n\nFriesland levert veel melk voor de Nederlandse melkproducten. De Friese meren zijn een ideale plek om je vrije tijd te besteden. Dat geldt overigens eveneens voor de eilanden in de Noordzee.\n\nDe provincie Flevoland bestaat pas sinds 1985. Van een stuk zee werd land gemaakt.\nZo is de provincie ontstaan. In dit lege land is veel ruimte waardoor de woningen een stuk goedkoper zijn dan in Amsterdam.\n\nIn het midden van het land ligt de provincie Utrecht, met de hoofdstad Utrecht.\nUtrecht 'vergaderstad': voor iedereen even ver weg. Naar de provincies Overijssel en Gelderland, in het oosten, ga je graag op vakantie, als je houdt van wandelen en fietsen in de mooie natuur.\n\nNoord-Brabant en Limburg noemen we het zuiden. Rond Eindhoven staan enkele bekende bedrijven. Die bedenken slimme oplossingen voor allerlei technische en maatschappelijke problemen. In Limburg worden o.a. auto's geproduceerd die in andere landen zijn ontwikkeld. En er zijn ook nog bergen en een mooie oude stad.\nTrouwens: in het zuiden spreekt men het Nederlands anders uit. Heb je dat wel eens gemerkt? Zulke grote verschillen in zo'n klein landje!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "culture"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-17",
+    "title": "De gemeente",
+    "originalTitle": "De gemeente",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 33,
+    "levelOrder": 17,
+    "sourceLine": 541,
+    "version": "m_3co5eg",
+    "corpusVersion": 2,
+    "originalText": "Goedemiddag, zegt u het maar.\nMijn rijbewijs verloopt binnenkort. Ik kom voor een nieuw rijbewijs.\nZijn uw gegevens nog hetzelfde? Hebt u uw oude rijbewijs meegenomen? En een nieuwe pasfoto? Aha, prima in orde. Dan kunt u over vijf werkdagen terugkomen.\nMaar u mag eerst even betalen bij loket drie.\n\nWe zijn op het gemeentehuis op de afdeling burgerzaken. Met 'gemeente' bedoelen we een stad of dorp of een combinatie van dorpen als organisatie. Grote steden zijn vaak verdeeld in stadsdelen, met aparte kantoren. De gemeente is van belang voor iedereen. Onze gegevens zijn daar geregistreerd. We moeten ernaartoe voor geboorte, huwelijk, scheiding of overlijden. En ook voor een vergunning, paspoort of rijbewijs. Wie werkloos is, krijgt een uitkering via de gemeente. De gemeente zorgt voor licht in de stad, regelt de zorg voor wie oud of langdurig ziek is, bouwt scholen, verzamelt ons afval, enzovoort.\n\nVoor al die taken betalen we belasting aan de gemeente: voor ons afval, ons huis, en onze hond. Eén keer per vier jaar kiezen de burgers de leden van de gemeenteraad, het parlement van de gemeente. De raad controleert het bestuur van de gemeente.\nVoor de verkiezingen stuurt de gemeente ons een kaart met onze naam erop. Daarmee gaan we stemmen. Heb jij dat al gedaan?\n\nHet hoofd van de gemeente is de burgemeester. Die functie lijkt op die van voorzitter.\nHij leidt de vergaderingen van de gemeenteraad. Maar de baas is hij niet. De raad beslist. Hij wordt& gekozen door de gemeenteraad, dus niet direct door het volk. Wist je dat?\n\nDag mevrouw, wat kijkt u boos. Wat kan ik voor u doen?\nMeneer, ik zit hier al twintig minuten te wachten! Het enige wat ik kom doen is mijn verhuizing laten registreren!\n\nDat kan ook via onze website. Wist u dat? Ik ga nu alles voor u in orde maken. Heeft u uw paspoort bij u? Verhuist u naar een eigen woning of een huurwoning? Gaat u alleen wonen of samenwonen? En wanneer gaat u verhuizen?\nNou, even kijken ... Waarom wilt u dat eigenlijk allemaal weten?",
+    "text": "Goedemiddag, zegt u het maar.\nMijn rijbewijs verloopt binnenkort. Ik kom voor een nieuw rijbewijs.\nZijn uw gegevens nog hetzelfde? Hebt u uw oude rijbewijs meegenomen? En een nieuwe pasfoto? Aha, prima in orde. Dan kunt u over vijf werkdagen terugkomen.\nMaar u mag eerst even betalen bij loket drie.\n\nWe zijn op het gemeentehuis op de afdeling burgerzaken. Met 'gemeente' bedoelen we een stad of dorp of een combinatie van dorpen als organisatie. Grote steden zijn vaak verdeeld in stadsdelen, met aparte kantoren. De gemeente is van belang voor iedereen. Onze gegevens zijn daar geregistreerd. We moeten ernaartoe voor geboorte, huwelijk, scheiding of overlijden. En ook voor een vergunning, paspoort of rijbewijs. Wie werkloos is, krijgt een uitkering via de gemeente. De gemeente zorgt voor licht in de stad, regelt de zorg voor wie oud of langdurig ziek is, bouwt scholen, verzamelt ons afval, enzovoort.\n\nVoor al die taken betalen we belasting aan de gemeente: voor ons afval, ons huis, en onze hond. Eén keer per vier jaar kiezen de burgers de leden van de gemeenteraad, het parlement van de gemeente. De raad controleert het bestuur van de gemeente.\nVoor de verkiezingen stuurt de gemeente ons een kaart met onze naam erop. Daarmee gaan we stemmen. Heb jij dat al gedaan?\n\nHet hoofd van de gemeente is de burgemeester. Die functie lijkt op die van voorzitter.\nHij leidt de vergaderingen van de gemeenteraad. Maar de baas is hij niet. De raad beslist. Hij wordt& gekozen door de gemeenteraad, dus niet direct door het volk. Wist je dat?\n\nDag mevrouw, wat kijkt u boos. Wat kan ik voor u doen?\nMeneer, ik zit hier al twintig minuten te wachten! Het enige wat ik kom doen is mijn verhuizing laten registreren!\n\nDat kan ook via onze website. Wist u dat? Ik ga nu alles voor u in orde maken. Heeft u uw paspoort bij u? Verhuist u naar een eigen woning of een huurwoning? Gaat u alleen wonen of samenwonen? En wanneer gaat u verhuizen?\nNou, even kijken... Waarom wilt u dat eigenlijk allemaal weten?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "society"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-18",
+    "title": "Een beter klimaat begint bij jezelf",
+    "originalTitle": "Een beter klimaat begint bij jezelf",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 34,
+    "levelOrder": 18,
+    "sourceLine": 562,
+    "version": "m_j2ds4s",
+    "corpusVersion": 2,
+    "originalText": "\"Hallo allemaal! Welkom bij mijn presentatie. Zoals jullie waarschijnlijk allemaal weten, verandert het klimaat. Het gevolg is dat veel soorten planten en dieren sterven en dat het niveau van de zee stijgt. Verschillende onderzoeken leveren daarvoor genoeg bewijs. We kunnen dus niet meer doen alsof er niks aan de hand is.\nWe moeten ons realiseren dat er een gevaarlijke toestand ontstaat als we op deze wijze doorgaan. Er zullen steeds meer rampen plaatsvinden, dat is de verwachting.\n\nDaarom moeten we natuurlijke en duurzame vormen van energie gaan gebruiken.\nBijvoorbeeld energie van de zon of energie uit water. Zijn er nieuwe mogelijkheden om minder energie te gebruiken? Zijn er slimme oplossingen? Daarover moeten we nadenken. Bijvoorbeeld bouwen met andere materialen.\n\nIn deze figuur zien jullie hoeveel nieuwe vormen van energie Europese landen gebruiken. Zoals jullie zien staat Nederland erg laag op deze lijst. Het beleid aanpassen is blijkbaar behoorlijk lastig. Maar we kunnen ook zelf iets doen. We zijn toch ook zelf verantwoordelijk? Je kunt besluiten je gedrag en manier van leven te veranderen. Dat heeft ook een flinke invloed. Dit zijn mijn belangrijkste adviezen voor jullie:\n\n1. Weet je wat het meeste effect heeft op het klimaat? Wat we kopen! Koop vooral producten uit je eigen omgeving, of niets! Heb je die leuke nieuwe dingen wel echt nodig?\n2. Eet geen vlees. In plaats van één kilo vlees kunnen 750 mensen flink wat aardappelen eten.\n3. Neem een rekening bij een bank die je geld verantwoordelijk besteedt.\n4. Reis bewust: reis niet met het vliegtuig, maar met de fiets.\n5. Denk na over hoe je thuis minder energie kunt gebruiken.\n6. Wat voor kleren draag je? Welke materialen zijn ervoor gebruikt?\n\nWe kunnen tegenwoordig schoenen maken van oud plastic of bladeren. Een geweldig idee, toch?\n\nJe ziet het: je kunt op veel manieren helpen om het klimaat te verbeteren. Zijn jullie bereid meer te doen voor een betere toekomst?”",
+    "text": "\"Hallo allemaal! Welkom bij mijn presentatie. Zoals jullie waarschijnlijk allemaal weten, verandert het klimaat. Het gevolg is dat veel soorten planten en dieren sterven en dat het niveau van de zee stijgt. Verschillende onderzoeken leveren daarvoor genoeg bewijs. We kunnen dus niet meer doen alsof er niks aan de hand is.\nWe moeten ons realiseren dat er een gevaarlijke toestand ontstaat als we op deze wijze doorgaan. Er zullen steeds meer rampen plaatsvinden, dat is de verwachting.\n\nDaarom moeten we natuurlijke en duurzame vormen van energie gaan gebruiken.\nBijvoorbeeld energie van de zon of energie uit water. Zijn er nieuwe mogelijkheden om minder energie te gebruiken? Zijn er slimme oplossingen? Daarover moeten we nadenken. Bijvoorbeeld bouwen met andere materialen.\n\nIn deze figuur zien jullie hoeveel nieuwe vormen van energie Europese landen gebruiken. Zoals jullie zien staat Nederland erg laag op deze lijst. Het beleid aanpassen is blijkbaar behoorlijk lastig. Maar we kunnen ook zelf iets doen. We zijn toch ook zelf verantwoordelijk? Je kunt besluiten je gedrag en manier van leven te veranderen. Dat heeft ook een flinke invloed. Dit zijn mijn belangrijkste adviezen voor jullie:\n\n1. Weet je wat het meeste effect heeft op het klimaat? Wat we kopen! Koop vooral producten uit je eigen omgeving, of niets! Heb je die leuke nieuwe dingen wel echt nodig?\n2. Eet geen vlees. In plaats van één kilo vlees kunnen 750 mensen flink wat aardappelen eten.\n3. Neem een rekening bij een bank die je geld verantwoordelijk besteedt.\n4. Reis bewust: reis niet met het vliegtuig, maar met de fiets.\n5. Denk na over hoe je thuis minder energie kunt gebruiken.\n6. Wat voor kleren draag je? Welke materialen zijn ervoor gebruikt?\n\nWe kunnen tegenwoordig schoenen maken van oud plastic of bladeren. Een geweldig idee, toch?\n\nJe ziet het: je kunt op veel manieren helpen om het klimaat te verbeteren. Zijn jullie bereid meer te doen voor een betere toekomst?\"",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "society"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-19",
+    "title": "Politiek",
+    "originalTitle": "Politiek",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 35,
+    "levelOrder": 19,
+    "sourceLine": 583,
+    "version": "m_12sfgpk",
+    "corpusVersion": 2,
+    "originalText": "Elke vier jaar kiest& de bevolking de 150 leden van de Tweede Kamer, het parlement.\nDe kiezers stemmen op een persoon die op de lijst van een partij staat. Er is keuze genoeg! Er zijn tientallen politieke partijen: linkse, rechtse, groene, christelijke. Ken jüj misschien één of meer partijen? Weet je wat ze willen?\n\nNa de verkiezingen wordt ook een nieuwe regering gevormd. Dat is niet altijd makkelijk. Geen enkele partij krijgt namelijk de meerderheid van de stemmen.\nEen regering kan dus alleen worden gevormd als enkele partijen samenwerken. Er volgen lange gesprekken. Zijn ze het eens over een politiek programma, dan vormen ze samen de regering. Ze bespreken eveneens wie de minister-president wordt en wie de ministers.\n\nDe regering is het centrale bestuur van Nederland. Ze maakt het beleid en beslist uiteindelijk waar ons geld naartoe gaat: onderwijs, gezondheid, veiligheid, ...\n\nDe Tweede Kamer beslist over het beleid van de regering. De Kamer voert stevige debatten (soms tot laat in de nacht), stelt vragen en levert felle kritiek. De leden kunnen reageren op een voorstel van de minister. Soms kan de reactie van de minister hen niet overtuigen en wensen ze veranderingen. De minister kan die wens volgen, maar hij kan ook weigeren. Soms verliest de Kamer het vertrouwen in de minister en verplicht hem of haar om als minister te stoppen. En dat kan het einde betekenen van de hele regering. Zowel de regering als het parlement heeft dus politieke macht. Er is ook een Eerste Kamer. Haar taak is het controleren van de wetten die in de Tweede Kamer zijn aangenomen. Daarom zitten in de Eerste Kamer meestal politici met veel ervaring.\n\nNederland is een koninkrijk. De koning is het staatshoofd. Hij wordt niet gekozen?.\nVanwege zijn symbolische rol ontvangt hij belangrijk bezoek uit het buitenland. Verder gaat hij veel op bezoek in Nederland en het buitenland. Als vertegenwoordiger van alle Nederlanders heeft hij een verbindende functie.",
+    "text": "Elke vier jaar kiest& de bevolking de 150 leden van de Tweede Kamer, het parlement.\nDe kiezers stemmen op een persoon die op de lijst van een partij staat. Er is keuze genoeg! Er zijn tientallen politieke partijen: linkse, rechtse, groene, christelijke. Ken jüj misschien één of meer partijen? Weet je wat ze willen?\n\nNa de verkiezingen wordt ook een nieuwe regering gevormd. Dat is niet altijd makkelijk. Geen enkele partij krijgt namelijk de meerderheid van de stemmen.\nEen regering kan dus alleen worden gevormd als enkele partijen samenwerken. Er volgen lange gesprekken. Zijn ze het eens over een politiek programma, dan vormen ze samen de regering. Ze bespreken eveneens wie de minister-president wordt en wie de ministers.\n\nDe regering is het centrale bestuur van Nederland. Ze maakt het beleid en beslist uiteindelijk waar ons geld naartoe gaat: onderwijs, gezondheid, veiligheid,...\n\nDe Tweede Kamer beslist over het beleid van de regering. De Kamer voert stevige debatten (soms tot laat in de nacht), stelt vragen en levert felle kritiek. De leden kunnen reageren op een voorstel van de minister. Soms kan de reactie van de minister hen niet overtuigen en wensen ze veranderingen. De minister kan die wens volgen, maar hij kan ook weigeren. Soms verliest de Kamer het vertrouwen in de minister en verplicht hem of haar om als minister te stoppen. En dat kan het einde betekenen van de hele regering. Zowel de regering als het parlement heeft dus politieke macht. Er is ook een Eerste Kamer. Haar taak is het controleren van de wetten die in de Tweede Kamer zijn aangenomen. Daarom zitten in de Eerste Kamer meestal politici met veel ervaring.\n\nNederland is een koninkrijk. De koning is het staatshoofd. Hij wordt niet gekozen?.\nVanwege zijn symbolische rol ontvangt hij belangrijk bezoek uit het buitenland. Verder gaat hij veel op bezoek in Nederland en het buitenland. Als vertegenwoordiger van alle Nederlanders heeft hij een verbindende functie.",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "society"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-20",
+    "title": "De tijden zijn veranderd",
+    "originalTitle": "De tijden zijn veranderd",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 36,
+    "levelOrder": 20,
+    "sourceLine": 598,
+    "version": "m_g3jahb",
+    "corpusVersion": 2,
+    "originalText": "Nederland is enorm veranderd sinds de Tweede Wereldoorlog. Jongeren van nu kunnen zich bijna niet voorstellen hoe de generatie van hun opa's en oma's vroeger leefde. Die hadden natuurlijk geen mobiele telefoons en computers, maar bijvoorbeeld ook geen pinpas, euro's en supermarkten. En er was veel minder keuze aan producten in de winkels, vooral aan producten uit het buitenland. De meeste mensen aten elkea dag aardappelen met groente en vlees of vis. Dat wordt nog steeds gezien als typisch Nederlands eten hoewel de aardappel oorspronkelijk niet uit Nederland komt.\n\nOok reizen binnen Europa ging destijds heel anders dan nu. Alle grenzen waren gesloten en omdat de euro nog niet bestond, moest je voor elkª land ander geld halen. En als je contant geld op zondag op was, had je een groot probleem.\n\nDe televisie bestond weliswaar al, maar lang niet iedereen had er één. Kinderen speelden meer buiten dan nu. Ook moesten ze veel meer helpen in het huishouden.\nDat moest toen allemaal met de hand worden gedaan. Dat was hard werken. Zeker omdat de gezinnen veel groter waren. Een gezin van acht kinderen was heel normaal.\nHet was moeilijker om het aantal kinderen te beperken.\n\nIn de jaren '60 en '70 gingen jongeren massaal de straat op tegen wapens en geweld.\nEn eveneens om een gelijke positie voor mannen en vrouwen te eisen. Maar tot in de jaren zeventig konden vrouwen nog hun baan verliezen als ze gingen trouwen of zwanger werden. Pas in 1980 is dat veranderd. Sindsdien moeten man en vrouw volgens de wet gelijk worden behandeld.\n\nAan het einde van de twintigste eeuw vond misschien wel de belangrijkste verandering plaats: steeds meer mensen gingen het internet op. Dat heeft natuurlijk een enorme invloed gehad in allerlei opzichten: op werk, school, winkelen, vrije tijd en dergelijke. Ons hele dagelijkse leven is erdoor veranderd. Kun jüj je nog een leven zonder internet voorstellen?",
+    "text": "Nederland is enorm veranderd sinds de Tweede Wereldoorlog. Jongeren van nu kunnen zich bijna niet voorstellen hoe de generatie van hun opa's en oma's vroeger leefde. Die hadden natuurlijk geen mobiele telefoons en computers, maar bijvoorbeeld ook geen pinpas, euro's en supermarkten. En er was veel minder keuze aan producten in de winkels, vooral aan producten uit het buitenland. De meeste mensen aten elkea dag aardappelen met groente en vlees of vis. Dat wordt nog steeds gezien als typisch Nederlands eten hoewel de aardappel oorspronkelijk niet uit Nederland komt.\n\nOok reizen binnen Europa ging destijds heel anders dan nu. Alle grenzen waren gesloten en omdat de euro nog niet bestond, moest je voor elka land ander geld halen. En als je contant geld op zondag op was, had je een groot probleem.\n\nDe televisie bestond weliswaar al, maar lang niet iedereen had er één. Kinderen speelden meer buiten dan nu. Ook moesten ze veel meer helpen in het huishouden.\nDat moest toen allemaal met de hand worden gedaan. Dat was hard werken. Zeker omdat de gezinnen veel groter waren. Een gezin van acht kinderen was heel normaal.\nHet was moeilijker om het aantal kinderen te beperken.\n\nIn de jaren '60 en '70 gingen jongeren massaal de straat op tegen wapens en geweld.\nEn eveneens om een gelijke positie voor mannen en vrouwen te eisen. Maar tot in de jaren zeventig konden vrouwen nog hun baan verliezen als ze gingen trouwen of zwanger werden. Pas in 1980 is dat veranderd. Sindsdien moeten man en vrouw volgens de wet gelijk worden behandeld.\n\nAan het einde van de twintigste eeuw vond misschien wel de belangrijkste verandering plaats: steeds meer mensen gingen het internet op. Dat heeft natuurlijk een enorme invloed gehad in allerlei opzichten: op werk, school, winkelen, vrije tijd en dergelijke. Ons hele dagelijkse leven is erdoor veranderd. Kun jüj je nog een leven zonder internet voorstellen?",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-21",
+    "title": "Mijn leven in Nederland",
+    "originalTitle": "Mijn leven in Nederland",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 37,
+    "levelOrder": 21,
+    "sourceLine": 613,
+    "version": "m_1j5419v",
+    "corpusVersion": 2,
+    "originalText": "Beste Karim,\nHoe gaat het met jullie?\nJe vroeg me laatst om een keer te schrijven over mijn ervaring met Nederland en de Nederlandse cultuur. Dat zal ik doen. Hier komen er een paar!\n\nIk woon nu zes jaar in Nederland en voel me hier al helemaal thuis. Aanvankelijk was dat heel anders. Ik weet nog goed dat& ik voor de eerste keer in Nederland wasa. Ik verbaasde me destijds over de lage gebouwen en de lange mensen. En ik vond het bijzonder dat« iedereen hier fietst, ook oude mensen. Nu valt me dat helemaal niet meer op.\n\nIk herinner me ook nog goed dat ik mijn man een keer vroeg: \"Zullen we bij je zus op bezoek gaan?\" Ik wilde mijn tas al pakken, maar volgens mijn man moesten we eerst een afspraak maken. Voor een bezoek aan zijn zus! Uiteindelijk gingen we pas twee weken later. Dat vond ik heel raar. Ik moet toegeven dat ik dat nog steeds gek vind. Inmiddels vind ik afspraken maken niet meer zo vreemd. En ik kom nu overal op tijd.\nIk heb gemerkt dat mijn Nederlandse vrienden onrustig worden als we een half uurtje later komen.\n\nMijn oudste dochter leert sinds kort zwemmen. Ik vind haar wel erg jong daarvoor.\nHet water is behoorlijk diep en ze heeft nog niet zo veel kracht. Maar er is hier zo veel water. Daarom moeten kinderen zo jong mogelijk leren zwemmen. Ik heb het zelf pas geleerd toen ik veertien was. Weet je waar ze ook vroeg mee is? Met haar mening geven. Volgens mij is dat ook typisch Nederlands. Het lijkt wel of Nederlanders overal een mening over hebben. En ze geven die ook als je er niet om vraagt! Soms vind ik dat wel vervelend. Aan de andere kant vind ik het fijn als mensen eerlijk zijn.\n\nSommige Nederlanders vind ik wel erg negatief. Ze klagen vaak en hebben overal kritiek op. Ik ben over het algemeen tevreden met het leven hier.\n\nIk wil graag weten hoe jij over deze dingen denkt!\n\nGroeten, Selma",
+    "text": "Beste Karim,\nHoe gaat het met jullie?\nJe vroeg me laatst om een keer te schrijven over mijn ervaring met Nederland en de Nederlandse cultuur. Dat zal ik doen. Hier komen er een paar!\n\nIk woon nu zes jaar in Nederland en voel me hier al helemaal thuis. Aanvankelijk was dat heel anders. Ik weet nog goed dat& ik voor de eerste keer in Nederland wasa. Ik verbaasde me destijds over de lage gebouwen en de lange mensen. En ik vond het bijzonder dat« iedereen hier fietst, ook oude mensen. Nu valt me dat helemaal niet meer op.\n\nIk herinner me ook nog goed dat ik mijn man een keer vroeg: \"Zullen we bij je zus op bezoek gaan?\" Ik wilde mijn tas al pakken, maar volgens mijn man moesten we eerst een afspraak maken. Voor een bezoek aan zijn zus! Uiteindelijk gingen we pas twee weken later. Dat vond ik heel raar. Ik moet toegeven dat ik dat nog steeds gek vind. Inmiddels vind ik afspraken maken niet meer zo vreemd. En ik kom nu overal op tijd.\nIk heb gemerkt dat mijn Nederlandse vrienden onrustig worden als we een half uurtje later komen.\n\nMijn oudste dochter leert sinds kort zwemmen. Ik vind haar wel erg jong daarvoor.\nHet water is behoorlijk diep en ze heeft nog niet zo veel kracht. Maar er is hier zo veel water. Daarom moeten kinderen zo jong mogelijk leren zwemmen. Ik heb het zelf pas geleerd toen ik veertien was. Weet je waar ze ook vroeg mee is? Met haar mening geven. Volgens mij is dat ook typisch Nederlands. Het lijkt wel of Nederlanders overal een mening over hebben. En ze geven die ook als je er niet om vraagt! Soms vind ik dat wel vervelend. Aan de andere kant vind ik het fijn als mensen eerlijk zijn.\n\nSommige Nederlanders vind ik wel erg negatief. Ze klagen vaak en hebben overal kritiek op. Ik ben over het algemeen tevreden met het leven hier.\n\nIk wil graag weten hoe jij over deze dingen denkt!\n\nGroeten, Selma",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life"
+    ]
+  },
+  {
+    "id": "nl-curated-a2-22",
+    "title": "De laatste les",
+    "originalTitle": "De laatste les",
+    "level": "A2",
+    "levelSource": "user-curated",
+    "source": "User-curated Dutch material",
+    "sourceFile": "A1-A2 3ce8404868be8068b054f66b44679702.md",
+    "sourceOrder": 38,
+    "levelOrder": 22,
+    "sourceLine": 633,
+    "version": "m_125qyrk",
+    "corpusVersion": 2,
+    "originalText": "Eindelijk, de laatste les! De cursus is bijna voorbij. Alleen nog het examen. Toen de cursus begon, dacht ik dat Nederlands leren moeilijk zou zijn. Maar we hebben allemaal leren praten. De methode werkt uitstekend, volgens mij. Door teksten te lezen, door heel veel te luisteren en na te zeggen hebben we de woorden, hun uitspraak, combinaties van woorden en de grammatica geleerd. En natuurlijk was veel praten in de lessen een goed middel om de taal te leren gebruiken. Sommige cursisten hadden daar wel moeite mee. Zij vonden dat kennis van de grammatica noodzakelijk is. Ze wilden meer opdrachten uitvoeren om de grammatica te oefenen.\nMaar een taal leren is vooral een kwestie van doen. Het is wel heel veel werk. Al m'n tijd heb ik eraan besteed. Niet normaal! Overdag, 's avonds, altijd zat ik achter mijn bureau. \"Doe normaal\", zeiden mijn vrienden. \"Ga gezellig mee uit!\" \"Nee\" , zei ik dan, \"Morgen heb ik les!\"\n\nWij hebben met onze docent over veel onderwerpen gesproken. Over de geschiedenis van dit land, over de Nederlandse cultuur en de maatschappij. Wordt Nederland nu mijn land, ons land? Sommige cursisten gaan weer terug naar hun eigen land, anderen blijven, voor werk of studie. De een wil graag een Nederlands paspoort, de ander twijfelt. Nog niet iedereen heeft een beslissing genomen. We hebben nog niet allemaal een concreet plan voor de toekomst.\n\nIk twijfel niet langer, ik weet nu zeker dat mijn toekomst hier is. Mijn doel is om een opleiding aan een universiteit te volgen. Maar daarvoor moet ik eerst mijn Nederlands nog verbeteren. Daarom ga ik verder met Nederlands leren. En na mijn opleiding zoek ik werk. Ik verwacht dat ik hier een goede baan kan vinden. Of ik ga een eigen bedrijf opzetten.\n\nSommigen van ons gaan door naar de volgende cursus. Tenminste, als ze slagen. Wie zakt moet de toets opnieuw doen. Ik hoop op een positief resultaat, zodat ik verder kan met de volgende cursus. Nu eerst die toets, en dan even een pauze!",
+    "text": "Eindelijk, de laatste les! De cursus is bijna voorbij. Alleen nog het examen. Toen de cursus begon, dacht ik dat Nederlands leren moeilijk zou zijn. Maar we hebben allemaal leren praten. De methode werkt uitstekend, volgens mij. Door teksten te lezen, door heel veel te luisteren en na te zeggen hebben we de woorden, hun uitspraak, combinaties van woorden en de grammatica geleerd. En natuurlijk was veel praten in de lessen een goed middel om de taal te leren gebruiken. Sommige cursisten hadden daar wel moeite mee. Zij vonden dat kennis van de grammatica noodzakelijk is. Ze wilden meer opdrachten uitvoeren om de grammatica te oefenen.\nMaar een taal leren is vooral een kwestie van doen. Het is wel heel veel werk. Al m'n tijd heb ik eraan besteed. Niet normaal! Overdag, 's avonds, altijd zat ik achter mijn bureau. \"Doe normaal\", zeiden mijn vrienden. \"Ga gezellig mee uit!\" \"Nee\", zei ik dan, \"Morgen heb ik les!\"\n\nWij hebben met onze docent over veel onderwerpen gesproken. Over de geschiedenis van dit land, over de Nederlandse cultuur en de maatschappij. Wordt Nederland nu mijn land, ons land? Sommige cursisten gaan weer terug naar hun eigen land, anderen blijven, voor werk of studie. De een wil graag een Nederlands paspoort, de ander twijfelt. Nog niet iedereen heeft een beslissing genomen. We hebben nog niet allemaal een concreet plan voor de toekomst.\n\nIk twijfel niet langer, ik weet nu zeker dat mijn toekomst hier is. Mijn doel is om een opleiding aan een universiteit te volgen. Maar daarvoor moet ik eerst mijn Nederlands nog verbeteren. Daarom ga ik verder met Nederlands leren. En na mijn opleiding zoek ik werk. Ik verwacht dat ik hier een goede baan kan vinden. Of ik ga een eigen bedrijf opzetten.\n\nSommigen van ons gaan door naar de volgende cursus. Tenminste, als ze slagen. Wie zakt moet de toets opnieuw doen. Ik hoop op een positief resultaat, zodat ik verder kan met de volgende cursus. Nu eerst die toets, en dan even een pauze!",
+    "corrections": [],
+    "contextWarnings": [],
+    "tags": [
+      "daily life",
+      "work & study"
+    ]
   }
 ]

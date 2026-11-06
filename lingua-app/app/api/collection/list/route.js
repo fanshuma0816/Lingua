@@ -70,10 +70,17 @@ export async function GET(req) {
 
     const userId = encodeURIComponent(user.id);
     const words = await readWords(userId, env);
+    const materials = await readRows(`/rest/v1/user_materials?user_id=eq.${userId}&select=id,display_name,source_type,language,learner_level,learning_goal,target_minutes,created_at,updated_at&order=updated_at.desc&limit=100`, env, true);
+    let materialSegments=[];
+    if(materials.length){
+      const ids=materials.map(m=>m.id).join(",");
+      materialSegments=await readRows(`/rest/v1/material_segments?material_id=in.(${ids})&select=id,material_id,segment_index,title,word_count,estimated_minutes_min,estimated_minutes_max,material_level,difficulty_label,status,started_at,completed_at&order=segment_index.asc`,env,true);
+    }
     let grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,item_key,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
     if (!grammar.length) grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
 
     return Response.json({
+      materials: materials.map(material=>({...material,segments:materialSegments.filter(segment=>segment.material_id===material.id)})),
       words: Array.isArray(words) ? words : [],
       grammar: Array.isArray(grammar) ? grammar : [],
     });

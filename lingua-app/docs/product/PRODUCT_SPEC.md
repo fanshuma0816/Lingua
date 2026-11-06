@@ -20,6 +20,18 @@ Core promise:
 
 > Learn Dutch deeply. Build real Dutch through structured practice.
 
+### User-provided PDFs and long materials
+
+- Accept PDF, TXT, Markdown, and pasted Dutch text through one import flow.
+- PDFs are limited to 10 MB and 100 pages; extracted text is limited to 200,000 characters.
+- PDF extraction happens on the learner's device. The original PDF is not uploaded or stored.
+- After cleanup, show the editable cleaned text directly; do not expose a complex cleanup audit.
+- Long material is divided into ordered lesson segments with a time range for each segment.
+- A signed-out learner may continue with the current segment only. The UI must state that remaining segments will not be saved.
+- A signed-in learner may explicitly save the cleaned full text, remaining segments, and segment progress to Collection.
+- Collection material states are derived from segment states: To learn, In progress, and Completed.
+- After Quick Scan, Preview shows 2–3 grounded, observable “After this lesson you’ll be able to…” objectives.
+
 ## 2. Target Users
 
 Primary users are self-motivated Dutch learners who want flexible, serious study without expensive tutors or fixed weekly classes.
@@ -288,4 +300,3 @@ Before a feature is considered done:
 - TTS should clearly use the intended provider or expose fallback behavior.
 - Audio progress should match actual playback.
 - Navigation should preserve state across the lesson.
-

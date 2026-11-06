@@ -3,6 +3,8 @@
 import { DB } from "./storage";
 import { fallbackWordInfo } from "./dutch";
 
+const COLLECTION_REQUEST_TIMEOUT_MS = 15000;
+
 function wordKey(item) {
   return wordLemmaKey(item?.word, item?.lang, item?.lemma);
 }
@@ -109,10 +111,19 @@ async function removeGrammarFromCollection(item, accessToken) {
 }
 
 async function requestJson(path, options = {}) {
-  const response = await fetch(path, options);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.error || "Could not update your collection.");
-  return data;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), COLLECTION_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(path, { ...options, signal: controller.signal });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error || "Could not update your collection.");
+    return data;
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error("The collection request timed out.");
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function fetchCollection(accessToken) {
@@ -123,6 +134,7 @@ async function fetchCollection(accessToken) {
   });
   return {
     ...data,
+    materials: data.materials || [],
     words: mergeCachedWords(data.words || []),
     grammar: mergeCachedGrammar(data.grammar || []),
   };

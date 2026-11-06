@@ -1,5 +1,7 @@
 import { generateLesson } from "../../../lib/lesson-client";
 import { cleanText } from "../../../lib/text";
+import { prepareImport } from "../../../lib/text-chunks";
+import { MAX_DOCUMENT_CHARS } from "../../../config/constants";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -11,7 +13,8 @@ export const maxDuration = 30;
 export async function POST(req) {
   try {
     const body = await req.json();
-    const text = cleanText(body.text || "");
+    if (String(body.text || "").length > MAX_DOCUMENT_CHARS) return Response.json({ error: "document_too_large" }, { status: 413 });
+    let text = cleanText(body.text || "");
     const lang = body.lang || "Dutch";
     const level = body.level || "A2 — Elementary";
     const goal = body.goal || "General fluency";
@@ -20,8 +23,16 @@ export async function POST(req) {
     // through so its id / level / annotations are preserved verbatim (one source
     // of truth). Otherwise the lesson builder computes it deterministically.
     const providedMaterial = body.material && body.material.validatedTextLevel ? body.material : null;
-    return Response.json(generateLesson(text, lang, level, goal, targetMin, providedMaterial));
+    const sourceDocument = lang === "Dutch" && !providedMaterial
+      ? prepareImport(body.text || "", { level, targetMin, difficulty: body.difficulty }) : null;
+    if (sourceDocument) text = sourceDocument.text;
+    if (!text.trim()) return Response.json({ error: "empty_text" }, { status: 400 });
+    const lesson = generateLesson(text, lang, level, goal, targetMin, providedMaterial);
+    return Response.json({ ...lesson, text, ...(sourceDocument ? {
+      sourceDocument, importDocumentId: sourceDocument.id, importChunkId: sourceDocument.selectedChunkId,
+      importChunkIndex: sourceDocument.selectedChunkIndex,
+    } : {}) });
   } catch (e) {
-    return Response.json({ error: "bad request" }, { status: 400 });
+    return Response.json({ error: e?.message === "document_too_large" ? "document_too_large" : "bad request" }, { status: e?.message === "document_too_large" ? 413 : 400 });
   }
 }

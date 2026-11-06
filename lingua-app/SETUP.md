@@ -167,6 +167,26 @@ https://你的域名/auth/callback
 http://localhost:3000/auth/callback
 ```
 
+### Outlook / Microsoft Safe Links 的 Magic Link 设置
+
+Outlook 或 Microsoft Defender 可能会在用户点击前预先访问邮件里的链接。Supabase 的 Magic Link 是一次性的，如果邮件直接链接到 `{{ .ConfirmationURL }}`，安全扫描就可能先把它用掉，用户随后会看到“Email link is invalid or has expired”。
+
+请到 Supabase 后台完成以下设置：
+
+1. 打开 **Authentication → URL Configuration**。
+2. 把 **Site URL** 设置为正式站点，例如 `https://app.lingualanguage.site`。
+3. 确认 **Redirect URLs** 包含 `https://app.lingualanguage.site/auth/callback`；本地测试时再保留 `http://localhost:3000/auth/callback`。
+4. 打开 **Authentication → Email Templates → Magic Link**。
+5. 把邮件按钮或链接的 `href` 从直接使用 `{{ .ConfirmationURL }}` 改成：
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email">Continue sign-in</a>
+```
+
+这样邮件安全扫描只会打开 Lingua 的确认页，不会使用 Supabase 的一次性 token。用户在确认页主动点击“Continue sign-in”后，才会完成登录。
+
+保存模板并重新发送一封新的 Magic Link。已经报错或已经使用过的旧链接不能恢复。如果外部邮件服务开启了链接追踪，也请关闭登录邮件的链接追踪。
+
 > Gemini 的服务位置在代码里固定为 `global`，不用再设置 `VERTEX_LOCATION`。
 > 想改密钥，以后在 Vercel 后台点几下即可，不用碰代码。
 > 部署完成后，打开 `你的网址/api/health` 可以逐项检查 Gemini、翻译、语音是否都连通（不会显示密钥，只显示是否正常）。
@@ -198,6 +218,18 @@ http://localhost:3000/auth/callback
 ## 填了密钥后，这些都是真实的
 - 翻译：每句的翻译由 **Google Cloud Translation** 生成（`/api/analyze` 的 translate）。
 - 课程内容与语法：词义 + 全新实用例句、逐句语法讲解、按你水平出的目标语选择题、AI 推荐学习材料，都由 **Gemini 3.7 Flash on Vertex AI global** 生成（`/api/analyze`、`/api/lesson`）。
+
+## 启用用户材料和分段学习计划
+
+PDF 在浏览器中解析，原始文件不会上传或保存，因此不需要创建 Supabase Storage bucket。登录用户保存的是清洗后的文本、分段计划和学习进度。
+
+1. 打开 Supabase → SQL Editor。
+2. 执行 `supabase/migrations/20261009_user_materials.sql`。
+3. 在 Table Editor 确认 `user_materials`、`material_segments` 已创建，且 `lesson_sessions` 已增加材料关联字段。
+4. 在 Authentication → Policies 确认两个新表均已启用 RLS。
+5. 使用两个不同测试账号验证：账号 A 的材料不能被账号 B 读取、更新或删除。
+
+现有的 `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY` 和 `SUPABASE_SERVICE_ROLE_KEY` 已足够，不需要新增环境变量。
 - 高质量语音朗读：所有朗读都用 **Google Cloud Text-to-Speech**（`/api/tts`）；没有密钥时自动退回浏览器自带声音。
 - Part 1 写作反馈 + Part 2 AI 对话：由 **Gemini 3.7 Flash on Vertex AI global** 实时生成（`/api/chat`）。
 

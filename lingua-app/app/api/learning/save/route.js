@@ -51,7 +51,7 @@ async function supabaseWrite(path, options, env) {
 }
 
 function likelyMissingSnapshotColumns(error) {
-  return /input_text|lesson_snapshot|interaction_snapshot|saved_options|schema cache|column/i.test(String(error?.message || ""));
+  return /input_text|lesson_snapshot|interaction_snapshot|saved_options|material_segment_id|material_id|segment_index|segment_count|schema cache|column/i.test(String(error?.message || ""));
 }
 
 export async function POST(req) {
@@ -78,6 +78,7 @@ export async function POST(req) {
     const material = body?.material && typeof body.material === "object" ? body.material : {};
     const stats = body?.stats && typeof body.stats === "object" ? body.stats : {};
     const completedSteps = Array.isArray(body?.completedSteps) ? body.completedSteps.slice(0, 20) : [];
+    const materialId=shortText(body?.materialId,80),materialSegmentId=shortText(body?.materialSegmentId,80);
 
     if (!lang || !level) {
       return Response.json({ error: "Missing lesson language or level." }, { status: 400 });
@@ -109,11 +110,24 @@ export async function POST(req) {
     };
     const richLessonRow = {
       ...lessonRow,
+      material_id: materialId,
+      material_segment_id: materialSegmentId,
+      segment_index: Number.isInteger(body?.segmentIndex)?body.segmentIndex:null,
+      segment_count: Number.isInteger(body?.segmentCount)?body.segmentCount:null,
       input_text: longText(body?.inputText),
       lesson_snapshot: jsonObject(body?.lessonSnapshot),
       interaction_snapshot: jsonObject(body?.interactionSnapshot),
       saved_options: jsonObject(body?.savedOptions),
     };
+
+    if(materialId&&materialSegmentId){
+      const owned=await fetch(`${env.url}/rest/v1/user_materials?id=eq.${encodeURIComponent(materialId)}&user_id=eq.${encodeURIComponent(user.id)}&select=id`,{headers:jsonHeaders(env.serviceKey)});
+      const rows=await owned.json();
+      if(!owned.ok||!rows?.length)return Response.json({error:"Material not found."},{status:404});
+      const segment=await fetch(`${env.url}/rest/v1/material_segments?id=eq.${encodeURIComponent(materialSegmentId)}&material_id=eq.${encodeURIComponent(materialId)}&select=id`,{headers:jsonHeaders(env.serviceKey)});
+      const segmentRows=await segment.json();
+      if(!segment.ok||!segmentRows?.length)return Response.json({error:"Material segment not found."},{status:404});
+    }
 
     let inserted;
     try {
