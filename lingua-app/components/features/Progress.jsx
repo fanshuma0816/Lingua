@@ -66,7 +66,7 @@ function LessonHistoryCard({ lesson, onOpenLesson, canRestore }) {
         <Svg n="chevronRight" />
       </summary>
       <div className="history-detail">
-        {canRestore && <button className="btn btn-primary btn-sm" onClick={()=>onOpenLesson?.(lesson.id,!lesson.generated)}>{t.generationQuota.openLesson}</button>}
+        {canRestore && <button className="btn btn-primary btn-sm" onClick={()=>onOpenLesson?.(lesson.id,!lesson.generated)}>{t.quotaHints.freeReview}</button>}
         {lesson?.input_text && <section>
           <h3>{t.progress.savedText}</h3>
           <p className="history-text notranslate" translate="no" lang={lesson.lang === "Dutch" ? "nl" : undefined}>{lesson.input_text}</p>
@@ -150,7 +150,7 @@ function Progress({ auth, onLogin, onStartLearning, onResume, onOpenLesson }) {
             <b>{localStats.title}</b>
             <p>{[localStats.lang, localStats.level, localStats.sentences && t.progress.sentences(localStats.sentences), localStats.words && t.progress.words(localStats.words)].filter(Boolean).join(" · ")}</p>
           </div>
-          <button className="btn btn-primary btn-sm focusable" onClick={onResume}>{t.progress.resume}</button>
+          <button className="btn btn-primary btn-sm focusable" onClick={onResume}>{currentLesson?.lessonId&&currentLesson.delivered?t.quotaHints.resumeFree:t.progress.resume}</button>
         </div>
       )}
       {records.loading && <div className="card card-p">{t.progress.loading}</div>}

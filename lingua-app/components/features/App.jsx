@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { AuthPrompt } from "./AuthPrompt";
 import { Collection } from "./Collection";
 import { Login } from "./Login";
+import { QuotaStatus } from "./QuotaStatus";
+import { quotaPresentation } from "../../lib/quota-presentation";
 
 import { Progress } from "./Progress";
 import { SessionView, Sidebar } from "./Session";
@@ -61,12 +63,12 @@ function App(){
     (async()=>{
       setUiLangState(DB.get("uiLang","en")); setTheme(DB.get("theme","light"));
       let initialized=false;
-      try { await refreshAuth();initialized=true; } catch(error) { setPhaseError(error.code||"service_unavailable"); }
+      try { await refreshAuth();initialized=true; } catch(error) { if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable"); }
       if(cancelled)return;
       let storedLesson=initialized?DB.get("currentLesson",null):null;
       if(storedLesson?.lessonId){
         try{const result=await lessonRequest(`/api/lesson/${storedLesson.lessonId}`);storedLesson={...result.lesson,delivered:result.delivered};restoreLesson({...result,lesson:storedLesson});setDoneSet(new Set(result.progress?.completedSteps||[]));}
-        catch(error){setPhaseError(error.code||"service_unavailable");storedLesson=null;}
+        catch(error){if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable");storedLesson=null;}
       }
       setLesson(storedLesson); setText(DB.get("currentText","")); setUserWords(DB.get("unknownWords",[])||[]);
       setHydrated(true);
@@ -92,6 +94,7 @@ function App(){
   const [auth,setAuth]=useState({configured:true,session:null,checked:false});
   const [phase,setPhase]=useState(null);
   const [phaseError,setPhaseError]=useState("");
+  const [quotaLoad,setQuotaLoad]=useState("loading");
   const [continuation,setContinuation]=useState(null);
   const [deliveryState,setDeliveryState]=useState("idle");
   const pathnameRef=useRef(pathname),phaseRef=useRef(null),quotaRefreshVersion=useRef(0);
@@ -120,7 +123,7 @@ function App(){
             setAuthPrompt(false);
             if(pathnameRef.current==="/login")navigatePath(DB.get("loginNextPath","/progress"));
           }
-        }catch(error){if(!disposed)setPhaseError(error.code||"service_unavailable");}
+        }catch(error){if(!disposed)if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable");}
       }while(queued&&!disposed);
       checking=false;
     };
@@ -129,10 +132,7 @@ function App(){
   },[]);
   useEffect(()=>subscribeQuotaChanges(signal=>{
     if(signal.environment!==phaseRef.current?.environment || signal.userId!==identityRef.current)return;
-    const version=++quotaRefreshVersion.current,actor=identityRef.current;
-    refreshEntitlements().then(balance=>{
-      if(version===quotaRefreshVersion.current && actor===identityRef.current && balance.environment===phaseRef.current?.environment)setPhase(balance);
-    }).catch(error=>{if(version===quotaRefreshVersion.current)setPhaseError(error.code||"service_unavailable");});
+    refreshQuotaBalance().catch(()=>{});
   }),[]);
   // The learning path (sidebar) stays open by default on desktop; the learner
   // can still collapse it with the toggle. On narrow screens it starts closed.
@@ -162,6 +162,19 @@ function App(){
   }
   function navigateTo(nextScreen,path){ setScreen(nextScreen); rememberResumePath(path); if(pathname!==path) router.push(path); }
   function replaceWith(path){ if(pathname!==path) router.replace(path); }
+  function acceptQuota(balance){setPhase(balance);setQuotaLoad("ready");}
+  async function refreshQuotaBalance(){
+    const version=++quotaRefreshVersion.current,actor=identityRef.current;
+    setQuotaLoad("loading");
+    try{
+      const balance=await refreshEntitlements();
+      if(version===quotaRefreshVersion.current&&actor===identityRef.current)acceptQuota(balance);
+      return balance;
+    }catch(error){
+      if(version===quotaRefreshVersion.current&&actor===identityRef.current){setQuotaLoad("error");}
+      error.quotaReadFailure=true;throw error;
+    }
+  }
   async function refreshAuth(){
     const state=await getAuthState(), oldLesson=DB.get("currentLesson",null);
     const nextIdentity=state.session?.user?.id||"guest";
@@ -170,8 +183,7 @@ function App(){
     identityRef.current=nextIdentity;
     if(changed){stopSpeak();setLesson(null);setText("");setUserWords([]);setDoneSet(new Set());clearLineTr();}
     setAuth({...state,checked:true});
-    let balance;
-    try{balance=await refreshEntitlements();}catch(error){setPhase(null);throw error;}
+    const balance=await refreshQuotaBalance();
     if(balance.enabled&&state.session?.accessToken) await claimLessons();
     if(balance.enabled&&(changed||firstIdentity)){
       let restored=DB.get("currentLesson",null),progress={};
@@ -190,7 +202,7 @@ function App(){
     }
     setContinuation(balance.enabled?generationToContinue(balance.environment,state.session?.user?.id||null):null);
     if(changed)setPhaseError("");
-    identityRef.current=nextIdentity;setPhase(balance);setAuth({...state,checked:true}); return state;
+    identityRef.current=nextIdentity;setAuth({...state,checked:true}); return state;
   }
   function navigatePath(path){ const r=routeState(path); navigateTo(r.screen,r.path); }
   function resumeLearning(){
@@ -218,7 +230,7 @@ function App(){
       setAuthPrompt(false);
       const intended=DB.get("loginNextPath",DB.get("resumePath","/progress"));
       navigatePath(intended==="/login"?"/progress":intended);
-    } catch(error){setPhaseError(error.code||"service_unavailable");}
+    } catch(error){if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable");}
   }
   function toggleTheme(){ setTheme(v=>{ const n=v==="dark"?"light":"dark"; DB.set("theme",n); return n; }); }
   function toggleSide(){ setPinned(p=>!p); }
@@ -272,6 +284,7 @@ function App(){
     if(busyGeneration.current)return;
     const startedAs=identityRef.current;
     busyGeneration.current=true;setPhaseError("");setDeliveryState("idle");setScreen("loading");
+    quotaRefreshVersion.current++;setQuotaLoad("loading");
     DB.set("lastInputMode",d.material?.accountMaterialId?"material":d.material?"find":"material");
     try {
       const result=await createLesson(d);
@@ -282,7 +295,8 @@ function App(){
       navigateTo("scan","/scan");
       if(!L.lessonId) prefetchFocus(L);
     } catch(error) {
-      setPhaseError(error.code||"service_unavailable");setScreen("input");
+      if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable");setScreen("input");
+      refreshQuotaBalance().catch(()=>{});
       if(["request_failed","request_expired"].includes(error.code))setContinuation(null);
       if(error.code==="sign_in_required"){
         const balance=phaseRef.current;
@@ -304,7 +318,7 @@ function App(){
       try{
         const result=await confirmLesson(current.lessonId);
         if(startedAs!==identityRef.current)throw {code:"account_changed"};
-        setPhase(result.entitlements);setContinuation(null);setDeliveryState("confirmed");
+        quotaRefreshVersion.current++;acceptQuota(result.entitlements);setContinuation(null);setDeliveryState("confirmed");
         setLesson(cur=>{if(cur?.lessonId!==current.lessonId)return cur;const next={...cur,delivered:true};DB.set("currentLesson",next);return next;});
         prefetchFocus(current);
         if(current.material?.accountMaterialId&&current.material?.accountSegmentId&&auth.session?.accessToken)
@@ -312,6 +326,7 @@ function App(){
         return true;
       }catch(error){
         if(startedAs===identityRef.current){
+          refreshQuotaBalance().catch(()=>{});
           setDeliveryState(["request_expired","request_failed","lesson_not_found"].includes(error.code)?"failed":"uncertain");
           if(["request_expired","request_failed","lesson_not_found"].includes(error.code))setPhaseError(error.code);
         }
@@ -329,7 +344,7 @@ function App(){
       setLesson(L);setText(L.text||"");setUserWords(DB.get("unknownWords",[]));setDoneSet(new Set(result.progress?.completedSteps||[]));
       clearLineTr();navigatePath(result.delivered?(result.progress?.path||"/preview"):"/scan");
       if(result.delivered)prefetchFocus(L);
-    } catch(error){setPhaseError(error.code||"service_unavailable");}
+    } catch(error){if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable");}
   }
   useEffect(()=>{
     if(!hydrated||pathname!=="/scan"||screen!=="scan"||!lesson?.lessonId||lesson.delivered)return;
@@ -368,12 +383,15 @@ function App(){
       material:{id:segment.id,title:material.display_name,source:material.source_type,targetUserLevel:String(material.learner_level).slice(0,2),validatedTextLevel:segment.material_level||String(material.learner_level).slice(0,2),difficultyTier:segment.difficulty_label||"balanced",accountMaterialId:material.id,accountSegmentId:segment.id,segmentIndex:segment.segment_index,segmentCount:material.segments.length}});
   }
 
-  if(!hydrated) return <UIContext.Provider value={{uiLang,setUiLang,t}}><main className="main"><Loading/></main></UIContext.Provider>;
+  const quota=quotaPresentation(phase,{status:quotaLoad});
+  const uiContextValue={uiLang,setUiLang,t,quota};
 
-  if(screen==="login") return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
-    <main className="main"><Login nextPath={DB.get("loginNextPath","/progress")} onDone={continueAfterLogin}/></main></UIContext.Provider>);
+  if(!hydrated) return <UIContext.Provider value={uiContextValue}><main className="main"><Loading/></main></UIContext.Provider>;
 
-  return (<UIContext.Provider value={{uiLang,setUiLang,t}}>
+  if(screen==="login") return (<UIContext.Provider value={uiContextValue}>
+    <main className="main"><QuotaStatus onRetry={()=>refreshQuotaBalance().catch(()=>{})}/><Login nextPath={DB.get("loginNextPath","/progress")} onDone={continueAfterLogin}/></main></UIContext.Provider>);
+
+  return (<UIContext.Provider value={uiContextValue}>
     <div className={"shell"+(pinned?" pinned":"")}>
       <div className="app-chrome">
         <a className="app-brand-link focusable" href="https://www.lingualanguage.site/" aria-label="Lingua home">
@@ -393,7 +411,7 @@ function App(){
       </div>
       </div>
       <main className="main">
-        {phase?.enabled && ["input","progress"].includes(screen) && <p className="tiny muted" role="status">{t.generationQuota.balance(phase.remaining,phase.reserved)}{!phase.canGenerate?` · ${phase.reserved?t.generationQuota.inProgress:(phase.signedIn?t.generationQuota.exhausted:t.generationQuota.guestExhausted)}`:""}</p>}
+        <QuotaStatus courseFree={!!lesson?.delivered&&["scan","preview","lesson","done"].includes(screen)} onRetry={()=>refreshQuotaBalance().catch(()=>{})}/>
         {phaseError && <div className="notice" role="alert">{t.generationQuota.errors[phaseError]||t.generationQuota.errors.service_unavailable} <button className="btn btn-ghost btn-sm" onClick={()=>navigateTo("progress","/progress")}>{t.progress.savedLessons}</button></div>}
         {phase?.enabled && auth.session?.accessToken && continuation && screen==="input" && <div className="notice" role="status" style={{flexWrap:"wrap"}}>
           <p style={{flexBasis:"100%",margin:0}}>{continuation.recover?t.generationQuota.recoverPrevious:t.generationQuota.readyAfterLogin}</p>

@@ -11,6 +11,8 @@ try {
  if(!browser){
   const client=new URL('generation-client.test.mjs',output);
   await build({entryPoints:[new URL('../test/generation-client.test.mjs',import.meta.url).pathname],outfile:client.pathname,bundle:true,platform:'node',format:'esm',packages:'external'});tests.push(client.pathname);
+  const quota=new URL('quota-presentation.test.mjs',output);
+  await build({entryPoints:[new URL('../test/quota-presentation.test.mjs',import.meta.url).pathname],outfile:quota.pathname,bundle:true,platform:'node',format:'esm',packages:'external'});tests.push(quota.pathname);
  }
  const result=spawnSync(process.execPath,browser?[file.pathname]:['--test',...tests],{stdio:'inherit',env:process.env});
  process.exitCode=result.status??1;

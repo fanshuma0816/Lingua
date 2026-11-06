@@ -1,4 +1,5 @@
 "use client";
+import { GenerationCostHint } from "./QuotaStatus";
 
 import { useEffect, useRef, useState } from "react";
 import { MAX_DOCUMENT_CHARS } from "../../config/constants";
@@ -68,6 +69,7 @@ function MaterialImporter({auth,level,goal,onNext,onRequireLogin,initialText="",
       <h2>{long?(t.materialPlanTitle?.(plan.segmentCount)||`Recommended: ${plan.segmentCount} lessons`):(t.materialReadyTitle||"Your material is ready")}</h2>
       {long&&<p className="sub">{t.materialPlanBody||"Each lesson uses one complete section of the text."}</p>}
       <div className="segment-list">{plan.segments.map(s=><div className="segment-row" key={s.localId}><span><b>{t.materialPart?.(s.index+1)||`Part ${s.index+1}`}</b><small>{s.wordCount} {t.wordsLabel||"words"}</small></span><span>{s.estimatedMinutesMin}–{s.estimatedMinutesMax} {t.minutesShort||"min"}</span></div>)}</div>
+      <GenerationCostHint/>
       {long&&<div className="material-save-choice">
         <p>{signedIn?(t.saveMaterialSignedIn||"Save the cleaned text and remaining lesson plan to your account?"):(t.saveMaterialGuest||`Sign in to save all ${plan.segmentCount} lessons. Without signing in, only the first lesson will be kept.`)}</p>
         <div className="row wrap" style={{gap:9}}><button className="btn btn-primary" disabled={status==="saving"} onClick={saveAndStart}>{signedIn?(status==="saving"?t.savingMaterial:t.saveMaterialAndStart):(t.signInSavePlan||"Sign in and save the plan")}</button><button className="btn btn-outline" onClick={startOnly}>{t.currentLessonOnly||"Study this lesson only"}</button></div>

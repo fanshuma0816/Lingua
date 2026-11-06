@@ -51,7 +51,7 @@ function Login({nextPath="/progress",onDone}){ const {t}=useUI(); const router=u
         <button type="button" className="focusable" aria-pressed={!signup} disabled={busy} onClick={()=>switchMode("login")}>{c.loginTab}</button>
       </div>
       <h1>{signup?c.signupTitle:c.loginTitle}</h1>
-      <p className="sub">{metered?t.generationQuota.accountGrant:(signup?c.signupBody:c.loginBody)}</p>
+      <p className="sub">{metered?t.quotaHints.accountGrant:(signup?c.signupBody:c.loginBody)}</p>
       {signup && <ul className="auth-benefits">{c.benefits.map(benefit=><li key={benefit}>{benefit}</li>)}</ul>}
       <form onSubmit={e=>{e.preventDefault();sendLink();}}>
         <label className="fld" htmlFor="login-email">{t.email}</label>

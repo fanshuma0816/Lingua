@@ -1,5 +1,25 @@
 const UI_TEXT={
   en:{
+    quotaHints:{
+      regionLabel:"Your generation allowance",identities:{guest:"Guest",free:"Free account"},
+      available:n=>`${n} ${n===1?"generation":"generations"} available`,pending:n=>`${n} in progress`,times:n=>`${n} ${n===1?"generation":"generations"}`,
+      loading:"Checking your generation allowance…",unavailable:"Your allowance cannot be read right now. Please check again.",retry:"Check allowance",
+      guestHint:"One complete guest lesson is free. Sign in for 3 additional one-time generations.",
+      onceHint:"One-time free generations; signing in does not reset them.",lastHint:"Your last free generation. Saved lessons remain free to review.",
+      guestUsed:"Your free guest lesson has been used. Sign in for 3 additional generations, once only.",
+      exhausted:"No free generations remain. Your saved lessons are still free to review without a limit.",
+      processing:n=>`${n} ${n===1?"generation is":"generations are"} reserved for an unfinished request, not yet confirmed as used.`,
+      courseFree:"This lesson has already been generated. Continuing or reviewing it uses no further generations.",
+      detailsTitle:"Your benefits",meaning:"These numbers count new lesson generations, not study sessions, lesson steps or audio plays.",
+      guestGrant:"Guests can generate 1 complete lesson for free.",
+      accountGrant:"New and existing accounts receive 3 additional free generations, once only. They do not refresh monthly, and signing in again does not reset them.",
+      rules:["A new lesson uses 1 generation only after successful delivery to Quick Scan.","Failed generation is not charged. Refreshing or repeating the same request does not charge again.","Generated and saved lessons can be reviewed free, without a limit.","Generating a new lesson from saved material follows the new-generation rules.","Creating an account does not start a paid subscription or charge you."],
+      guestSave:"Guests: sign in to keep lessons in your account and restore them on another device.",
+      breakdown:{granted:"Granted once",used:"Used",reserved:"In progress · not yet used",available:"Available now"},
+      recommendationFree:"Recommending and viewing materials does not use a lesson generation.",
+      generationCost:"Generating a new lesson uses 1 generation only after successful delivery to Quick Scan.",
+      freeReview:"Review · free",resumeFree:"Continue · free",generateNext:"Generate next lesson",materialNewHint:"A new lesson uses 1 generation on delivery. Opening an existing lesson is free."
+    },
     generationQuota:{
       freeRulesTitle:"Free generation rules",inProgress:"A lesson request is in progress. Recover it before starting another.",
       readyAfterLogin:"Your account is ready. Your selected material is kept; continue when you are ready to use a generation.",
@@ -145,6 +165,26 @@ const UI_TEXT={
     celebrate:{explored:(n)=>`Today you explored ${n} new words`},
   },
   zh:{
+    quotaHints:{
+      regionLabel:"你的生成额度",identities:{guest:"游客",free:"免费账户"},
+      available:n=>`可生成 ${n} 次`,pending:n=>`${n} 次处理中`,times:n=>`${n} 次`,
+      loading:"正在查询生成额度……",unavailable:"暂时无法读取额度，请重新查询。",retry:"重新查询额度",
+      guestHint:"游客可免费生成 1 节完整课程；登录后额外获得一次性 3 次额度。",
+      onceHint:"一次性免费生成额度，重新登录不重置。",lastHint:"这是最后 1 次免费生成额度，已保存课程仍可免费复习。",
+      guestUsed:"游客免费体验已使用；登录后可额外获得一次性 3 次生成额度。",
+      exhausted:"免费生成额度已用完，已保存课程仍可无限次免费复习。",
+      processing:n=>`有 ${n} 次额度为尚未完成的请求预留，尚未确认扣除。`,
+      courseFree:"本课已生成，继续学习或重复复习不再消耗生成次数。",
+      detailsTitle:"权益说明",meaning:"这里的次数指新课程生成次数，不是学习次数、课程步骤数或音频播放次数。",
+      guestGrant:"游客可免费生成 1 节完整课程。",
+      accountGrant:"新旧账户均额外获得一次性 3 次免费生成额度，不按月刷新，重新登录不重置。",
+      rules:["新课程成功交付到 Quick Scan 后，才确认使用 1 次额度。","生成失败不扣次；刷新或重复提交同一请求，不会重复扣次。","已生成并保存的课程可以无限次免费复习。","从收藏材料生成新课程，仍按新课生成规则处理。","创建账户不会自动订阅或收费。"],
+      guestSave:"游客请登录后将课程保留到账户，以便长期保存和换设备恢复。",
+      breakdown:{granted:"一次性已发放",used:"已使用",reserved:"处理中 · 尚未扣除",available:"当前可用"},
+      recommendationFree:"推荐和查看材料不会使用课程生成次数。",
+      generationCost:"生成新课程并成功交付到 Quick Scan 后，才使用 1 次额度。",
+      freeReview:"免费复习",resumeFree:"继续学习 · 免费",generateNext:"生成下一课",materialNewHint:"生成新课在交付后使用 1 次；打开已有课程免费。"
+    },
     generationQuota:{
       freeRulesTitle:"免费生成规则",inProgress:"已有课程请求正在处理中，请先恢复原请求。",
       readyAfterLogin:"账户已就绪，已保留你选好的材料。点击继续后才会生成课程并按规则使用额度。",

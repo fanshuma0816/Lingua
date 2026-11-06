@@ -15,6 +15,7 @@ import { DB } from "../../lib/storage";
 import { cleanText } from "../../lib/text";
 import { aiAnalyze, sampleMaterials } from "../../services/api";
 import { activeHistory, isRepeated, readMaterialHistory, rememberMaterial } from "../../lib/material-history";
+import { GenerationCostHint } from "./QuotaStatus";
 import { MaterialImporter } from "./MaterialImporter";
 
 const TOPIC_KEYS=["daily life","news","culture","travel","work & study","food","technology","society"];
@@ -238,6 +239,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin,
         <span/>
         <button className="btn btn-primary" disabled={!lang||generating} onClick={generateMaterials}>{generating?t.generatingMaterials:t.generateMaterials}</button>
       </div>
+      <GenerationCostHint recommendation/>
       {generating && <><div className="track" style={{marginTop:14,overflow:"hidden"}}><span className="indet"/></div><div className="tiny muted" style={{marginTop:8}}>{t.materialWaitHint}</div></>}
     </div>
     {materialError && !generating && <div className="card card-p" style={{marginTop:22}}>
@@ -248,6 +250,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin,
         <div><h2 style={{margin:0}}>{t.chooseMaterial}</h2><div className="tiny muted">{t.switchAnytime}</div></div>
         <button className="btn btn-primary btn-sm" disabled={!materials.length} onClick={startGenerated}>{t.useThisText} →</button>
       </div>
+      <GenerationCostHint/>
       <div className="generated-grid">
         {Array.from({length:MATERIAL_COUNT},(_,i)=>i).map(i=>{ const m=materials[i];
           if(!m) return (<div key={i} className="generated-card gen-skel" aria-hidden="true">

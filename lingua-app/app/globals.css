@@ -689,3 +689,20 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .auth-plan-details p{margin:8px 0 0}
 .auth-pop .auth-launch-note{font-size:12px;line-height:1.5}
 @media(max-width:640px){.auth-card{padding:20px}.auth-card h1{font-size:21px}}
+
+/* Quota hints only: no changes to existing page, navigation or lesson layout. */
+.quota-status{margin:0 0 18px;font-size:13px;line-height:1.6}
+.quota-status-row,.quota-status-summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.quota-status-identity{font-size:11px}
+.quota-status-hint{margin:4px 0 0}
+.quota-status-details{margin-top:5px}
+.quota-status-details>summary{cursor:pointer;width:fit-content;font-size:12px;color:hsl(var(--muted-foreground))}
+.quota-status-details>summary:focus-visible{outline:2px solid hsl(var(--primary));outline-offset:3px;border-radius:3px}
+.quota-status-policy{margin-top:8px;overflow-wrap:anywhere}
+.quota-status-policy p{margin:0 0 8px}
+.quota-status-policy p:last-child{margin-bottom:0}
+.quota-status-policy ul{margin:0 0 8px;padding-left:20px}
+.quota-status-breakdown{display:flex;flex-wrap:wrap;gap:10px 24px;margin:0 0 12px}
+.quota-status-breakdown dt{font-size:12px;color:hsl(var(--muted-foreground))}
+.quota-status-breakdown dd{margin:0;font-weight:600}
+.quota-cost-hint{margin:8px 0 12px;line-height:1.6}
