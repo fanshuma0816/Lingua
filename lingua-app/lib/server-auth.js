@@ -47,8 +47,13 @@ export async function resolveIdentity(req, { issueGuest = false } = {}) {
     user = await r.json();
     if (!user?.id) throw new ApiError("sign_in_required", 401);
     if (config.environment === "test") {
-      const allowed = (process.env.MONETIZATION_TEST_USER_IDS || "").split(",").map(v => v.trim()).filter(Boolean);
-      if (!allowed.includes(user.id)) throw new ApiError("test_account_required", 403);
+      const allowedIds = (process.env.MONETIZATION_TEST_USER_IDS || "").split(",").map(v => v.trim()).filter(Boolean);
+      const allowedEmails = (process.env.MONETIZATION_TEST_EMAILS || "").split(",").map(v => v.trim().toLowerCase()).filter(Boolean);
+      // Only the verified address returned by Supabase Auth is trusted. Never user_metadata or request input.
+      const verifiedEmail = user.email_confirmed_at && !user.is_anonymous && typeof user.email === "string"
+        ? user.email.trim().toLowerCase() : null;
+      if (!allowedIds.includes(user.id) && !(verifiedEmail && allowedEmails.includes(verifiedEmail)))
+        throw new ApiError("test_account_required", 403);
     }
   }
   let guest = guestFromCookie(req, config.environment), cookie;

@@ -9,7 +9,7 @@ import { getAuthState, signInWithEmail, subscribeAuthChanges } from "../../lib/a
 import { getEntitlements } from "../../lib/lesson-api-client";
 import { DB } from "../../lib/storage";
 
-function Login({nextPath="/progress"}){ const {t}=useUI(); const router=useRouter(); const [email,setEmail]=useState(DB.get("email","")); const [status,setStatus]=useState("checking"); const [message,setMessage]=useState(""); const [mode,setMode]=useState("signup"); const c=t.commercial; const signup=mode==="signup"; const busy=status==="sending"||status==="checking"; const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+function Login({nextPath="/progress",onDone}){ const {t}=useUI(); const router=useRouter(); const [email,setEmail]=useState(DB.get("email","")); const [status,setStatus]=useState("checking"); const [message,setMessage]=useState(""); const [mode,setMode]=useState("signup"); const c=t.commercial; const signup=mode==="signup"; const busy=status==="sending"||status==="checking"; const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
   const [metered,setMetered]=useState(false);
   useEffect(()=>{getEntitlements().then(q=>setMetered(q.enabled)).catch(()=>{});},[]);
   useEffect(()=>{
@@ -17,7 +17,7 @@ function Login({nextPath="/progress"}){ const {t}=useUI(); const router=useRoute
     async function check(){
       const state=await getAuthState();
       if(cancelled) return;
-      if(state.session?.accessToken){ router.replace(nextPath||"/progress"); return; }
+      if(state.session?.accessToken){ if(onDone)await onDone();else router.replace(nextPath||"/progress"); return; }
       setStatus("idle");
     }
     check();
@@ -61,8 +61,8 @@ function Login({nextPath="/progress"}){ const {t}=useUI(); const router=useRoute
       {message && <p className={"tiny save-status "+(status==="error"?"error":"ok")} role="status">{message}</p>}
       <p className="tiny muted auth-password-note">{t.noPassword}</p>
       {!signup && <p className="tiny muted">{c.noCharge}</p>}
-      <div className="auth-pro-note"><p>{c.proNote}</p><a href="https://www.lingualanguage.site/#pricing" target="_blank" rel="noopener noreferrer">{c.viewPlans} →</a></div>
-      <details className="auth-plan-details"><summary>{c.viewPlans}</summary><p>{c.planRules}</p><p>{c.renewalNote}</p></details>
+      {!metered&&<div className="auth-pro-note"><p>{c.proNote}</p><a href="https://www.lingualanguage.site/#pricing" target="_blank" rel="noopener noreferrer">{c.viewPlans} →</a></div>}
+      <details className="auth-plan-details"><summary>{metered?t.generationQuota.freeRulesTitle:c.viewPlans}</summary><p>{metered?t.generationQuota.activeRules:c.planRules}</p>{!metered&&<p>{c.renewalNote}</p>}</details>
     </div>
   </div>);
 }

@@ -154,7 +154,7 @@ function Progress({ auth, onLogin, onStartLearning, onResume, onOpenLesson }) {
         </div>
       )}
       {records.loading && <div className="card card-p">{t.progress.loading}</div>}
-      {records.error && <div className="notice">{records.error}</div>}
+      {records.error && <div className="notice">{t.generationQuota.errors[records.error]||t.progress.loadError}</div>}
       {hasSavedLessons && <div className="history-section">
         <h2>{t.progress.savedLessons}</h2>
         <div className="history-list">

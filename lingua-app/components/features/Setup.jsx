@@ -1,5 +1,5 @@
 "use client";
-import { getEntitlements, learningFetch, isAccessError } from "../../lib/lesson-api-client";
+import { refreshEntitlements, learningFetch, isAccessError } from "../../lib/lesson-api-client";
 
 import { useEffect, useRef, useState } from "react";
 import { materialId as cefrMaterialId, validateMaterialFit } from "../../lib/cefr.mjs";
@@ -54,12 +54,13 @@ function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin,
   const savedLang=DB.get("lang","Dutch");
   const savedLevel=DB.get("level",LEVELS[1]);
   const [lang,setLang]=useState(LANG_CODE[savedLang]?savedLang:"Dutch"); const [level,setLevel]=useState(LEVELS.includes(savedLevel)?savedLevel:LEVELS[LEVELS.length-1]); const [goal,setGoal]=useState(DB.get("goal",GOALS[0]));
-  const [durationIdx,setDurationIdx]=useState(1);
-  const [topicIdx,setTopicIdx]=useState(null);
+  const [durationIdx,setDurationIdx]=useState(()=>DB.get("generationDurationIdx",1));
+  const [topicIdx,setTopicIdx]=useState(()=>DB.get("generationTopicIdx",null));
   const [materials,setMaterials]=useState(()=>(DB.get("genMaterials",[])||[]).filter(m=>(savedLang!=="Dutch"||(m.lang==="Dutch"&&m.targetUserLevel===savedLevel.slice(0,2)&&m.recommendationVersion===2))&&!String(m?.duration||"").includes("45-60")&&!String(m?.title||"").includes(" + ")&&(!Array.isArray(m?.parts)||m.parts.length<=1)));
   const [selectedMaterial,setSelectedMaterial]=useState(()=>DB.get("genSelected",0));
   const [materialError,setMaterialError]=useState(false);
   const [generating,setGenerating]=useState(false);
+  useEffect(()=>{DB.set("generationDurationIdx",durationIdx);DB.set("generationTopicIdx",topicIdx);DB.set("lang",lang);DB.set("level",level);DB.set("goal",goal);},[durationIdx,topicIdx,lang,level,goal]);
   const history=useRef(readMaterialHistory());
   const selectionContext=`${lang}|${level}|${durationIdx}`;
   const currentContext=useRef(selectionContext); currentContext.current=selectionContext;
@@ -107,9 +108,9 @@ function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin,
   }
   async function generateMaterials(){
     if(!lang||generating) return;
-    try { const q=await getEntitlements(); if(q.enabled&&!q.canGenerate){
-      const error={code:q.signedIn?"quota_exhausted":"sign_in_required"};onGenerationError?.(error);
-      if(!q.signedIn)onRequireLogin?.("/find","quota");return;
+    try { const q=await refreshEntitlements(); if(q.enabled&&!q.canGenerate){
+      const error={code:q.reserved?"request_processing":q.signedIn?"quota_exhausted":"sign_in_required"};onGenerationError?.(error);
+      if(!q.signedIn&&!q.reserved)onRequireLogin?.("/find","quota");return;
     }}catch(error){onGenerationError?.(error);return;}
     try {
     const requestContext=selectionContext;

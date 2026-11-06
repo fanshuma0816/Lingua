@@ -1,7 +1,29 @@
 "use client";
 import { getAuthState } from "./auth-client";
 import { DB, setLearningScope } from "./storage";
+import { generationToContinue, clearGenerationContinuation, rememberGeneration, associateGenerationLesson } from "./generation-continuation";
 let bootstrap = null;
+const QUOTA_SIGNAL = "lingua:quotaSignal";
+const QUOTA_CHANNEL = "lingua-quota";
+export function publishQuotaChange(environment, userId = "guest") {
+ bootstrap=null;
+ const signal = { environment, userId, id: crypto.randomUUID() };
+ if (typeof window === "undefined") return;
+ try { window.localStorage.setItem(QUOTA_SIGNAL, JSON.stringify(signal)); } catch {}
+ if (typeof BroadcastChannel !== "undefined") { const channel=new BroadcastChannel(QUOTA_CHANNEL);channel.postMessage(signal);channel.close(); }
+ window.dispatchEvent(new CustomEvent("lingua-quota-change", {detail:signal}));
+}
+export function subscribeQuotaChanges(listener) {
+ if (typeof window === "undefined") return () => {};
+ const seen=new Set();
+ const receive=signal=>{if(!signal?.id||seen.has(signal.id))return;seen.add(signal.id);bootstrap=null;if(seen.size>100)seen.delete(seen.values().next().value);listener(signal);};
+ const storage=event=>{if(event.key===QUOTA_SIGNAL){try{receive(JSON.parse(event.newValue));}catch{}}};
+ const local=event=>receive(event.detail);
+ const channel=typeof BroadcastChannel!=="undefined"?new BroadcastChannel(QUOTA_CHANNEL):null;
+ if(channel)channel.onmessage=event=>receive(event.data);
+ window.addEventListener("storage",storage);window.addEventListener("lingua-quota-change",local);
+ return ()=>{window.removeEventListener("storage",storage);window.removeEventListener("lingua-quota-change",local);channel?.close();};
+}
 export class LessonApiError extends Error {
  constructor(code, status) { super(code); this.code = code; this.status = status; }
 }
@@ -17,18 +39,20 @@ export async function lessonRequest(path, options = {}) {
  if (!r.ok) throw new LessonApiError(data.error || "service_unavailable", r.status);
  return data;
 }
-export async function getEntitlements() {
+export async function getEntitlements({ fresh = false } = {}) {
  const auth = await getAuthState(), key = auth.session?.user?.id || "guest";
- if (!bootstrap || bootstrap.key !== key) {
-  bootstrap = { key, promise: lessonRequest("/api/account/entitlements").catch(error => { bootstrap = null; throw error; }) };
+ if (!bootstrap || bootstrap.key !== key || (bootstrap.settled && (fresh || Date.now()-bootstrap.at>10000))) {
+  const entry={key,settled:false,at:Date.now()};
+  entry.promise=lessonRequest("/api/account/entitlements").then(data=>{entry.settled=true;entry.at=Date.now();return data;}).catch(error=>{if(bootstrap===entry)bootstrap=null;throw error;});
+  bootstrap=entry;
  }
- const data = await bootstrap.promise;
- const currentAuth=await getAuthState();
+ const entry=bootstrap,data=await entry.promise,currentAuth=await getAuthState();
  if((currentAuth.session?.user?.id||"guest")!==key)throw new LessonApiError("account_changed",409);
- if (data.enabled) setLearningScope(`${data.environment}:${key}`);
+ if(entry!==bootstrap)return getEntitlements();
+ if (data.enabled) setLearningScope(`${data.environment}:${key}`); else setLearningScope(null);
  return data;
 }
-export function refreshEntitlements() { bootstrap = null; return getEntitlements(); }
+export function refreshEntitlements() { return getEntitlements({fresh:true}); }
 export async function learningFetch(path, options = {}) {
  const body = options.body ? JSON.parse(options.body) : {};
  const current = DB.get("currentLesson", null);
@@ -48,26 +72,51 @@ export function pendingGeneration(payload) {
  DB.set("pendingGeneration", pending); return pending;
 }
 export async function createLesson(payload) {
- const phase = await getEntitlements();
+ const phase = await refreshEntitlements();
  if (!phase.enabled) return lessonRequest("/api/lesson", { method: "POST", body: JSON.stringify(payload) });
+ const auth=await getAuthState(),userId=auth.session?.user?.id||null;
+ const previous=DB.get("pendingGeneration",null);
+ if(phase.reserved && previous && previous.signature!==JSON.stringify(payload))throw new LessonApiError("request_processing",409);
+ const continuation=generationToContinue(phase.environment,userId);
+ // A guest request whose result is uncertain is queried under the original cookie;
+ // never silently submit it as a second account request after signing in.
+ if(continuation?.recover && continuation.requestId && continuation.userId!==userId && JSON.stringify(continuation.payload)===JSON.stringify(payload)) {
+  let recovered;
+  try{recovered=await lessonRequest(`/api/lesson/requests/${continuation.requestId}`);}
+  catch(error){if(["request_failed","request_expired"].includes(error.code))clearGenerationContinuation(continuation.id);throw error;}
+  if(!recovered.lesson?.lessonId)throw new LessonApiError("request_processing",409);
+  associateGenerationLesson(continuation.requestId,recovered.lesson.lessonId);
+  return recovered.lesson;
+ }
  const pending = pendingGeneration(payload);
+ const intent=rememberGeneration(payload,{environment:phase.environment,userId,path:typeof window!=="undefined"?window.location.pathname:"/find",requestId:pending.requestId,recover:true});
  let result;
  try {
   result = await lessonRequest("/api/lesson", { method: "POST", body: JSON.stringify({ ...payload, requestId: pending.requestId }) });
  } catch (error) {
   if (error.status && error.status < 500) {
-   if (["request_expired","request_failed","quota_exhausted","sign_in_required"].includes(error.code)) DB.remove("pendingGeneration");
+   if (["request_expired","request_failed","quota_exhausted","sign_in_required"].includes(error.code)) {DB.remove("pendingGeneration");clearGenerationContinuation(intent?.id);}
    throw error;
   }
   result = await lessonRequest(`/api/lesson/requests/${pending.requestId}`);
  }
  if (result.lesson) result = result.lesson;
  if (!result.lessonId) throw new LessonApiError("request_processing", 409);
+ associateGenerationLesson(pending.requestId,result.lessonId);
  return result;
 }
 export async function confirmLesson(id) {
- const result = await lessonRequest(`/api/lesson/${id}/confirm`, { method: "POST", body: "{}" });
- bootstrap = null; DB.remove("pendingGeneration"); return result;
+ const before=await getAuthState(),userId=before.session?.user?.id||"guest";
+ const intent=DB.get("generationContinuation",null),pending=DB.get("pendingGeneration",null);
+ const result=await lessonRequest(`/api/lesson/${id}/confirm`,{method:"POST",body:"{}"});
+ const after=await getAuthState();
+ if((after.session?.user?.id||"guest")!==userId)throw new LessonApiError("account_changed",409);
+ bootstrap=null;
+ if(DB.get("pendingGeneration",null)?.requestId===pending?.requestId)DB.remove("pendingGeneration");
+ if(intent?.id && intent.lessonId===id)clearGenerationContinuation(intent.id);
+ publishQuotaChange(result.entitlements.environment,userId);
+ if(userId!=="guest")publishQuotaChange(result.entitlements.environment,"guest");
+ return result;
 }
 export async function claimLessons() {
  const phase = await getEntitlements();

@@ -18,8 +18,9 @@ import { identifyUser, resetAnalytics, trackEvent } from "../../lib/analytics";
 import { stopSpeak } from "../../lib/audio";
 import { getAuthState, signOut, subscribeAuthChanges } from "../../lib/auth-client";
 import { scrollToTop } from "../../lib/format";
-import { createLesson, confirmLesson, refreshEntitlements, claimLessons, lessonRequest, restoreLesson, interactionSnapshot } from "../../lib/lesson-api-client";
+import { createLesson, confirmLesson, refreshEntitlements, claimLessons, lessonRequest, restoreLesson, interactionSnapshot, subscribeQuotaChanges } from "../../lib/lesson-api-client";
 import { DB } from "../../lib/storage";
+import { rememberGeneration, generationToContinue, clearGenerationContinuation } from "../../lib/generation-continuation";
 import { clearLineTr } from "../../lib/trcache";
 import { cachedAiAnalyze } from "../../services/api";
 
@@ -70,7 +71,7 @@ function App(){
       setLesson(storedLesson); setText(DB.get("currentText","")); setUserWords(DB.get("unknownWords",[])||[]);
       setHydrated(true);
       const pending=initialized?DB.get("pendingGeneration",null):null;
-      if(pending?.payload) loadLesson(pending.payload);
+      if(pending?.payload&&!storedLesson?.lessonId) loadLesson(pending.payload);
     })();
     return ()=>{cancelled=true;};
   },[]);
@@ -91,6 +92,10 @@ function App(){
   const [auth,setAuth]=useState({configured:true,session:null,checked:false});
   const [phase,setPhase]=useState(null);
   const [phaseError,setPhaseError]=useState("");
+  const [continuation,setContinuation]=useState(null);
+  const [deliveryState,setDeliveryState]=useState("idle");
+  const pathnameRef=useRef(pathname),phaseRef=useRef(null),quotaRefreshVersion=useRef(0);
+  pathnameRef.current=pathname;phaseRef.current=phase;
   const busyGeneration=useRef(false), identityRef=useRef(null), confirming=useRef(null), saveQueue=useRef(Promise.resolve()), dirtyVersion=useRef(0);
   const [authPrompt,setAuthPrompt]=useState(false);
   const [authPromptPurpose,setAuthPromptPurpose]=useState(null);
@@ -103,16 +108,32 @@ function App(){
   useEffect(()=>{ const on=()=>setNarrow(window.innerWidth<1200); on(); window.addEventListener("resize",on); return ()=>window.removeEventListener("resize",on); },[]);
 
   useEffect(()=>{
-    let checking=false;
-    return subscribeAuthChanges(async()=>{
-      if(checking) return;
+    let checking=false,queued=false,disposed=false;
+    const check=async()=>{
+      if(checking){queued=true;return;}
       checking=true;
-      try{
-        const state=await refreshAuth();
-        if(state.session?.accessToken) setAuthPrompt(false);
-      }catch(error){setPhaseError(error.code||"service_unavailable");}finally{ checking=false; }
-    });
+      do{
+        queued=false;
+        try{
+          const state=await refreshAuth();
+          if(!disposed&&state.session?.accessToken){
+            setAuthPrompt(false);
+            if(pathnameRef.current==="/login")navigatePath(DB.get("loginNextPath","/progress"));
+          }
+        }catch(error){if(!disposed)setPhaseError(error.code||"service_unavailable");}
+      }while(queued&&!disposed);
+      checking=false;
+    };
+    const unsubscribe=subscribeAuthChanges(check);
+    return()=>{disposed=true;unsubscribe();};
   },[]);
+  useEffect(()=>subscribeQuotaChanges(signal=>{
+    if(signal.environment!==phaseRef.current?.environment || signal.userId!==identityRef.current)return;
+    const version=++quotaRefreshVersion.current,actor=identityRef.current;
+    refreshEntitlements().then(balance=>{
+      if(version===quotaRefreshVersion.current && actor===identityRef.current && balance.environment===phaseRef.current?.environment)setPhase(balance);
+    }).catch(error=>{if(version===quotaRefreshVersion.current)setPhaseError(error.code||"service_unavailable");});
+  }),[]);
   // The learning path (sidebar) stays open by default on desktop; the learner
   // can still collapse it with the toggle. On narrow screens it starts closed.
   useEffect(()=>{ if(typeof window!=="undefined") setPinned(window.innerWidth>=1200); },[]);
@@ -153,12 +174,22 @@ function App(){
     try{balance=await refreshEntitlements();}catch(error){setPhase(null);throw error;}
     if(balance.enabled&&state.session?.accessToken) await claimLessons();
     if(balance.enabled&&(changed||firstIdentity)){
-      let restored=DB.get("currentLesson",null);
-      if(oldLesson?.lessonId&&state.session?.accessToken){
-        try { const result=await lessonRequest(`/api/lesson/${oldLesson.lessonId}`); restoreLesson(result); restored=result.lesson; } catch {}
+      let restored=DB.get("currentLesson",null),progress={};
+      const candidate=state.session?.accessToken && oldLesson?.lessonId && (!oldLesson.ownerId||oldLesson.ownerId===nextIdentity)?oldLesson:restored;
+      if(candidate?.lessonId){
+        try {
+          const result=await lessonRequest(`/api/lesson/${candidate.lessonId}`);
+          restored={...result.lesson,delivered:result.delivered};progress=result.progress||{};
+          restoreLesson({...result,lesson:restored});
+        } catch(error){
+          restored=null;DB.remove("currentLesson");DB.remove("currentText");
+          if(error.status!==404)throw error;
+        }
       }
-      setLesson(restored);setText(restored?.text||"");setUserWords(DB.get("unknownWords",[])||[]);setDoneSet(new Set());
+      setLesson(restored);setText(restored?.text||"");setUserWords(restored?DB.get("unknownWords",[]):[]);setDoneSet(new Set(progress.completedSteps||[]));
     }
+    setContinuation(balance.enabled?generationToContinue(balance.environment,state.session?.user?.id||null):null);
+    if(changed)setPhaseError("");
     identityRef.current=nextIdentity;setPhase(balance);setAuth({...state,checked:true}); return state;
   }
   function navigatePath(path){ const r=routeState(path); navigateTo(r.screen,r.path); }
@@ -180,11 +211,14 @@ function App(){
   }
   async function handleSignOut(){ await signOut(auth.session); await refreshAuth(); }
   function requireLogin(nextPath=pathname,purpose=null){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPromptPurpose(purpose); setAuthPrompt(true); }
-  function continueAfterLogin(){
-    const r=routeState(pathname);
-    if((r.screen==="scan"||r.screen==="preview"||r.screen==="lesson"||r.screen==="done")&&!lesson){ navigateTo("input","/"); return; }
-    if(r.screen==="input"){ navigateTo("input",r.path); return; }
-    navigateTo("input","/");
+  async function continueAfterLogin(){
+    try {
+      const state=await refreshAuth();
+      if(!state.session?.accessToken)return;
+      setAuthPrompt(false);
+      const intended=DB.get("loginNextPath",DB.get("resumePath","/progress"));
+      navigatePath(intended==="/login"?"/progress":intended);
+    } catch(error){setPhaseError(error.code||"service_unavailable");}
   }
   function toggleTheme(){ setTheme(v=>{ const n=v==="dark"?"light":"dark"; DB.set("theme",n); return n; }); }
   function toggleSide(){ setPinned(p=>!p); }
@@ -213,8 +247,8 @@ function App(){
       return next;
     });
   }
-  async function scanDone(list){ if(lesson?.lessonId&&!lesson.delivered){try{await ensureDelivery();}catch(error){setPhaseError(error.code||"service_unavailable");return;}}  const arr=Array.isArray(list)?list:[]; setRecallWords(arr); trackEvent("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
-  async function scanSkip(){ if(lesson?.lessonId&&!lesson.delivered){try{await ensureDelivery();}catch(error){setPhaseError(error.code||"service_unavailable");return;}}  setRecallWords([]); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
+  async function scanDone(list){ if(lesson?.lessonId&&!lesson.delivered){try{await ensureDelivery();}catch{return;}}  const arr=Array.isArray(list)?list:[]; setRecallWords(arr); trackEvent("quick_scan_completed",{language:lesson?.lang,word_count:arr.length}); navigateTo("preview","/preview"); }
+  async function scanSkip(){ if(lesson?.lessonId&&!lesson.delivered){try{await ensureDelivery();}catch{return;}}  setRecallWords([]); trackEvent("quick_scan_skipped",{language:lesson?.lang}); navigateTo("preview","/preview"); }
 
   function saveChunkProgress(current, status){
     if(!current?.importDocumentId) return;
@@ -237,7 +271,7 @@ function App(){
   async function loadLesson(d){
     if(busyGeneration.current)return;
     const startedAs=identityRef.current;
-    busyGeneration.current=true;setPhaseError("");setScreen("loading");
+    busyGeneration.current=true;setPhaseError("");setDeliveryState("idle");setScreen("loading");
     DB.set("lastInputMode",d.material?.accountMaterialId?"material":d.material?"find":"material");
     try {
       const result=await createLesson(d);
@@ -249,7 +283,12 @@ function App(){
       if(!L.lessonId) prefetchFocus(L);
     } catch(error) {
       setPhaseError(error.code||"service_unavailable");setScreen("input");
-      if(error.code==="sign_in_required") requireLogin(pathname,"quota");
+      if(["request_failed","request_expired"].includes(error.code))setContinuation(null);
+      if(error.code==="sign_in_required"){
+        const balance=phaseRef.current;
+        const intent=rememberGeneration(d,{environment:balance?.environment,userId:auth.session?.user?.id||null,path:pathnameRef.current});
+        setContinuation(intent);requireLogin(pathnameRef.current,"quota");
+      }
     } finally {busyGeneration.current=false;}
   }
   function prefetchFocus(L){
@@ -258,18 +297,31 @@ function App(){
   }
   async function ensureDelivery(){
     if(!lesson?.lessonId||lesson.delivered)return true;
-    const result=await confirmLesson(lesson.lessonId);
-    setPhase(result.entitlements);setLesson(cur=>{
-      if(cur?.lessonId!==lesson.lessonId)return cur;
-      const next={...cur,delivered:true};DB.set("currentLesson",next);return next;
-    });
-    prefetchFocus(lesson);
-    if(lesson.material?.accountMaterialId&&lesson.material?.accountSegmentId&&auth.session?.accessToken)
-      startMaterialSegment(lesson.material.accountMaterialId,lesson.material.accountSegmentId,auth.session.accessToken).catch(()=>{});
-    return true;
+    const current=lesson,startedAs=identityRef.current;
+    if(confirming.current?.lessonId===current.lessonId)return confirming.current.promise;
+    setDeliveryState("confirming");setPhaseError("");
+    const promise=(async()=>{
+      try{
+        const result=await confirmLesson(current.lessonId);
+        if(startedAs!==identityRef.current)throw {code:"account_changed"};
+        setPhase(result.entitlements);setContinuation(null);setDeliveryState("confirmed");
+        setLesson(cur=>{if(cur?.lessonId!==current.lessonId)return cur;const next={...cur,delivered:true};DB.set("currentLesson",next);return next;});
+        prefetchFocus(current);
+        if(current.material?.accountMaterialId&&current.material?.accountSegmentId&&auth.session?.accessToken)
+          startMaterialSegment(current.material.accountMaterialId,current.material.accountSegmentId,auth.session.accessToken).catch(()=>{});
+        return true;
+      }catch(error){
+        if(startedAs===identityRef.current){
+          setDeliveryState(["request_expired","request_failed","lesson_not_found"].includes(error.code)?"failed":"uncertain");
+          if(["request_expired","request_failed","lesson_not_found"].includes(error.code))setPhaseError(error.code);
+        }
+        throw error;
+      }finally{if(confirming.current?.lessonId===current.lessonId)confirming.current=null;}
+    })();
+    confirming.current={lessonId:current.lessonId,promise};return promise;
   }
   async function openLesson(id,legacy=false){
-    setPhaseError("");const startedAs=identityRef.current;
+    setPhaseError("");setDeliveryState("idle");const startedAs=identityRef.current;
     try {
       const result=await lessonRequest(legacy?`/api/lesson/legacy/${id}`:`/api/lesson/${id}`,legacy?{method:"POST",body:"{}"}:{});
       if(startedAs!==identityRef.current)throw {code:"account_changed"};
@@ -280,11 +332,9 @@ function App(){
     } catch(error){setPhaseError(error.code||"service_unavailable");}
   }
   useEffect(()=>{
-    if(!hydrated||screen!=="scan"||!lesson?.lessonId||lesson.delivered||confirming.current===lesson.lessonId)return;
-    confirming.current=lesson.lessonId;
-    ensureDelivery().catch(error=>{setPhaseError(error.code||"service_unavailable");setScreen("input");})
-      .finally(()=>{confirming.current=null;});
-  },[hydrated,screen,lesson?.lessonId]);
+    if(!hydrated||pathname!=="/scan"||screen!=="scan"||!lesson?.lessonId||lesson.delivered)return;
+    ensureDelivery().catch(()=>{});
+  },[hydrated,pathname,screen,lesson?.lessonId]);
   useEffect(()=>{
     const onError=event=>{stopSpeak();setPhaseError(event.detail?.code||"lesson_not_found");navigateTo("input","/");};
     window.addEventListener("lingua-access-error",onError);return()=>window.removeEventListener("lingua-access-error",onError);
@@ -343,11 +393,16 @@ function App(){
       </div>
       </div>
       <main className="main">
-        {phase?.enabled && ["input","progress"].includes(screen) && <p className="tiny muted" role="status">{t.generationQuota.balance(phase.remaining,phase.reserved)}{!phase.canGenerate?` · ${phase.signedIn?t.generationQuota.exhausted:t.generationQuota.guestExhausted}`:""}</p>}
+        {phase?.enabled && ["input","progress"].includes(screen) && <p className="tiny muted" role="status">{t.generationQuota.balance(phase.remaining,phase.reserved)}{!phase.canGenerate?` · ${phase.reserved?t.generationQuota.inProgress:(phase.signedIn?t.generationQuota.exhausted:t.generationQuota.guestExhausted)}`:""}</p>}
         {phaseError && <div className="notice" role="alert">{t.generationQuota.errors[phaseError]||t.generationQuota.errors.service_unavailable} <button className="btn btn-ghost btn-sm" onClick={()=>navigateTo("progress","/progress")}>{t.progress.savedLessons}</button></div>}
+        {phase?.enabled && auth.session?.accessToken && continuation && screen==="input" && <div className="notice" role="status" style={{flexWrap:"wrap"}}>
+          <p style={{flexBasis:"100%",margin:0}}>{continuation.recover?t.generationQuota.recoverPrevious:t.generationQuota.readyAfterLogin}</p>
+          <button className="btn btn-primary btn-sm" onClick={()=>loadLesson(continuation.payload)}>{continuation.recover?t.generationQuota.recoverRequest:t.generationQuota.continueGeneration}</button>
+          {!continuation.recover && <button className="btn btn-ghost btn-sm" onClick={()=>{clearGenerationContinuation(continuation.id);setContinuation(null);}}>{t.generationQuota.chooseAgain}</button>}
+        </div>}
         {screen==="loading" && <Loading/>}
         {screen==="input" && <InputScreen auth={auth} onRequireLogin={requireLogin} onNext={loadLesson} onGenerationError={error=>setPhaseError(error.code||"service_unavailable")} initialMode={currentRoute.inputMode} onRouteChange={replaceWith}/>}
-        {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}
+        {screen==="scan" && lesson && <QuickScan lesson={lesson} text={text} deliveryState={deliveryState} onRetryDelivery={()=>ensureDelivery().catch(()=>{})} onDone={scanDone} onSkip={scanSkip} onBack={()=>navigateTo("input",DB.get("lastInputMode","find")==="material"?"/import":"/find")}/>}
         {screen==="preview" && lesson && <Preview lesson={lesson} text={text} userWords={userWords} onBack={()=>navigateTo("scan","/scan")} onStart={startSession}/>}
         {screen==="lesson" && lesson && <SessionView lesson={lesson} text={text} step={step} auth={auth} onRequireLogin={requireLogin} onPrev={onPrev} onContinue={onContinue} onSkip={onSkip} onPreview={()=>navigateTo("preview","/preview")}/>}
         {screen==="done" && lesson && <Done lesson={lesson} text={text} diag={{unknown:userWords}} doneSet={doneSet} onNew={()=>navigateTo("input","/")} onReview={reviewSession} onOpenMaterial={()=>navigateTo("collection","/collection/materials")}/>}

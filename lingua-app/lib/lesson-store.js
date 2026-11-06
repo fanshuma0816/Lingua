@@ -30,3 +30,48 @@ export async function attachSegmentLessons(identity,segments){
  const ids=new Map();for(const l of lessons){if(!ids.has(l.material_segment_id))ids.set(l.material_segment_id,l.id);}
  return segments.map(segment=>({...segment,lessonId:ids.get(segment.id)||null}));
 }
+
+// A signed, unexpired guest cookie is proof of the original anonymous request.
+// It cannot expose a course that has already been claimed by another account.
+function originalGuest(identity) {
+ return identity.user && identity.guest ? {...identity,user:null,subject:`guest:${identity.guest}`} : null;
+}
+export async function recoverableRequest(identity,requestId) {
+ try{
+  const result=await generationAction(identity,"request",{requestId});
+  if(result.lesson?.ownerId && result.lesson.ownerId!==identity.user?.id)throw new ApiError("request_not_found",404);
+  return result;
+ }
+ catch(error){
+  const guest=originalGuest(identity);
+  if(error.code!=="request_not_found"||!guest)throw error;
+  const result=await generationAction(guest,"request",{requestId});
+  if(result.lesson?.ownerId && result.lesson.ownerId!==identity.user.id)throw new ApiError("request_not_found",404);
+  if(result.lesson && result.status==="confirmed"){
+   await generationAction(identity,"claim",{guest:guest.subject});
+   return {...result,lesson:(await readLesson(identity,result.lesson.lessonId)).lesson};
+  }
+  return result;
+ }
+}
+export async function readRecoverableLesson(identity,lessonId) {
+ try{return await readLesson(identity,lessonId);}
+ catch(error){
+  const guest=originalGuest(identity);
+  if(error.code!=="lesson_not_found"||!guest)throw error;
+  const record=await readLesson(guest,lessonId);
+  if(record.delivered){await generationAction(identity,"claim",{guest:guest.subject});return readLesson(identity,lessonId);}
+  return record;
+ }
+}
+export async function confirmRecoverableLesson(identity,lessonId) {
+ try{return await generationAction(identity,"confirm",{lessonId});}
+ catch(error){
+  const guest=originalGuest(identity);
+  if(error.code!=="lesson_not_found"||!guest)throw error;
+  // Charge the original guest hold, preserving all 3 additional account credits.
+  const result=await generationAction(guest,"confirm",{lessonId});
+  await generationAction(identity,"claim",{guest:guest.subject});
+  return result;
+ }
+}

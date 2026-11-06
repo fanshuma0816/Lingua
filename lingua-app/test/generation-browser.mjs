@@ -29,7 +29,7 @@ try {
    }
    if(path.endsWith('/confirm')){confirmations++;used=1;return send({delivered:true,entitlements:balance()});}
    if(path.endsWith('/progress')){progress=route.request().postDataJSON();return send({ok:true});}
-   if(path.startsWith('/api/lesson/'))return send({lesson:saved,progress,delivered:true});
+   if(path.startsWith('/api/lesson/'))return send({lesson:saved,progress,delivered:!!used});
    if(path==='/api/learning/records')return send({lessons:saved?[{id:saved.lessonId,generated:true,lang:'Dutch',level:'A2',lesson_snapshot:saved,material_title:'Smoke lesson',stats:{},completed_at:new Date().toISOString()}]:[],nextOffset:null});
    return route.fulfill({status:204,body:''});
   });
@@ -65,4 +65,78 @@ try {
  assert.equal(attempts,1);assert.equal(await page.locator('.scanw').count(),0);
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.endsWith(':currentLesson')).length),0);
  console.log('permission failure: no local generation and no lesson stored');await context.close();
+
+ // A failed confirmation remains on the original course. Retry only confirms it.
+ {
+  const context=await browser.newContext(),page=await context.newPage();let posts=0,checks=0,used=0;
+  await page.addInitScript(material=>localStorage.setItem('lingua:genMaterials',JSON.stringify([material])),material);
+  const lesson={...generateLesson(text,'Dutch','A2 — Elementary','General fluency'),text,lessonId:'22222222-2222-4222-8222-222222222222',localLessonId:'22222222-2222-4222-8222-222222222222',environment:'test',ownerId:null};
+  await page.route('**/api/**',route=>{
+   const path=new URL(route.request().url()).pathname;
+   if(path==='/api/account/entitlements')return route.fulfill({json:{enabled:true,environment:'test',signedIn:false,remaining:1-used,reserved:0,canGenerate:!used}});
+   if(path==='/api/lesson'){posts++;return route.fulfill({json:lesson});}
+   if(path.endsWith('/confirm')){checks++;if(checks===1)return route.fulfill({status:503,json:{error:'service_unavailable'}});used=1;return route.fulfill({json:{delivered:true,entitlements:{enabled:true,environment:'test',signedIn:false,remaining:0,reserved:0,canGenerate:false}}});}
+   if(path.startsWith('/api/lesson/')&&!path.endsWith('/progress'))return route.fulfill({json:{lesson,progress:{path:'/scan'},delivered:!!used}});
+   return route.fulfill({status:204,body:''});
+  });
+  await page.goto(`${url}/find`);await page.locator('.material-results-head .btn-primary').click();await page.waitForURL('**/scan');
+  await page.getByRole('button',{name:'Check this lesson again',exact:true}).waitFor();
+  assert.equal(await page.locator('.step-skip').isDisabled(),true);
+  assert.equal(posts,1);assert.equal(used,0);
+  await page.getByRole('button',{name:'Check this lesson again',exact:true}).click();
+  await page.getByText('This new lesson has used 1 generation. Reopening it is free.',{exact:true}).waitFor();
+  assert.equal(posts,1);assert.equal(checks,2);assert.equal(used,1);
+  console.log('uncertain confirmation: stays on original course; retry debits once');await context.close();
+ }
+ // New-account sign-in is simulated here; real mail/provider verification is a separate deployment checklist.
+ {
+  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  let guestUsed=0,accountUsed=0,newCourses=0;const lessons=new Map();
+  const accountId='33333333-3333-4333-8333-333333333333';
+  await page.addInitScript(material=>localStorage.setItem('lingua:genMaterials',JSON.stringify([material])),material);
+  const balances=signed=>({enabled:true,environment:'test',signedIn:signed,remaining:(signed?3-accountUsed:1-guestUsed),reserved:0,canGenerate:signed?accountUsed<3:!guestUsed});
+  await context.route('**/api/**',route=>{
+   const request=route.request(),path=new URL(request.url()).pathname,signed=!!request.headers().authorization;
+   if(path==='/api/account/entitlements')return route.fulfill({json:balances(signed)});
+   if(path==='/api/lesson/claim'){for(const l of lessons.values())if(l.delivered)l.ownerId=accountId;return route.fulfill({json:{ok:true}});}
+   if(path==='/api/lesson'){
+    if(!signed&&guestUsed)return route.fulfill({status:401,json:{error:'sign_in_required'}});
+    if(signed&&accountUsed>=3)return route.fulfill({status:402,json:{error:'quota_exhausted'}});
+    newCourses++;const id=`44444444-4444-4444-8444-${String(newCourses).padStart(12,'0')}`;
+    const l={...generateLesson(text,'Dutch','A2 — Elementary','General fluency'),text,lessonId:id,localLessonId:id,environment:'test',ownerId:signed?accountId:null};lessons.set(id,l);return route.fulfill({json:l});
+   }
+   const id=path.split('/')[3],l=lessons.get(id);
+   if(path.endsWith('/confirm')){if(!l.delivered){if(signed)accountUsed++;else guestUsed++;l.delivered=true;}return route.fulfill({json:{delivered:true,entitlements:balances(signed)}});}
+   if(path.endsWith('/progress'))return route.fulfill({json:{ok:true}});
+   if(l){if(l.ownerId&&!signed)return route.fulfill({status:404,json:{error:'lesson_not_found'}});return route.fulfill({json:{lesson:l,progress:{path:'/scan'},delivered:!!l.delivered}});}
+   return route.fulfill({status:204,body:''});
+  });
+  await page.goto(`${url}/find`);await page.locator('.material-results-head .btn-primary').click();
+  await page.waitForURL('**/scan');await page.getByText('This new lesson has used 1 generation. Reopening it is free.',{exact:true}).waitFor();
+  await page.goto(`${url}/find`);await page.locator('.material-results-head .btn-primary').click();await page.getByRole('dialog').waitFor();
+  await page.evaluate(accountId=>{
+   localStorage.setItem('lingua:authSession',JSON.stringify({accessToken:'verified-preview-token',expiresAt:Math.floor(Date.now()/1000)+3600,user:{id:accountId,email:'preview@example.com'}}));
+   window.dispatchEvent(new CustomEvent('lingua-auth-complete'));
+  },accountId);
+  await page.getByRole('button',{name:'Continue generating',exact:true}).waitFor();
+  assert.equal(newCourses,1);assert.equal(accountUsed,0);assert.equal(guestUsed,1);
+  assert.equal(await page.locator('body').evaluate(el=>el.scrollWidth<=window.innerWidth+1),true);
+  if(process.env.PHASE1_SCREENSHOT_DIR)await page.screenshot({path:`${process.env.PHASE1_SCREENSHOT_DIR}/login-continuation-mobile.png`,fullPage:true});
+  await page.getByRole('button',{name:'Continue generating',exact:true}).click();
+  await page.waitForURL('**/scan');await page.getByText('This new lesson has used 1 generation. Reopening it is free.',{exact:true}).waitFor();
+  assert.equal(newCourses,2);assert.equal(accountUsed,1);assert.equal(guestUsed,1);
+  // Two tabs receive quota changes without replacing the active lesson state.
+  const second=await context.newPage();await second.goto(`${url}/find`);
+  await second.getByText('2 free generations remaining',{exact:false}).waitFor();
+  await page.goto(`${url}/find`);await page.locator('.material-results-head .btn-primary').click();await page.waitForURL('**/scan');
+  await page.getByText('This new lesson has used 1 generation. Reopening it is free.',{exact:true}).waitFor();
+  await second.getByText('1 free generations remaining',{exact:false}).waitFor();
+  assert.equal(accountUsed,2);assert.deepEqual(errors,[]);
+  // Signing in again cannot refill the allowance or generate a course.
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('lingua-auth-complete')));
+  await page.goto(`${url}/find`);await page.getByText('1 free generations remaining',{exact:false}).waitFor();
+  assert.equal(newCourses,3);assert.equal(accountUsed,2);
+  console.log('guest -> sign-in -> explicit continuation; extra 3 credits, no auto-generation; two-tab quota sync');
+  await context.close();
+ }
 } finally {await browser.close();}

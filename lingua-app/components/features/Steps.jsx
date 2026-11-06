@@ -24,7 +24,7 @@ import { cachedAiAnalyze, chatFallback } from "../../services/api";
 // Quick scan — the learner taps words they don't know straight in the text.
 // All words look the same (no difficulty hints, no CEFR badges); the marked
 // words are remembered and drive the Vocabulary & Grammar and Recall steps.
-function QuickScan({lesson,text,onDone,onSkip,onBack}){
+function QuickScan({lesson,text,onDone,onSkip,onBack,deliveryState="idle",onRetryDelivery}){
   const {t}=useUI();
   const src=(text&&text.trim())?text:((lesson.sents||[]).join("\n"));
   const parts=useMemo(()=>src.split(/([\p{L}][\p{L}'’-]*)/u),[src]);
@@ -32,10 +32,15 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   const [marked,setMarked]=useState(()=>new Set((DB.get("unknownWords",[])||[]).map(w=>String(w).toLowerCase())));
   function toggle(w){ const k=w.toLowerCase(); setMarked(prev=>{ const n=new Set(prev); n.has(k)?n.delete(k):n.add(k); DB.set("unknownWords",[...n]); return n; }); }
   const count=marked.size;
+  const waiting=!!lesson.lessonId&&!lesson.delivered;
   return (<div>
     <div className="step-head"><div className="step-head-main"><div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2></div>
-      <button className="btn btn-outline btn-sm step-skip focusable" onClick={onSkip}>{t.scan.skip}</button></div>
+      <button className="btn btn-outline btn-sm step-skip focusable" onClick={onSkip} disabled={waiting}>{t.scan.skip}</button></div>
     <Teacher>{t.scan.teacher}</Teacher>
+    {lesson.lessonId && deliveryState!=="idle" && <div className="tiny muted" role="status" style={{marginBottom:12}}>
+      {t.generationQuota.delivery[deliveryState]}
+      {deliveryState==="uncertain" && <button className="btn btn-ghost btn-sm" onClick={onRetryDelivery}>{t.generationQuota.retryConfirmation}</button>}
+    </div>}
     <div className="card card-p" style={{marginBottom:14}}>
       <div style={{whiteSpace:"pre-wrap",lineHeight:2.05,fontSize:16,maxHeight:360,overflowY:"auto"}}>
         {parts.map((p,i)=> isWord(p)
@@ -52,7 +57,7 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
         {onBack && <button className="btn btn-ghost btn-sm focusable" onClick={onBack}>{t.scan.reselect}</button>}
         <span className="tiny muted">{count?t.scan.marked(count):t.scan.none}</span>
       </div>
-      <button className="btn btn-primary focusable" onClick={()=>onDone([...marked])}>{t.scan.done}</button>
+      <button className="btn btn-primary focusable" onClick={()=>onDone([...marked])} disabled={waiting}>{t.scan.done}</button>
     </div>
   </div>);
 }
