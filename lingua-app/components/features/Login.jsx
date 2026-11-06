@@ -6,9 +6,12 @@ import { Brand, LanguageSwitch } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
 import { getAuthState, signInWithEmail, subscribeAuthChanges } from "../../lib/auth-client";
+import { getEntitlements } from "../../lib/lesson-api-client";
 import { DB } from "../../lib/storage";
 
 function Login({nextPath="/progress"}){ const {t}=useUI(); const router=useRouter(); const [email,setEmail]=useState(DB.get("email","")); const [status,setStatus]=useState("checking"); const [message,setMessage]=useState(""); const [mode,setMode]=useState("signup"); const c=t.commercial; const signup=mode==="signup"; const busy=status==="sending"||status==="checking"; const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  const [metered,setMetered]=useState(false);
+  useEffect(()=>{getEntitlements().then(q=>setMetered(q.enabled)).catch(()=>{});},[]);
   useEffect(()=>{
     let cancelled=false;
     async function check(){
@@ -48,7 +51,7 @@ function Login({nextPath="/progress"}){ const {t}=useUI(); const router=useRoute
         <button type="button" className="focusable" aria-pressed={!signup} disabled={busy} onClick={()=>switchMode("login")}>{c.loginTab}</button>
       </div>
       <h1>{signup?c.signupTitle:c.loginTitle}</h1>
-      <p className="sub">{signup?c.signupBody:c.loginBody}</p>
+      <p className="sub">{metered?t.generationQuota.accountGrant:(signup?c.signupBody:c.loginBody)}</p>
       {signup && <ul className="auth-benefits">{c.benefits.map(benefit=><li key={benefit}>{benefit}</li>)}</ul>}
       <form onSubmit={e=>{e.preventDefault();sendLink();}}>
         <label className="fld" htmlFor="login-email">{t.email}</label>

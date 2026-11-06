@@ -1,3 +1,4 @@
+import { learningFetch, isAccessError } from "./lesson-api-client";
 import { LANG_CODE } from "../config/constants";
 
 const TTS_OK=typeof window!=="undefined" && "speechSynthesis" in window;
@@ -35,9 +36,9 @@ function playUrl(handle,url){ if(handle._cancelled) return; const a=new Audio(ur
 async function fetchTTSBlob(text,lang,rate,voiceRole,tries=2){
   for(let i=0;i<tries;i++){
     try{
-      const res=await fetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:(text||"").slice(0,4000),lang,rate,voiceRole})});
+      const res=await learningFetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:(text||"").slice(0,4000),lang,rate,voiceRole})});
       if(res.ok && (res.headers.get("content-type")||"").includes("audio")) return await res.blob();
-    }catch(e){ /* retry */ }
+    }catch(e){ if(isAccessError(e))throw e; /* retry */ }
   }
   return null;
 }
@@ -58,7 +59,7 @@ function speak(text,lang,rate=1,voiceRole){
     if(!url){ const blob=await IDB.get(key); if(blob){ url=URL.createObjectURL(blob); audioMem&&audioMem.set(key,url); } }
     if(url){ ttsMode="api"; ttsFailStreak=0; playUrl(handle,url); return; }
     // 3) not cached → call the API (the ONLY path that costs money)
-    const blob=await fetchTTSBlob(text,lang,rate,voiceRole,2);
+    let blob;try{blob=await fetchTTSBlob(text,lang,rate,voiceRole,2);}catch(error){if(isAccessError(error)){handle._cancelled=true;return;}throw error;}
     if(handle._cancelled) return;
     if(blob){
       ttsMode="api"; ttsFailStreak=0;

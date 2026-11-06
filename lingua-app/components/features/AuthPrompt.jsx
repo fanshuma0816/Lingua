@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import { Svg } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
 import { signInWithEmail } from "../../lib/auth-client";
+import { getEntitlements } from "../../lib/lesson-api-client";
 import { DB } from "../../lib/storage";
 
 function AuthPrompt({ open, onClose, returnPath, purpose }) {
   const { t } = useUI();
+  const [metered,setMetered]=useState(false);
+  useEffect(()=>{if(open)getEntitlements().then(q=>setMetered(q.enabled)).catch(()=>{});},[open]);
   const [email,setEmail]=useState(()=>DB.get("email",""));
   const [status,setStatus]=useState("idle");
   const [message,setMessage]=useState("");
@@ -34,9 +37,9 @@ function AuthPrompt({ open, onClose, returnPath, purpose }) {
       <div className="auth-pop" role="dialog" aria-modal="true" aria-labelledby="auth-pop-title" onClick={(e) => e.stopPropagation()}>
         <button className="auth-pop-close focusable" onClick={onClose} aria-label={t.authPrompt.close}>×</button>
         <div className="auth-pop-icon"><Svg n="bookmark" /></div>
-        <h2 id="auth-pop-title">{purpose==="save-material-plan"?(t.signInSavePlan||t.authPrompt.title):t.authPrompt.title}</h2>
-        <p>{purpose==="save-material-plan"?(t.saveMaterialGuest||t.authPrompt.body):t.commercial.saveIntro+" "+t.authPrompt.body}</p>
-        <p className="tiny muted auth-launch-note">{t.commercial.saveLaunch}</p>
+        <h2 id="auth-pop-title">{purpose==="quota"?t.generationQuota.signInTitle:purpose==="save-material-plan"?(t.signInSavePlan||t.authPrompt.title):t.authPrompt.title}</h2>
+        <p>{purpose==="quota"?t.generationQuota.guestExhausted:purpose==="save-material-plan"?(t.saveMaterialGuest||t.authPrompt.body):t.commercial.saveIntro+" "+t.authPrompt.body}</p>
+        <p className="tiny muted auth-launch-note">{metered?t.generationQuota.accountGrant:t.commercial.saveLaunch}</p>
         <div className="auth-pop-field">
           <label className="fld" htmlFor="auth-email">{t.email}</label>
           <input id="auth-email" className="input" type="email" autoComplete="email" value={email} placeholder="you@example.com" onChange={e=>setEmail(e.target.value)}/>

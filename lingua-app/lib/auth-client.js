@@ -130,7 +130,8 @@ async function signInWithEmail(email, nextPath = "") {
   const { url, anonKey, configured } = supabaseConfig();
   if (!configured) throw new Error("Supabase auth is not configured.");
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const next = nextPath ? `?next=${encodeURIComponent(nextPath)}` : "";
+  const safeNext = /^\/(?!\/)/.test(nextPath||"")&&!String(nextPath).includes("\\")?nextPath:"/";
+  const next = `?next=${encodeURIComponent(safeNext)}`;
   const redirectTo = `${origin}/auth/callback${next}`;
   const response = await fetch(`${url}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: "POST",

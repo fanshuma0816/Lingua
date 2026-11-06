@@ -1,4 +1,5 @@
 "use client";
+import { getEntitlements, learningFetch, isAccessError } from "../../lib/lesson-api-client";
 
 import { useEffect, useRef, useState } from "react";
 import { materialId as cefrMaterialId, validateMaterialFit } from "../../lib/cefr.mjs";
@@ -46,7 +47,7 @@ function SourceIdeas({tips,hint}){
   </div>);
 }
 
-function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin}){
+function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin,onGenerationError}){
   const {t}=useUI();
   const [mode,setMode]=useState(initialMode);
   const [raw,setRaw]=useState(DB.get("draft",""));
@@ -97,15 +98,20 @@ function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin}
   async function requestDutchMaterials(payload){
     const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),60000);
     try {
-      const response=await fetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},signal:controller.signal,
+      const response=await learningFetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},signal:controller.signal,
         body:JSON.stringify({mode:"materials",userId:DB.get("userId",null),...payload})});
       if(!response.ok) return {materials:[],errors:[{code:"generation_failed",status:response.status}]};
       return await response.json();
-    } catch(error) {return {materials:[],errors:[{code:error?.name==="AbortError"?"generation_timeout":"generation_failed"}]};}
+    } catch(error) {if(isAccessError(error))throw error;return {materials:[],errors:[{code:error?.name==="AbortError"?"generation_timeout":"generation_failed"}]};}
     finally {clearTimeout(timer);}
   }
   async function generateMaterials(){
-    if(!lang) return;
+    if(!lang||generating) return;
+    try { const q=await getEntitlements(); if(q.enabled&&!q.canGenerate){
+      const error={code:q.signedIn?"quota_exhausted":"sign_in_required"};onGenerationError?.(error);
+      if(!q.signedIn)onRequireLogin?.("/find","quota");return;
+    }}catch(error){onGenerationError?.(error);return;}
+    try {
     const requestContext=selectionContext;
     if(lang==="Dutch") history.current=readMaterialHistory();
     setGenerating(true);
@@ -168,6 +174,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange,auth,onRequireLogin}
     trackEvent("materials_generated",{language:lang,level:level.slice(0,2),goal,duration:selectedDuration,material_count:collected.length});
     rememberMaterials(collected);
     setMaterialError(!collected.length); setGenerating(false);
+    } catch(error){onGenerationError?.(error);setGenerating(false);setMaterialError(true);}
   }
   function startGenerated(){
     const m=materials[selectedMaterial]; if(!m || (lang==="Dutch"&&(m.lang!==lang||m.targetUserLevel!==level.slice(0,2)))) return;

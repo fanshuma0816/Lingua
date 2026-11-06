@@ -1,3 +1,5 @@
+import { resolveIdentity } from "../../../lib/server-auth";
+import { apiError } from "../../../lib/api-errors";
 export const runtime="nodejs";
 
 function env(){return {url:String(process.env.NEXT_PUBLIC_SUPABASE_URL||"").replace(/\/$/,""),key:process.env.SUPABASE_SERVICE_ROLE_KEY||""};}
@@ -7,7 +9,7 @@ async function write(e,path,options){const r=await fetch(`${e.url}${path}`,optio
 const short=(v,n=180)=>String(v||"").replace(/\s+/g," ").trim().slice(0,n)||null;
 
 export async function POST(req){
-  try{
+  try{await resolveIdentity(req);
     const e=env();if(!e.url||!e.key)return Response.json({error:"Materials are not configured."},{status:503});
     const user=await userFor(req,e);if(!user?.id)return Response.json({error:"Please sign in to save this material."},{status:401});
     const b=await req.json(),text=String(b.cleanedText||"");
@@ -37,5 +39,5 @@ export async function POST(req){
     try{savedSegments=await write(e,"/rest/v1/material_segments",{method:"POST",headers:headers(e.key,"return=representation"),body:JSON.stringify(rows)});}
     catch(error){await fetch(`${e.url}/rest/v1/user_materials?id=eq.${material.id}&user_id=eq.${user.id}`,{method:"DELETE",headers:headers(e.key)});throw error;}
     return Response.json({material:{...material,segments:savedSegments||[]}});
-  }catch(error){return Response.json({error:error?.message||"Could not save material."},{status:502});}
+  }catch(error){if(error?.code)return apiError(error);return Response.json({error:error?.message||"Could not save material."},{status:502});}
 }

@@ -1,3 +1,5 @@
+import { authorizeLearning, recordLearningResult, cachedLearningResult, saveLearningResult } from "../../../lib/lesson-access";
+import { apiError } from "../../../lib/api-errors";
 // Small, focused, per-section AI calls. Each request handles ONE screen's worth
 // of analysis (a few sentences or words), so it stays fast and never truncates —
 // unlike the old one-shot enrichment that failed on long texts.
@@ -29,7 +31,7 @@ function wordCount(text) {
   return (String(text || "").toLowerCase().match(/[\p{L}][\p{L}'’-]{1,}/gu) || []).length;
 }
 
-export async function POST(req) {
+async function analyze(req) {
   try {
     const b = await req.json();
     // Text modes need Vertex AI; the translate mode needs the Cloud API key.
@@ -407,4 +409,19 @@ Candidate vocabulary: ${JSON.stringify(vocab)}`;
   } catch (e) {
     return new Response(null, { status: 204 });
   }
+}
+
+export async function POST(req) {
+ try {
+  const body=await req.json();
+  const access=await authorizeLearning(req,body,"analyze");
+  const cached=await cachedLearningResult(access);if(cached)return Response.json(cached,{headers:{"Cache-Control":"no-store"}});
+  const response=await analyze(new Request(req.url,{method:"POST",headers:req.headers,body:JSON.stringify(body)}));
+  if(access?.lessonId && response.headers.get("content-type")?.includes("application/json") && response.ok){
+   const result=await saveLearningResult(access,await response.clone().json());
+   await recordLearningResult(access,result);
+   return Response.json(result,{headers:{"Cache-Control":"no-store"}});
+  }
+  return response;
+ } catch(error) {return apiError(error);}
 }

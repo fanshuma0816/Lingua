@@ -6,7 +6,7 @@ import { completeSessionFromTokenHash } from "../../../lib/auth-client";
 import { DB } from "../../../lib/storage";
 
 function safeReturnPath(raw) {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+  return raw && raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\") ? raw : "/";
 }
 
 export default function AuthConfirmPage() {

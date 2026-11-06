@@ -1,3 +1,6 @@
+import { resolveIdentity, assertSameOrigin } from "../../../../lib/server-auth";
+import { generationAction } from "../../../../lib/entitlements";
+import { ApiError, apiError, jsonResult } from "../../../../lib/api-errors";
 export const runtime = "nodejs";
 
 function supabaseEnv() {
@@ -56,6 +59,17 @@ function likelyMissingSnapshotColumns(error) {
 
 export async function POST(req) {
   try {
+    const identity=await resolveIdentity(req);
+    if(identity.enabled){
+      assertSameOrigin(req);
+      if(!identity.user)throw new ApiError("sign_in_required",401);
+      const body=await req.json();
+      if(!body.lessonId)throw new ApiError("lesson_not_found",404);
+      const progress={includePractice:!!body.savedOptions?.includePractice,interaction:body.savedOptions?.includePractice?(body.interactionSnapshot||{}):{},completedSteps:body.completedSteps||[],path:"/done"};
+      if(JSON.stringify(progress).length>150000)throw new ApiError("progress_too_large",413);
+      const result=await generationAction(identity,"save",{lessonId:body.lessonId,progress});
+      return jsonResult({...result,wordCount:Number(body.stats?.vocabCount)||0});
+    }
     const env = supabaseEnv();
     if (!env.url || !env.serviceKey) {
       return Response.json({ error: "Learning save is not configured." }, { status: 503 });
@@ -152,6 +166,7 @@ export async function POST(req) {
       wordCount: Number(stats.vocabCount) || 0,
     });
   } catch (e) {
+    if(e?.code)return apiError(e);
     return Response.json({ error: e?.message || "Could not save learning progress." }, { status: 502 });
   }
 }

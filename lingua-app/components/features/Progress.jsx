@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Svg } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
+import { getEntitlements } from "../../lib/lesson-api-client";
 import { fetchLearningRecords } from "../../lib/learning-sync";
 import { DB } from "../../lib/storage";
 
@@ -35,7 +36,7 @@ function compactList(items, max = 10) {
   return list.length > max ? [...list.slice(0, max), `+${list.length - max}`] : list;
 }
 
-function LessonHistoryCard({ lesson }) {
+function LessonHistoryCard({ lesson, onOpenLesson, canRestore }) {
   const { t } = useUI();
   const stats = lesson?.stats || {};
   const snapshot = lesson?.lesson_snapshot || {};
@@ -65,6 +66,7 @@ function LessonHistoryCard({ lesson }) {
         <Svg n="chevronRight" />
       </summary>
       <div className="history-detail">
+        {canRestore && <button className="btn btn-primary btn-sm" onClick={()=>onOpenLesson?.(lesson.id,!lesson.generated)}>{t.generationQuota.openLesson}</button>}
         {lesson?.input_text && <section>
           <h3>{t.progress.savedText}</h3>
           <p className="history-text notranslate" translate="no" lang={lesson.lang === "Dutch" ? "nl" : undefined}>{lesson.input_text}</p>
@@ -90,11 +92,11 @@ function LessonHistoryCard({ lesson }) {
   );
 }
 
-function Progress({ auth, onLogin, onStartLearning, onResume }) {
+function Progress({ auth, onLogin, onStartLearning, onResume, onOpenLesson }) {
   const { t } = useUI();
   const signedIn = !!auth?.session?.accessToken;
   const [localProgress, setLocalProgress] = useState({ lesson: null, text: "" });
-  const [records, setRecords] = useState({ loading: false, error: "", lessons: [] });
+  const [records, setRecords] = useState({ loading: false, error: "", lessons: [], nextOffset:null, enabled:false });
   useEffect(() => {
     setLocalProgress({
       lesson: DB.get("currentLesson", null),
@@ -104,14 +106,15 @@ function Progress({ auth, onLogin, onStartLearning, onResume }) {
   useEffect(() => {
     let cancelled = false;
     async function loadRecords() {
-      if (!signedIn) {
+      const phase=await getEntitlements().catch(()=>({enabled:false}));
+      if (!signedIn&&!phase.enabled) {
         setRecords({ loading: false, error: "", lessons: [] });
         return;
       }
       setRecords((prev) => ({ ...prev, loading: true, error: "" }));
       try {
-        const data = await fetchLearningRecords(auth.session.accessToken);
-        if (!cancelled) setRecords({ loading: false, error: "", lessons: data.lessons || [] });
+        const data = await fetchLearningRecords(auth?.session?.accessToken);
+        if (!cancelled) setRecords({ loading: false, error: "", lessons: data.lessons || [], nextOffset:data.nextOffset, enabled:phase.enabled });
       } catch (e) {
         if (!cancelled) setRecords({ loading: false, error: e?.message || t.progress.loadError, lessons: [] });
       }
@@ -129,7 +132,7 @@ function Progress({ auth, onLogin, onStartLearning, onResume }) {
     words: Array.isArray(currentLesson.vocab) ? currentLesson.vocab.length : null,
     chars: String(currentText || "").length,
   } : null;
-  const hasSavedLessons = signedIn && records.lessons.length > 0;
+  const hasSavedLessons = records.lessons.length > 0;
   const showEmpty = !localStats && !hasSavedLessons && !records.loading;
 
   return (
@@ -150,13 +153,18 @@ function Progress({ auth, onLogin, onStartLearning, onResume }) {
           <button className="btn btn-primary btn-sm focusable" onClick={onResume}>{t.progress.resume}</button>
         </div>
       )}
-      {signedIn && records.loading && <div className="card card-p">{t.progress.loading}</div>}
-      {signedIn && records.error && <div className="notice">{records.error}</div>}
+      {records.loading && <div className="card card-p">{t.progress.loading}</div>}
+      {records.error && <div className="notice">{records.error}</div>}
       {hasSavedLessons && <div className="history-section">
         <h2>{t.progress.savedLessons}</h2>
         <div className="history-list">
-          {records.lessons.map((lesson) => <LessonHistoryCard key={lesson.id} lesson={lesson} />)}
+          {records.lessons.map((lesson) => <LessonHistoryCard key={lesson.id} lesson={lesson} onOpenLesson={onOpenLesson} canRestore={records.enabled} />)}
         </div>
+        {records.nextOffset!=null && <button className="btn btn-outline btn-sm" disabled={records.loading} onClick={async()=>{
+          setRecords(p=>({...p,loading:true}));
+          try{const data=await fetchLearningRecords(auth?.session?.accessToken,records.nextOffset);setRecords(p=>({...p,loading:false,lessons:[...p.lessons,...data.lessons],nextOffset:data.nextOffset}));}
+          catch(error){setRecords(p=>({...p,loading:false,error:error.message}));}
+        }}>{t.generationQuota.loadMore}</button>}
       </div>}
     </div>
   );

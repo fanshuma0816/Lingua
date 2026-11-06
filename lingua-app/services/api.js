@@ -1,3 +1,4 @@
+import { learningFetch, isAccessError } from "../lib/lesson-api-client";
 import { levelIdx } from "../config/constants";
 import { compactQuote, stableHash } from "../lib/format";
 import { DB } from "../lib/storage";
@@ -80,8 +81,8 @@ async function aiAnalyze(mode,payload,{timeoutMs=0}={}){
   const controller=timeoutMs?new AbortController():null;
   const timer=timeoutMs?setTimeout(()=>controller.abort(),timeoutMs):null;
   const userId=DB.get("userId",null);
-  try{ const r=await fetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},signal:controller?.signal,body:JSON.stringify({mode,userId,...payload})});
-    if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
+  try{ const r=await learningFetch("/api/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},signal:controller?.signal,body:JSON.stringify({mode,userId,...payload})});
+    if(!r.ok) return null; return await r.json(); }catch(e){ if(mode==="materials"&&isAccessError(e))throw e; return null; }
   finally{ if(timer) clearTimeout(timer); }
 }
 

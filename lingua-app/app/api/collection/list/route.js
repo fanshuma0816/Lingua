@@ -1,3 +1,6 @@
+import { resolveIdentity } from "../../../../lib/server-auth";
+import { attachSegmentLessons } from "../../../../lib/lesson-store";
+import { apiError } from "../../../../lib/api-errors";
 export const runtime = "nodejs";
 
 function supabaseEnv() {
@@ -79,12 +82,14 @@ export async function GET(req) {
     let grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,item_key,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
     if (!grammar.length) grammar = await readRows(`/rest/v1/user_grammar_items?user_id=eq.${userId}&select=id,title,explanation,example,example_translation,lang,level,source_lesson_id,created_at&order=created_at.desc&limit=120`, env, true);
 
+    const identity=await resolveIdentity(req);if(identity.enabled)materialSegments=await attachSegmentLessons(identity,materialSegments);
     return Response.json({
       materials: materials.map(material=>({...material,segments:materialSegments.filter(segment=>segment.material_id===material.id)})),
       words: Array.isArray(words) ? words : [],
       grammar: Array.isArray(grammar) ? grammar : [],
     });
   } catch (e) {
+    if(e?.code)return apiError(e);
     return Response.json({ error: e?.message || "Could not load collection." }, { status: 502 });
   }
 }

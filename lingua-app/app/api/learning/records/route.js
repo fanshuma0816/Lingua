@@ -1,3 +1,6 @@
+import { resolveIdentity } from "../../../../lib/server-auth";
+import { generationAction } from "../../../../lib/entitlements";
+import { apiError, jsonResult } from "../../../../lib/api-errors";
 export const runtime = "nodejs";
 
 function supabaseEnv() {
@@ -52,6 +55,12 @@ async function readLessonRows(userId, env) {
 
 export async function GET(req) {
   try {
+    const identity=await resolveIdentity(req);
+    if(identity.enabled){
+      const offset=Math.max(0,Math.min(100000,Number(new URL(req.url).searchParams.get("offset"))||0));
+      const result=await generationAction(identity,"history",{offset});
+      return jsonResult({lessons:result.lessons.slice(0,20),nextOffset:result.lessons.length>20?offset+20:null});
+    }
     const env = supabaseEnv();
     if (!env.url || !env.serviceKey) {
       return Response.json({ error: "Learning records are not configured." }, { status: 503 });
@@ -78,6 +87,7 @@ export async function GET(req) {
       },
     });
   } catch (e) {
+    if(e?.code)return apiError(e);
     return Response.json({ error: e?.message || "Could not load learning records." }, { status: 502 });
   }
 }

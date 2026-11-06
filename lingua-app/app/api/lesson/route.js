@@ -1,38 +1,44 @@
+import { createHash } from "node:crypto";
 import { generateLesson } from "../../../lib/lesson-client";
 import { cleanText } from "../../../lib/text";
 import { prepareImport } from "../../../lib/text-chunks";
 import { MAX_DOCUMENT_CHARS } from "../../../config/constants";
-
+import { resolveIdentity, assertSameOrigin, phaseConfig } from "../../../lib/server-auth";
+import { generationAction, reserve } from "../../../lib/entitlements";
+import { validateMaterial } from "../../../lib/lesson-store";
+import { ApiError, apiError, jsonResult } from "../../../lib/api-errors";
 export const runtime = "nodejs";
 export const maxDuration = 30;
-
-// Returns the lesson structure instantly. The AI analysis (translations, word
-// meanings, quiz, conversation) is fetched lazily per-step from /api/analyze and
-// /api/chat as the learner reaches each screen — small calls that stay fast and
-// never truncate on long texts.
 export async function POST(req) {
+  let identity, acquired = false, requestId;
   try {
+    if (phaseConfig().enabled) assertSameOrigin(req);
     const body = await req.json();
-    if (String(body.text || "").length > MAX_DOCUMENT_CHARS) return Response.json({ error: "document_too_large" }, { status: 413 });
-    let text = cleanText(body.text || "");
-    const lang = body.lang || "Dutch";
-    const level = body.level || "A2 — Elementary";
-    const goal = body.goal || "General fluency";
+    if (String(body.text || "").length > MAX_DOCUMENT_CHARS) throw new ApiError("document_too_large", 413);
+    const lang = body.lang || "Dutch", level = body.level || "A2 — Elementary", goal = body.goal || "General fluency";
     const targetMin = Number(body.targetMin) || null;
-    // If a validated material analysis came from the generation step, thread it
-    // through so its id / level / annotations are preserved verbatim (one source
-    // of truth). Otherwise the lesson builder computes it deterministically.
-    const providedMaterial = body.material && body.material.validatedTextLevel ? body.material : null;
-    const sourceDocument = lang === "Dutch" && !providedMaterial
-      ? prepareImport(body.text || "", { level, targetMin, difficulty: body.difficulty }) : null;
-    if (sourceDocument) text = sourceDocument.text;
-    if (!text.trim()) return Response.json({ error: "empty_text" }, { status: 400 });
-    const lesson = generateLesson(text, lang, level, goal, targetMin, providedMaterial);
-    return Response.json({ ...lesson, text, ...(sourceDocument ? {
-      sourceDocument, importDocumentId: sourceDocument.id, importChunkId: sourceDocument.selectedChunkId,
-      importChunkIndex: sourceDocument.selectedChunkIndex,
-    } : {}) });
-  } catch (e) {
-    return Response.json({ error: e?.message === "document_too_large" ? "document_too_large" : "bad request" }, { status: e?.message === "document_too_large" ? 413 : 400 });
+    const providedMaterial = body.material?.validatedTextLevel ? body.material : null;
+    const sourceDocument = lang === "Dutch" && !providedMaterial ? prepareImport(body.text || "", { level, targetMin, difficulty: body.difficulty }) : null;
+    const text = sourceDocument ? sourceDocument.text : cleanText(body.text || "");
+    if (!text.trim()) throw new ApiError("empty_text");
+    identity = await resolveIdentity(req);
+    if (identity.enabled) {
+      requestId = body.requestId;
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId || "")) throw new ApiError("invalid_request_id");
+      await validateMaterial(identity, body);
+      const hash = createHash("sha256").update(JSON.stringify({ text: body.text,lang,level,goal,targetMin,material:providedMaterial,difficulty:body.difficulty || null })).digest("hex");
+      const existing = await reserve(identity, requestId, hash);
+      if (!existing.acquired) return jsonResult(existing.lesson || { status: existing.status, requestId }, identity);
+      acquired = true;
+    }
+    const snapshot = { ...generateLesson(text, lang, level, goal, targetMin, providedMaterial), text,
+      ...(sourceDocument ? { sourceDocument, importDocumentId: sourceDocument.id, importChunkId: sourceDocument.selectedChunkId, importChunkIndex: sourceDocument.selectedChunkIndex } : {}) };
+    if (!identity.enabled) return jsonResult(snapshot);
+    const result = await generationAction(identity, "store", { requestId, snapshot });
+    return jsonResult(result.lesson, identity);
+  } catch (error) {
+    // A store timeout may already have committed. Release only a still-processing request.
+    if (acquired) await generationAction(identity, "release", { requestId }).catch(() => {});
+    return apiError(error);
   }
 }

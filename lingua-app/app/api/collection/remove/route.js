@@ -1,3 +1,5 @@
+import { resolveIdentity } from "../../../../lib/server-auth";
+import { apiError } from "../../../../lib/api-errors";
 export const runtime = "nodejs";
 
 function supabaseEnv() {
@@ -42,6 +44,7 @@ async function supabaseDelete(path, env) {
 
 export async function POST(req) {
   try {
+    await resolveIdentity(req);
     const env = supabaseEnv();
     if (!env.url || !env.serviceKey) {
       return Response.json({ error: "Collection is not configured." }, { status: 503 });
@@ -94,6 +97,7 @@ export async function POST(req) {
 
     return Response.json({ error: "Unknown collection item type." }, { status: 400 });
   } catch (e) {
+    if(e?.code)return apiError(e);
     return Response.json({ error: e?.message || "Could not remove from collection." }, { status: 502 });
   }
 }

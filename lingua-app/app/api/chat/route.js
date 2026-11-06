@@ -1,3 +1,5 @@
+import { authorizeLearning, recordLearningResult } from "../../../lib/lesson-access";
+import { apiError } from "../../../lib/api-errors";
 // AI writing feedback + live conversation + evaluation.
 // Uses whatever provider is configured in lib/ai.js. Returns 204 when no key
 // is set (or the call fails) so the client falls back to the simulated version.
@@ -7,12 +9,14 @@ import { AI, chatComplete, geminiStream, parseJSON } from "../../../lib/ai";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function streamText(chunks) {
+function streamText(chunks, access) {
   const encoder = new TextEncoder();
   return new Response(new ReadableStream({
     async start(controller) {
       try {
-        for await (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        let complete="";
+        for await (const chunk of chunks) {complete+=chunk;controller.enqueue(encoder.encode(chunk));}
+        await recordLearningResult(access,complete);
         controller.close();
       } catch (e) {
         controller.error(e);
@@ -26,7 +30,7 @@ function streamText(chunks) {
   });
 }
 
-export async function POST(req) {
+async function chat(req,access) {
   if (!AI.textEnabled) return new Response(null, { status: 204 });
   try {
     const b = await req.json();
@@ -52,7 +56,7 @@ Ask concrete, specific questions ABOUT that text's ideas and details (not vague 
       Gently reuse today's words (${(b.vocab || []).join(", ")}) so replies feel achievable.
 Keep EVERY reply to ONE short, natural sentence ending in a question, at or just below ${b.level}. React briefly to what they said before asking the next thing. Be encouraging and human. About 5 exchanges.`;
       const messages = [{ role: "system", content: sys }, ...(Array.isArray(b.history) ? b.history : [])];
-      if (b.stream) return streamText(geminiStream(messages, { temp: 0.7, max: 160, ...ph }));
+      if (b.stream) return streamText(geminiStream(messages, { temp: 0.7, max: 160, ...ph }),access);
       const out = await chatComplete(messages, { temp: 0.7, max: 160, ...ph });
       return Response.json({ reply: out.trim() });
     }
@@ -82,4 +86,14 @@ Return JSON {"praise":<one warm, specific sentence in ${feedbackLanguage}>,"turn
   } catch (e) {
     return new Response(null, { status: 204 });
   }
+}
+
+export async function POST(req) {
+ try {
+  const body=await req.json(),access=await authorizeLearning(req,body,"chat");
+  const response=await chat(new Request(req.url,{method:"POST",headers:req.headers,body:JSON.stringify(body)}),access);
+  if(access?.lessonId && response.headers.get("content-type")?.includes("application/json") && response.ok)
+   await recordLearningResult(access,await response.clone().json());
+  return response;
+ } catch(error) {return apiError(error);}
 }

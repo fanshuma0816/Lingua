@@ -241,3 +241,12 @@ PDF 在浏览器中解析，原始文件不会上传或保存，因此不需要�
 ## 花费与安全
 - 全部走 Google Cloud 用量计费（文本走 Vertex AI，消耗你的 GCP 额度／试用赠金）。可在 Google Cloud 后台查看用量、设置额度上限。
 - 服务账号 JSON 和 API key 都只存在服务器端环境变量里，不会出现在网页源码中。
+
+
+## 第一阶段：额度与课程记录（默认关闭）
+
+完整执行步骤、SQL 检查和测试部署配置见 [PHASE1_SETUP.md](docs/testing/PHASE1_SETUP.md)。
+本阶段仍连接现有 Supabase 项目，新额度与课程记录通过服务端配置区分 test / production。
+先执行 `supabase/migrations/20261106_generation_entitlements.sql`，再在测试部署启用 `MONETIZATION_MODE=test`。
+正式部署先保持 `MONETIZATION_MODE=off`；建表本身不会批量发额度或开启限制。
+不要向聊天发送服务端密钥，也不要改动正式网站的设计或现有 Supabase 表。

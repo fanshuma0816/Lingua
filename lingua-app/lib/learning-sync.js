@@ -42,7 +42,7 @@ function buildInteractionSnapshot({ includePractice = true } = {}) {
     evaluation: DB.get("aiChatEvaluation", null),
   } : null;
   return {
-    recall: { answers: recallAnswers, checked: recallShown },
+    recall: { answers: recallAnswers, checked: recallShown, state: DB.get("recallState", null) },
     writing,
     conversation,
   };
@@ -57,7 +57,8 @@ function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, 
     ...lessonWords.map((item) => ({ ...item, source: "lesson" })),
   ]);
   return {
-    localLessonId: lesson?.material?.id || lesson?.id || null,
+    lessonId: lesson?.lessonId || null,
+    localLessonId: lesson?.lessonId || lesson?.localLessonId || lesson?.id || lesson?.material?.id || null,
     lang: lesson?.lang || null,
     level: lesson?.level || null,
     goal: lesson?.goal || null,
@@ -69,6 +70,7 @@ function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, 
     segmentIndex: Number.isInteger(lesson?.material?.segmentIndex) ? lesson.material.segmentIndex : null,
     segmentCount: Number.isInteger(lesson?.material?.segmentCount) ? lesson.material.segmentCount : null,
     lessonSnapshot: {
+      ...lesson,
       id: lesson?.id || null,
       material: lessonMaterialSummary(lesson),
       sentences: Array.isArray(lesson?.sents) ? lesson.sents : [],
@@ -98,20 +100,21 @@ async function saveCompletedLesson(payload, accessToken) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data?.error || "Could not save learning progress.");
+  if(payload.lessonId)DB.set(`savedPractice:${payload.lessonId}`,!!payload.savedOptions?.includePractice);
   DB.remove("pendingSaveAfterLogin");
   return data;
 }
 
-async function fetchLearningRecords(accessToken) {
-  const response = await fetch("/api/learning/records", {
+async function fetchLearningRecords(accessToken, offset = 0) {
+  const response = await fetch(`/api/learning/records?offset=${offset}`, {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
   });
   const data = await response.json().catch(() => ({}));

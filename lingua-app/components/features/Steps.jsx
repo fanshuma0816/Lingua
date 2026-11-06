@@ -12,6 +12,7 @@ import { getAuthState, signInWithEmail, subscribeAuthChanges } from "../../lib/a
 import { fetchCollection, grammarItemKey, removeGrammarFromCollection, removeWordFromCollection, saveGrammarToCollection, saveWordToCollection, wordLemmaKey } from "../../lib/collection";
 import { displayWordInfo } from "../../lib/dutch";
 import { normalizePoint, scrollToTop } from "../../lib/format";
+import { learningFetch, isAccessError } from "../../lib/lesson-api-client";
 import { buildCompletedLessonPayload, saveCompletedLesson } from "../../lib/learning-sync";
 import { fallbackGrammarItems, practiceQuestion } from "../../lib/lesson-client";
 import { DB } from "../../lib/storage";
@@ -29,7 +30,7 @@ function QuickScan({lesson,text,onDone,onSkip,onBack}){
   const parts=useMemo(()=>src.split(/([\p{L}][\p{L}'’-]*)/u),[src]);
   const isWord=(s)=>/^[\p{L}][\p{L}'’-]*$/u.test(s);
   const [marked,setMarked]=useState(()=>new Set((DB.get("unknownWords",[])||[]).map(w=>String(w).toLowerCase())));
-  function toggle(w){ const k=w.toLowerCase(); setMarked(prev=>{ const n=new Set(prev); n.has(k)?n.delete(k):n.add(k); return n; }); }
+  function toggle(w){ const k=w.toLowerCase(); setMarked(prev=>{ const n=new Set(prev); n.has(k)?n.delete(k):n.add(k); DB.set("unknownWords",[...n]); return n; }); }
   const count=marked.size;
   return (<div>
     <div className="step-head"><div className="step-head-main"><div className="eyebrow">{t.scan.eyebrow}</div><h2>{t.scan.title}</h2></div>
@@ -520,11 +521,12 @@ function AIWrite({lesson,onDone}){
     trackEvent("writing_feedback_requested",{language:lang,level:level.slice(0,2),word_count:textv.trim().split(/\s+/).filter(Boolean).length});
     setFb("loading");
     try{
-      const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+      const r=await learningFetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"feedback",lang,level,question,text:textv.trim(),feedbackLanguage:uiLang==="zh"?"Chinese":"English",userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
       if(!r.ok) throw new Error("no api");
       const d=await r.json(); setFb(d); DB.set("aiPracticeFeedback",{question,text:textv.trim(),feedback:d,simulated:false});
     }catch(e){
+      if(isAccessError(e))return;
       setFb("mock");
       DB.set("aiPracticeFeedback",{question,text:textv.trim(),feedback:null,simulated:true});
     }finally{ onDone&&onDone(); }
@@ -602,7 +604,7 @@ function AIChat({lesson,onDone}){
   async function aiReply(history,onChunk){
     const controller=new AbortController();
     abortRef.current=controller;
-    try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+    try{ const r=await learningFetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         signal:controller.signal,
         body:JSON.stringify({mode:"chat",stream:true,lang,level,vocab:vwords,topic,grammar,sample,history,userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
       if(!r.ok) throw new Error("no api");
@@ -621,7 +623,7 @@ function AIChat({lesson,onDone}){
         return text.trim()||null;
       }
       const d=await r.json(); return d.reply||null;
-    }catch(e){ return null; }
+    }catch(e){ if(isAccessError(e))return " "; return null; }
     finally{ if(abortRef.current===controller) abortRef.current=null; }
   }
   useEffect(()=>{
@@ -654,11 +656,11 @@ function AIChat({lesson,onDone}){
 
   async function finish(list){ trackEvent("conversation_practice_completed",{language:lang,level:level.slice(0,2),turn_count:list.filter(message=>message.who==="me").length,used_fallback:mockRef.current}); setDone(true); setEvaluating(true);
     if(mockRef.current){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); setEvaluationUnavailable(true); setEvaluating(false); onDone&&onDone(); return; }
-    try{ const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+    try{ const r=await learningFetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({mode:"evaluate",lang,level,history:toHistory(list),feedbackLanguage:uiLang==="zh"?"Chinese":"English",userId:DB.get("userId",null),sessionId:lesson?.material?.id||lesson?.id||null})});
       if(r.ok){ const d=await r.json(); DB.set("aiChatEvaluation",{feedback:d,simulated:false}); if(mountedRef.current) setEvalz(d); }
       else { DB.set("aiChatEvaluation",{feedback:null,simulated:true}); if(mountedRef.current) setEvaluationUnavailable(true); }
-    }catch(e){ DB.set("aiChatEvaluation",{feedback:null,simulated:true}); if(mountedRef.current) setEvaluationUnavailable(true); }
+    }catch(e){ if(isAccessError(e))return; DB.set("aiChatEvaluation",{feedback:null,simulated:true}); if(mountedRef.current) setEvaluationUnavailable(true); }
     finally{ if(mountedRef.current) setEvaluating(false); onDone&&onDone(); }
   }
 

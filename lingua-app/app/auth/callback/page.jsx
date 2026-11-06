@@ -6,7 +6,7 @@ import { completeSessionFromHash } from "../../../lib/auth-client";
 import { DB } from "../../../lib/storage";
 
 function safeNextPath(raw, fallback) {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : fallback;
+  return raw && raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("\\") ? raw : fallback;
 }
 
 export default function AuthCallbackPage() {
