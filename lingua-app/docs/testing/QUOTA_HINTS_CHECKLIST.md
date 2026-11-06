@@ -37,3 +37,15 @@
 | MONETIZATION_MODE=off | 不显示虚构余额、免费账户标志或计次说明 |
 
 真实部署仍需先完成第一阶段 SQL 和环境配置；本次不自动执行或修改这些内容。
+
+
+## Compact quota and login feedback
+
+- Rules are collapsed by default and contain only three short explanations.
+- Initial failure shows no fabricated zero and no lesson recovery claim.
+- Background refresh keeps the last validated balance with an updating/stale label.
+- With a 503 quota response, sidebar and Progress login still open; sending an email does not require a successful quota read.
+- Pending request status checks use GET for the original request, never a new generation POST.
+- Navigation clears operation feedback without deleting saved lessons or pending requests.
+- Verify English desktop, Chinese mobile, dark mode, and keyboard access.
+- Real Preview database connectivity and email callback remain separate manual checks; local API mocks do not validate those services.

@@ -4,13 +4,11 @@ import { useEffect, useState } from "react";
 import { Svg } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
 import { signInWithEmail } from "../../lib/auth-client";
-import { getEntitlements } from "../../lib/lesson-api-client";
 import { DB } from "../../lib/storage";
 
 function AuthPrompt({ open, onClose, returnPath, purpose }) {
-  const { t } = useUI();
-  const [metered,setMetered]=useState(false);
-  useEffect(()=>{if(open)getEntitlements().then(q=>setMetered(q.enabled)).catch(()=>{});},[open]);
+  const { t, quota } = useUI();
+  const metered=quota?.state!=="off";
   const [email,setEmail]=useState(()=>DB.get("email",""));
   const [status,setStatus]=useState("idle");
   const [message,setMessage]=useState("");

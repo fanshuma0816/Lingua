@@ -706,3 +706,16 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:2;stroke-l
 .quota-status-breakdown dt{font-size:12px;color:hsl(var(--muted-foreground))}
 .quota-status-breakdown dd{margin:0;font-weight:600}
 .quota-cost-hint{margin:8px 0 12px;line-height:1.6}
+
+/* Scoped free-generation feedback; existing page and sidebar layout is unchanged. */
+.quota-status{font-size:13px;line-height:1.5;margin-bottom:18px;min-height:32px}
+.quota-status-row{position:relative;min-height:32px;gap:6px 12px}
+.quota-status-summary{min-height:32px}
+.quota-status-details{margin:0 0 0 auto}
+.quota-status-details>summary{padding:6px 0}
+.quota-status-policy{position:absolute;z-index:20;top:100%;right:0;width:min(440px,100%);padding:16px;border:1px solid hsl(var(--border));border-radius:12px;background:hsl(var(--card));box-shadow:0 8px 24px #00000012}
+.quota-status-policy ul{margin:0;padding-left:18px}
+.quota-status-policy li+li{margin-top:8px}
+.quota-operation-notice{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px}
+.quota-operation-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+@media(max-width:600px){.quota-status-summary{flex:1 1 240px}.quota-status-policy{width:100%}}

@@ -52,7 +52,10 @@ export async function getEntitlements({ fresh = false } = {}) {
  if (data.enabled) setLearningScope(`${data.environment}:${key}`); else setLearningScope(null);
  return data;
 }
-export function refreshEntitlements() { return getEntitlements({fresh:true}); }
+export async function refreshEntitlements() {
+ try { return await getEntitlements({fresh:true}); }
+ catch(error) { error.quotaReadFailure=true; throw error; }
+}
 export async function learningFetch(path, options = {}) {
  const body = options.body ? JSON.parse(options.body) : {};
  const current = DB.get("currentLesson", null);

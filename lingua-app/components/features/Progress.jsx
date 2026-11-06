@@ -15,7 +15,7 @@ function EmptyState({ signedIn, onLogin, onStartLearning }) {
       <h2>{signedIn ? t.progress.emptyTitle : t.progress.signInTitle}</h2>
       <p>{signedIn ? t.progress.emptyBody : t.progress.signInBody}</p>
       <div className="empty-actions">
-        {!signedIn && <button className="btn btn-primary focusable" onClick={onLogin}><Svg n="user" /> {t.authPrompt.signIn}</button>}
+        {!signedIn && <button className="btn btn-primary focusable" onClick={onLogin}><Svg n="user" /> {t.quotaHints.signInSave}</button>}
         <button className="btn btn-outline focusable" onClick={onStartLearning}>{t.progress.startLearning}</button>
       </div>
     </div>

@@ -94,6 +94,8 @@ function App(){
   const [auth,setAuth]=useState({configured:true,session:null,checked:false});
   const [phase,setPhase]=useState(null);
   const [phaseError,setPhaseError]=useState("");
+  const [checkingRequest,setCheckingRequest]=useState(false);
+  const [retryPayload,setRetryPayload]=useState(null);
   const [quotaLoad,setQuotaLoad]=useState("loading");
   const [continuation,setContinuation]=useState(null);
   const [deliveryState,setDeliveryState]=useState("idle");
@@ -108,6 +110,7 @@ function App(){
 
   useEffect(()=>{ document.documentElement.classList.toggle("dark",theme==="dark"); },[theme]);
   useEffect(()=>{ stopSpeak(); scrollToTop(); },[screen,step]);
+  useEffect(()=>{setPhaseError("");},[pathname]);
   useEffect(()=>{ const on=()=>setNarrow(window.innerWidth<1200); on(); window.addEventListener("resize",on); return ()=>window.removeEventListener("resize",on); },[]);
 
   useEffect(()=>{
@@ -160,7 +163,7 @@ function App(){
       DB.set("resumePath",r.screen==="lesson"?stepPath(r.stepIndex||0):r.path);
     }
   }
-  function navigateTo(nextScreen,path){ setScreen(nextScreen); rememberResumePath(path); if(pathname!==path) router.push(path); }
+  function navigateTo(nextScreen,path){ setPhaseError(""); setScreen(nextScreen); rememberResumePath(path); if(pathname!==path) router.push(path); }
   function replaceWith(path){ if(pathname!==path) router.replace(path); }
   function acceptQuota(balance){setPhase(balance);setQuotaLoad("ready");}
   async function refreshQuotaBalance(){
@@ -181,7 +184,7 @@ function App(){
     const firstIdentity=identityRef.current===null;
     const changed=!firstIdentity&&identityRef.current!==nextIdentity;
     identityRef.current=nextIdentity;
-    if(changed){stopSpeak();setLesson(null);setText("");setUserWords([]);setDoneSet(new Set());clearLineTr();}
+    if(changed){setPhase(null);stopSpeak();setLesson(null);setText("");setUserWords([]);setDoneSet(new Set());clearLineTr();}
     setAuth({...state,checked:true});
     const balance=await refreshQuotaBalance();
     if(balance.enabled&&state.session?.accessToken) await claimLessons();
@@ -215,7 +218,8 @@ function App(){
   }
   async function startLogin(nextPath){
     const target=nextPath||pathname||"/";
-    const state=await refreshAuth();
+    const state=await getAuthState();
+    setAuth({...state,checked:true});
     setAuthPrompt(false);
     if(state.session?.accessToken){ navigatePath(target); return; }
     DB.set("loginNextPath",target);
@@ -224,13 +228,24 @@ function App(){
   async function handleSignOut(){ await signOut(auth.session); await refreshAuth(); }
   function requireLogin(nextPath=pathname,purpose=null){ DB.set("loginNextPath",nextPath||pathname||"/"); setAuthPromptPurpose(purpose); setAuthPrompt(true); }
   async function continueAfterLogin(){
+    const state=await getAuthState();
+    if(!state.session?.accessToken)return;
+    setAuth({...state,checked:true});setAuthPrompt(false);
+    const intended=DB.get("loginNextPath",DB.get("resumePath","/progress"));
+    navigatePath(intended==="/login"?"/progress":intended);
+    // Course claiming/restoration still uses the authenticated server checks.
+    refreshAuth().catch(error=>{if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable");});
+  }
+  async function checkPendingRequest(){
+    const pending=DB.get("pendingGeneration",null);
+    if(!pending?.requestId || busyGeneration.current)return;
+    busyGeneration.current=true;setCheckingRequest(true);
     try {
-      const state=await refreshAuth();
-      if(!state.session?.accessToken)return;
-      setAuthPrompt(false);
-      const intended=DB.get("loginNextPath",DB.get("resumePath","/progress"));
-      navigatePath(intended==="/login"?"/progress":intended);
-    } catch(error){if(!error.quotaReadFailure)setPhaseError(error.code||"service_unavailable");}
+      const result=await lessonRequest(`/api/lesson/requests/${pending.requestId}`);
+      if(!result.lesson?.lessonId){setPhaseError("request_processing");return;}
+      await openLesson(result.lesson.lessonId);
+    } catch(error){setPhaseError(error.code||"service_unavailable");}
+    finally {busyGeneration.current=false;setCheckingRequest(false);}
   }
   function toggleTheme(){ setTheme(v=>{ const n=v==="dark"?"light":"dark"; DB.set("theme",n); return n; }); }
   function toggleSide(){ setPinned(p=>!p); }
@@ -283,7 +298,7 @@ function App(){
   async function loadLesson(d){
     if(busyGeneration.current)return;
     const startedAs=identityRef.current;
-    busyGeneration.current=true;setPhaseError("");setDeliveryState("idle");setScreen("loading");
+    busyGeneration.current=true;setRetryPayload(d);setPhaseError("");setDeliveryState("idle");setScreen("loading");
     quotaRefreshVersion.current++;setQuotaLoad("loading");
     DB.set("lastInputMode",d.material?.accountMaterialId?"material":d.material?"find":"material");
     try {
@@ -384,12 +399,13 @@ function App(){
   }
 
   const quota=quotaPresentation(phase,{status:quotaLoad});
+  const requestUncertain=!!DB.get("pendingGeneration",null)?.requestId && ["service_unavailable","database_unavailable","request_not_found"].includes(phaseError);
   const uiContextValue={uiLang,setUiLang,t,quota};
 
   if(!hydrated) return <UIContext.Provider value={uiContextValue}><main className="main"><Loading/></main></UIContext.Provider>;
 
   if(screen==="login") return (<UIContext.Provider value={uiContextValue}>
-    <main className="main"><QuotaStatus onRetry={()=>refreshQuotaBalance().catch(()=>{})}/><Login nextPath={DB.get("loginNextPath","/progress")} onDone={continueAfterLogin}/></main></UIContext.Provider>);
+    <main className="main"><Login nextPath={DB.get("loginNextPath","/progress")} onDone={continueAfterLogin}/></main></UIContext.Provider>);
 
   return (<UIContext.Provider value={uiContextValue}>
     <div className={"shell"+(pinned?" pinned":"")}>
@@ -411,8 +427,16 @@ function App(){
       </div>
       </div>
       <main className="main">
-        <QuotaStatus courseFree={!!lesson?.delivered&&["scan","preview","lesson","done"].includes(screen)} onRetry={()=>refreshQuotaBalance().catch(()=>{})}/>
-        {phaseError && <div className="notice" role="alert">{t.generationQuota.errors[phaseError]||t.generationQuota.errors.service_unavailable} <button className="btn btn-ghost btn-sm" onClick={()=>navigateTo("progress","/progress")}>{t.progress.savedLessons}</button></div>}
+        <QuotaStatus key={pathname} onLogin={()=>startLogin(pathname)} courseFree={!!lesson?.delivered&&["scan","preview","lesson","done"].includes(screen)} onRetry={()=>refreshQuotaBalance().catch(()=>{})}/>
+        {(phaseError || checkingRequest) && <div className="notice quota-operation-notice" role="alert">
+          <span>{checkingRequest?t.quotaHints.checkingStatus:(requestUncertain?t.quotaHints.uncertainRequest:(t.generationQuota.errors[phaseError]||t.generationQuota.errors.service_unavailable))}</span>
+          <div className="quota-operation-actions">
+            {retryPayload && ["request_failed","request_expired"].includes(phaseError) && <button className="btn btn-ghost btn-sm" onClick={()=>loadLesson(retryPayload)}>{t.quotaHints.retry}</button>}
+            {DB.get("pendingGeneration",null)?.requestId && ["service_unavailable","database_unavailable","request_processing","request_not_found"].includes(phaseError) && <button className="btn btn-ghost btn-sm" disabled={checkingRequest} onClick={checkPendingRequest}>{t.quotaHints.checkStatus}</button>}
+            {["quota_exhausted","lesson_not_found"].includes(phaseError) && <button className="btn btn-ghost btn-sm" onClick={()=>navigateTo("progress","/progress")}>{t.progress.savedLessons}</button>}
+            <button className="btn btn-ghost btn-sm" disabled={checkingRequest} onClick={()=>setPhaseError("")}>{t.quotaHints.dismiss}</button>
+          </div>
+        </div>}
         {phase?.enabled && auth.session?.accessToken && continuation && screen==="input" && <div className="notice" role="status" style={{flexWrap:"wrap"}}>
           <p style={{flexBasis:"100%",margin:0}}>{continuation.recover?t.generationQuota.recoverPrevious:t.generationQuota.readyAfterLogin}</p>
           <button className="btn btn-primary btn-sm" onClick={()=>loadLesson(continuation.payload)}>{continuation.recover?t.generationQuota.recoverRequest:t.generationQuota.continueGeneration}</button>

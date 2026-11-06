@@ -1,19 +1,20 @@
 const UI_TEXT={
   en:{
     quotaHints:{
-      regionLabel:"Your generation allowance",identities:{guest:"Guest",free:"Free account"},
-      available:n=>`${n} ${n===1?"generation":"generations"} available`,pending:n=>`${n} in progress`,times:n=>`${n} ${n===1?"generation":"generations"}`,
-      loading:"Checking your generation allowance…",unavailable:"Your allowance cannot be read right now. Please check again.",retry:"Check allowance",
+      uncertainRequest:"This lesson’s result is not confirmed yet. Check its status to continue.",checkingStatus:"Checking this lesson request…",updating:"Updating…",stale:"Last known balance · update unavailable",register:"Get extra free lessons",checkStatus:"Check status",dismiss:"Dismiss",signInSave:"Sign in to save progress",
+      regionLabel:"Free lesson generations",identities:{guest:"Guest",free:"Free account"},
+      available:n=>`${n} free ${n===1?"generation":"generations"} left`,pending:n=>`${n} in progress`,times:n=>`${n} ${n===1?"generation":"generations"}`,
+      loading:"Loading remaining lessons…",unavailable:"Remaining lessons unavailable.",retry:"Retry",
       guestHint:"One complete guest lesson is free. Sign in for 3 additional one-time generations.",
       onceHint:"One-time free generations; signing in does not reset them.",lastHint:"Your last free generation. Saved lessons remain free to review.",
-      guestUsed:"Your free guest lesson has been used. Sign in for 3 additional generations, once only.",
-      exhausted:"No free generations remain. Your saved lessons are still free to review without a limit.",
+      guestUsed:"Your free trial is used up. Saved lessons remain free to review.",
+      exhausted:"No free generations left. Saved lessons remain free to review.",
       processing:n=>`${n} ${n===1?"generation is":"generations are"} reserved for an unfinished request, not yet confirmed as used.`,
-      courseFree:"This lesson has already been generated. Continuing or reviewing it uses no further generations.",
-      detailsTitle:"Your benefits",meaning:"These numbers count new lesson generations, not study sessions, lesson steps or audio plays.",
+      courseFree:"Continue or review this lesson for free.",
+      detailsTitle:"Rules",meaning:"These numbers count new lesson generations, not study sessions, lesson steps or audio plays.",
       guestGrant:"Guests can generate 1 complete lesson for free.",
-      accountGrant:"New and existing accounts receive 3 additional free generations, once only. They do not refresh monthly, and signing in again does not reset them.",
-      rules:["A new lesson uses 1 generation only after successful delivery to Quick Scan.","Failed generation is not charged. Refreshing or repeating the same request does not charge again.","Generated and saved lessons can be reviewed free, without a limit.","Generating a new lesson from saved material follows the new-generation rules.","Creating an account does not start a paid subscription or charge you."],
+      accountGrant:"Accounts receive 3 extra free generations, once only. They do not renew monthly.",
+      rules:["Guests get 1 free lesson; accounts get 3 extra generations once only, with no monthly reset.", "A new lesson uses 1 generation on delivery to Quick Scan. Failed or duplicate requests do not charge again.", "Saved lessons are free to review. Generating a new lesson from saved material uses a generation."],
       guestSave:"Guests: sign in to keep lessons in your account and restore them on another device.",
       breakdown:{granted:"Granted once",used:"Used",reserved:"In progress · not yet used",available:"Available now"},
       recommendationFree:"Recommending and viewing materials does not use a lesson generation.",
@@ -29,7 +30,7 @@ const UI_TEXT={
       retryConfirmation:"Check this lesson again",
       delivery:{confirming:"Confirming delivery of this lesson…",confirmed:"This new lesson has used 1 generation. Reopening it is free.",uncertain:"Delivery confirmation is still uncertain. Check the same lesson again; do not start a new request.",failed:"This lesson could not be confirmed. The reason is shown above."},
       balance:(remaining,reserved)=>`${remaining} free generations remaining${reserved?` (${reserved} in progress)`:""}`,exhausted:"Your free generations are used up. You can still revisit your lessons.",guestExhausted:"Your free guest lesson is used. Sign in to receive 3 additional generations, once only.",signInTitle:"Continue with 3 free generations",accountGrant:"New and existing accounts receive 3 extra generations once only. Signing in does not reset them.",openLesson:"Open lesson · free",loadMore:"Load more lessons",errors:{
-      request_not_found:"The earlier request has not been found yet. Check it again before starting another.",database_not_configured:"The preview service is not configured yet. Please contact the maintainer.",guest_secret_not_configured:"The preview service is not configured yet. Please contact the maintainer.",account_changed:"Your account changed. Please reopen the lesson or retry.",sign_in_required:"Sign in to receive 3 additional free generations. Your existing lesson stays available.",quota_exhausted:"Your free generations are used up. You can still revisit your lessons.",request_processing:"This lesson is still being prepared. Retry to recover the same request.",request_expired:"This unfinished request expired without a charge. Try again.",request_failed:"This lesson could not be generated. No generation was charged. Try again.",request_conflict:"This request belongs to different material. Please start again.",lesson_not_found:"This lesson is not available to the current account.",lesson_content_mismatch:"This request does not belong to the current lesson. Reopen the lesson to continue.",lesson_not_delivered:"The lesson delivery has not been confirmed. Reopen Quick Scan.",test_account_required:"This preview is available to designated test accounts only.",legacy_snapshot_incomplete:"This older record has an incomplete snapshot and cannot be fully restored. Your saved record is still available.",guest_session_required:"Reload the page to establish your guest session.",rate_limited:"Please wait a minute before trying again.",service_unavailable:"The service is temporarily unavailable. Your lesson request is kept for recovery; its status will be checked when you retry."
+      request_not_found:"The earlier request has not been found yet. Check it again before starting another.",database_not_configured:"The preview service is not configured yet. Please contact the maintainer.",guest_secret_not_configured:"The preview service is not configured yet. Please contact the maintainer.",account_changed:"Your account changed. Please reopen the lesson or retry.",sign_in_required:"Sign in to receive 3 additional free generations. Your existing lesson stays available.",quota_exhausted:"Your free generations are used up. You can still revisit your lessons.",request_processing:"This lesson is still being prepared. Retry to recover the same request.",request_expired:"This unfinished request expired without a charge. Try again.",request_failed:"This lesson could not be generated. No generation was charged. Try again.",request_conflict:"This request belongs to different material. Please start again.",lesson_not_found:"This lesson is not available to the current account.",lesson_content_mismatch:"This request does not belong to the current lesson. Reopen the lesson to continue.",lesson_not_delivered:"The lesson delivery has not been confirmed. Reopen Quick Scan.",test_account_required:"This preview is available to designated test accounts only.",legacy_snapshot_incomplete:"This older record has an incomplete snapshot and cannot be fully restored. Your saved record is still available.",guest_session_required:"Reload the page to establish your guest session.",rate_limited:"Please wait a minute before trying again.",service_unavailable:"Unable to complete this action right now. Please try again shortly."
     }},
     commercial:{"launchTitle":"Lingua Pro launches 9 November 2026","launchBody":"€5.99/month, including applicable VAT. Free lessons will remain available.","viewPlans":"View plans","dismiss":"Dismiss launch notice","signupTab":"Create account","loginTab":"Log in","signupTitle":"Create your account. Keep your lessons.","signupBody":"Save lessons and learning progress to your account. From 9 November, new and existing accounts receive 3 free lesson generations, once only.","loginTitle":"Welcome back to Lingua","loginBody":"Continue your learning and revisit saved lessons. From 9 November, existing accounts receive the same one-time allowance of 3 free lesson generations.","sendSignup":"Send account link","sendLogin":"Send sign-in link","resend":"Send another link","signupSent":"Check your email for your account link. Return to Lingua after signing in to continue.","loginSent":"Check your email for your sign-in link. Return to Lingua after signing in to continue.","benefits":["Save lessons and learning progress","Revisit generated, saved lessons without using another generation","No automatic subscription or charge when you create an account"],"proNote":"Optional from 9 November: Lingua Pro, €5.99/month including applicable VAT. Unlimited lesson generations during your subscription. EU consumers only.","planRules":"One-time free generations, not a monthly allowance. Signing in does not reset them. Under the new plan, a successful new lesson reaching Quick Scan uses one generation; reviewing a saved lesson uses none.","renewalNote":"Pro renews monthly. Cancel renewal at any time; access continues until the paid period ends. If renewal payment fails, there is no grace period; pay again to restore Pro.","noCharge":"Creating an account does not subscribe you to Pro or charge you.","saveIntro":"Create an account or sign in to keep this lesson and your progress.","saveLaunch":"From 9 November: new and existing accounts receive 3 free lesson generations, once only. Creating an account does not start a paid subscription."},
     interfaceLanguage:"Interface language", english:"English", chinese:"中文", languageNames:{Dutch:"Dutch"}, clearLocalData:"Clear local data", clearConfirm:"Clear all local learning data (draft, notes, ratings, progress)?", newMaterial:"New material",
@@ -166,19 +167,20 @@ const UI_TEXT={
   },
   zh:{
     quotaHints:{
-      regionLabel:"你的生成额度",identities:{guest:"游客",free:"免费账户"},
-      available:n=>`可生成 ${n} 次`,pending:n=>`${n} 次处理中`,times:n=>`${n} 次`,
-      loading:"正在查询生成额度……",unavailable:"暂时无法读取额度，请重新查询。",retry:"重新查询额度",
+      uncertainRequest:"暂时无法确认课程生成结果，请检查状态后继续。",checkingStatus:"正在检查原课程请求…",updating:"更新中…",stale:"上次余额 · 暂未更新",register:"注册获取额外次数",checkStatus:"检查状态",dismiss:"关闭",signInSave:"登录以保存进度",
+      regionLabel:"免费生成次数",identities:{guest:"游客",free:"免费账户"},
+      available:n=>`剩余 ${n} 次免费生成`,pending:n=>`${n} 次处理中`,times:n=>`${n} 次`,
+      loading:"正在读取剩余次数…",unavailable:"剩余次数暂时无法读取",retry:"重试",
       guestHint:"游客可免费生成 1 节完整课程；登录后额外获得一次性 3 次额度。",
       onceHint:"一次性免费生成额度，重新登录不重置。",lastHint:"这是最后 1 次免费生成额度，已保存课程仍可免费复习。",
-      guestUsed:"游客免费体验已使用；登录后可额外获得一次性 3 次生成额度。",
-      exhausted:"免费生成额度已用完，已保存课程仍可无限次免费复习。",
+      guestUsed:"免费体验已用完，已保存课程仍可免费复习。",
+      exhausted:"免费生成次数已用完，已保存课程仍可免费复习。",
       processing:n=>`有 ${n} 次额度为尚未完成的请求预留，尚未确认扣除。`,
-      courseFree:"本课已生成，继续学习或重复复习不再消耗生成次数。",
-      detailsTitle:"权益说明",meaning:"这里的次数指新课程生成次数，不是学习次数、课程步骤数或音频播放次数。",
+      courseFree:"本课程可免费继续学习或复习。",
+      detailsTitle:"规则",meaning:"这里的次数指新课程生成次数，不是学习次数、课程步骤数或音频播放次数。",
       guestGrant:"游客可免费生成 1 节完整课程。",
-      accountGrant:"新旧账户均额外获得一次性 3 次免费生成额度，不按月刷新，重新登录不重置。",
-      rules:["新课程成功交付到 Quick Scan 后，才确认使用 1 次额度。","生成失败不扣次；刷新或重复提交同一请求，不会重复扣次。","已生成并保存的课程可以无限次免费复习。","从收藏材料生成新课程，仍按新课生成规则处理。","创建账户不会自动订阅或收费。"],
+      accountGrant:"账户额外获得一次性 3 次免费生成，不按月刷新。",
+      rules:["游客免费生成 1 节；账户额外获得一次性 3 次，不按月刷新。", "新课成功进入 Quick Scan 后扣 1 次；失败不扣，同一请求不重复扣。", "已保存课程免费复习；从收藏材料生成新课会使用次数。"],
       guestSave:"游客请登录后将课程保留到账户，以便长期保存和换设备恢复。",
       breakdown:{granted:"一次性已发放",used:"已使用",reserved:"处理中 · 尚未扣除",available:"当前可用"},
       recommendationFree:"推荐和查看材料不会使用课程生成次数。",
@@ -194,7 +196,7 @@ const UI_TEXT={
       retryConfirmation:"重新确认这节课",
       delivery:{confirming:"正在确认这节课程的交付状态……",confirmed:"本次新课已使用 1 次额度，重新打开不会再次扣次。",uncertain:"课程交付状态尚待确认，请重新查询这节课，不要另开生成请求。",failed:"这节课暂时无法确认，请查看上方原因。"},
       balance:(remaining,reserved)=>`剩余 ${remaining} 次免费生成${reserved?`（${reserved} 次处理中）`:""}`,exhausted:"免费生成额度已用完，已有课程仍可免费复习。",guestExhausted:"游客免费体验已使用。登录后可额外获得一次性 3 次免费生成额度。",signInTitle:"登录，获得额外 3 次免费生成",accountGrant:"新旧账户均额外获得一次性 3 次额度，重新登录不重置。",openLesson:"打开课程 · 免费",loadMore:"加载更多课程",errors:{
-      request_not_found:"暂时没有查到之前的请求，请先再次查询，避免重复提交。",database_not_configured:"测试服务尚未配置完成，请联系维护者。",guest_secret_not_configured:"测试服务尚未配置完成，请联系维护者。",account_changed:"账户已切换，请重新打开课程或重试。",sign_in_required:"登录后可额外获得一次性 3 次免费生成额度，已有课程仍可复习。",quota_exhausted:"免费生成额度已用完，已有课程仍可免费复习。",request_processing:"课程仍在准备中。再次点击将查询并恢复同一请求。",request_expired:"未完成的请求已过期，没有扣次，请重试。",request_failed:"课程生成失败，没有扣次，请重试。",request_conflict:"此请求对应其他材料，请重新开始。",lesson_not_found:"当前账户无法访问这节课程。",lesson_content_mismatch:"请求内容不属于当前课程，请重新打开原课程。",lesson_not_delivered:"课程交付尚未确认，请重新打开 Quick Scan。",test_account_required:"此预览仅供指定测试账户使用。",legacy_snapshot_incomplete:"这条旧记录的课程快照不完整，无法完整恢复，原保存记录仍可查看。",guest_session_required:"请刷新页面以建立游客会话。",rate_limited:"操作较频繁，请一分钟后重试。",service_unavailable:"服务暂时不可用。课程请求已保留，再次尝试时会先查询原请求状态。"
+      request_not_found:"暂时没有查到之前的请求，请先再次查询，避免重复提交。",database_not_configured:"测试服务尚未配置完成，请联系维护者。",guest_secret_not_configured:"测试服务尚未配置完成，请联系维护者。",account_changed:"账户已切换，请重新打开课程或重试。",sign_in_required:"登录后可额外获得一次性 3 次免费生成额度，已有课程仍可复习。",quota_exhausted:"免费生成额度已用完，已有课程仍可免费复习。",request_processing:"课程仍在准备中。再次点击将查询并恢复同一请求。",request_expired:"未完成的请求已过期，没有扣次，请重试。",request_failed:"课程生成失败，没有扣次，请重试。",request_conflict:"此请求对应其他材料，请重新开始。",lesson_not_found:"当前账户无法访问这节课程。",lesson_content_mismatch:"请求内容不属于当前课程，请重新打开原课程。",lesson_not_delivered:"课程交付尚未确认，请重新打开 Quick Scan。",test_account_required:"此预览仅供指定测试账户使用。",legacy_snapshot_incomplete:"这条旧记录的课程快照不完整，无法完整恢复，原保存记录仍可查看。",guest_session_required:"请刷新页面以建立游客会话。",rate_limited:"操作较频繁，请一分钟后重试。",service_unavailable:"暂时无法完成此操作，请稍后重试。"
     }},
     commercial:{"launchTitle":"Lingua Pro 将于 2026 年 11 月 9 日上线","launchBody":"€5.99/月，包含适用税费。免费体验继续保留。","viewPlans":"查看方案","dismiss":"关闭上线预告","signupTab":"创建账户","loginTab":"已有账户登录","signupTitle":"创建账户，保存你的学习课程","signupBody":"把课程和学习进度保存到账户。11 月 9 日起，新旧账户均可获得一次性的 3 次免费课程生成额度。","loginTitle":"欢迎回来，继续你的学习","loginBody":"继续学习，复习已保存的课程。11 月 9 日起，已有账户同样可获得一次性的 3 次免费课程生成额度。","sendSignup":"发送账户链接","sendLogin":"发送登录链接","resend":"重新发送链接","signupSent":"请查看邮箱里的账户链接。登录后回到 Lingua，即可继续。","loginSent":"请查看邮箱里的登录链接。登录后回到 Lingua，即可继续。","benefits":["保存课程和学习进度","重复学习已生成并保存的课程，不再消耗生成额度","创建账户不会自动订阅或收费"],"proNote":"11 月 9 日起可选：Lingua Pro，€5.99/月，包含适用税费。订阅期间不限课程生成，仅面向欧盟消费者。","planRules":"免费生成额度仅发放一次，不按月补充，登录不会重置。新方案启用后，新课程成功进入 Quick Scan 时使用 1 次额度；复习已保存课程不扣额度。","renewalNote":"Pro 按月自动续费，可随时关闭续费，权益保留至已付费周期结束。续费失败不设宽限期，重新付款后恢复 Pro。","noCharge":"创建账户不会自动订阅 Pro，也不会收费。","saveIntro":"创建账户或登录，保存这节课程和学习进度。","saveLaunch":"11 月 9 日起，新旧账户均可获得一次性的 3 次免费课程生成额度。创建账户不会开通付费订阅。"},
     interfaceLanguage:"界面语言", english:"English", chinese:"中文", languageNames:{Dutch:"荷兰语"}, clearLocalData:"清除本地数据", clearConfirm:"清除所有本地学习数据（草稿、笔记、评分和进度）？", newMaterial:"新材料",

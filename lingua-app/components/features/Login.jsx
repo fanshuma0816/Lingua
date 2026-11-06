@@ -6,12 +6,10 @@ import { Brand, LanguageSwitch } from "../ui/elements";
 import { useUI } from "../../hooks/useUI";
 import { trackEvent } from "../../lib/analytics";
 import { getAuthState, signInWithEmail, subscribeAuthChanges } from "../../lib/auth-client";
-import { getEntitlements } from "../../lib/lesson-api-client";
 import { DB } from "../../lib/storage";
 
-function Login({nextPath="/progress",onDone}){ const {t}=useUI(); const router=useRouter(); const [email,setEmail]=useState(DB.get("email","")); const [status,setStatus]=useState("checking"); const [message,setMessage]=useState(""); const [mode,setMode]=useState("signup"); const c=t.commercial; const signup=mode==="signup"; const busy=status==="sending"||status==="checking"; const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  const [metered,setMetered]=useState(false);
-  useEffect(()=>{getEntitlements().then(q=>setMetered(q.enabled)).catch(()=>{});},[]);
+function Login({nextPath="/progress",onDone}){ const {t,quota}=useUI(); const router=useRouter(); const [email,setEmail]=useState(DB.get("email","")); const [status,setStatus]=useState("checking"); const [message,setMessage]=useState(""); const [mode,setMode]=useState("signup"); const c=t.commercial; const signup=mode==="signup"; const busy=status==="sending"||status==="checking"; const ok=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+  const metered=quota?.state!=="off";
   useEffect(()=>{
     let cancelled=false;
     async function check(){

@@ -11,12 +11,14 @@ test('guest and free account have distinct identities without inventing a grant'
  assert.equal(guest.identity,'guest');assert.equal(guest.granted,1);
  assert.equal(quotaPresentation(account).identity,'free');
 });
-test('loading or failed reads never present a cached count as current or as zero',()=>{
- for(const status of ['loading','error']){
-  const view=quotaPresentation(account,{status});
-  assert.equal(Object.hasOwn(view,'available'),false);assert.equal(Object.hasOwn(view,'used'),false);
- }
- assert.equal(quotaPresentation(account,{status:'error'}).state,'unavailable');
+test('background refresh retains validated counts with an explicit freshness flag',()=>{
+ const refreshing=quotaPresentation(account,{status:'loading'});
+ assert.equal(refreshing.available,2);assert.equal(refreshing.refreshing,true);
+ const stale=quotaPresentation(account,{status:'error'});
+ assert.equal(stale.available,2);assert.equal(stale.stale,true);
+ assert.equal(quotaPresentation(null,{status:'loading'}).state,'loading');
+ assert.equal(quotaPresentation(null,{status:'error'}).state,'unavailable');
+ assert.equal(quotaPresentation({...account,available:-1},{status:'error'}).state,'unavailable');
 });
 test('a genuine last credit and exhausted balance remain distinguishable',()=>{
  assert.equal(quotaPresentation({...account,used:2,remaining:1,available:1}).state,'last');

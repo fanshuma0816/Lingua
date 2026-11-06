@@ -35,11 +35,11 @@ try {
   });
   await page.goto(`${url}/find`);await page.waitForSelector('.generated-card');
   await page.locator('.quota-status').waitFor();
-  await page.getByText(lang==='zh'?'可生成 1 次':'1 generation available',{exact:true}).waitFor();
+  await page.getByText(lang==='zh'?'剩余 1 次免费生成':'1 free generation left',{exact:true}).waitFor();
   assert.equal(await page.locator('.quota-status-identity').innerText(),lang==='zh'?'游客':'Guest');
-  if(lang==='zh'){await page.getByRole('button',{name:'Toggle light / dark',exact:true}).click();await page.waitForFunction(()=>document.documentElement.classList.contains('dark'));}
+  if(lang==='zh'){await page.getByRole('button',{name:'Toggle light / dark',exact:true}).click();await page.waitForFunction(()=>document.documentElement.classList.contains('dark'));await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(9, 9, 11)');}
   await page.locator('.quota-status-details>summary').click();
-  await page.getByText(lang==='zh'?'创建账户不会自动订阅或收费。':'Creating an account does not start a paid subscription or charge you.',{exact:true}).waitFor();
+  await page.getByText(lang==='zh'?'已保存课程免费复习；从收藏材料生成新课会使用次数。':'Saved lessons are free to review. Generating a new lesson from saved material uses a generation.',{exact:true}).waitFor();
   await page.getByText(lang==='zh'?'推荐和查看材料不会使用课程生成次数。':'Recommending and viewing materials does not use a lesson generation.',{exact:true}).waitFor();
   assert.equal(await page.locator('body').evaluate(el=>el.scrollWidth<=window.innerWidth+1),true);
   if(process.env.PHASE1_SCREENSHOT_DIR)await page.screenshot({path:`${process.env.PHASE1_SCREENSHOT_DIR}/${lang}-quota-policy.png`,fullPage:true});
@@ -49,18 +49,18 @@ try {
   await page.locator('.material-results-head .btn-primary').click();
   await page.waitForURL('**/scan');await page.waitForFunction(()=>Object.keys(localStorage).some(k=>k.endsWith('currentLesson')&&JSON.parse(localStorage[k])?.delivered));
   assert.equal(generations,1);assert.ok(confirmations>=1);
-  await page.getByText(lang==='zh'?'可生成 0 次':'0 generations available',{exact:true}).waitFor();
-  await page.getByText(lang==='zh'?'本课已生成，继续学习或重复复习不再消耗生成次数。':'This lesson has already been generated. Continuing or reviewing it uses no further generations.',{exact:true}).waitFor();
+  await page.getByText(lang==='zh'?'剩余 0 次免费生成':'0 free generations left',{exact:true}).waitFor();
+  await page.getByText(lang==='zh'?'本课程可免费继续学习或复习。':'Continue or review this lesson for free.',{exact:true}).waitFor();
   await page.reload();await page.waitForSelector('.scanw');assert.equal(generations,1);
   assert.equal(await page.locator('body').evaluate(el=>el.scrollWidth<=window.innerWidth+1),true);
-  await page.goto(`${url}/progress`);await page.waitForSelector('.history-card');
+  await page.goto(`${url}/progress`,{waitUntil:'domcontentloaded'});await page.waitForSelector('.history-card');
   await page.locator('.history-card summary').click();await page.locator('.history-detail .btn-primary').click();
   await page.waitForURL(/\/(scan|preview)$/);assert.equal(generations,1);
   assert.deepEqual(errors,[]);console.log(`${lang} ${width}px: generation, confirmation, reload, free review passed`);
   if(process.env.PHASE1_SCREENSHOT_DIR)await page.screenshot({path:`${process.env.PHASE1_SCREENSHOT_DIR}/${lang}-restored.png`,fullPage:true});
   await page.goto(`${url}/find`);
   await page.getByRole('button',{name:lang==='zh'?'生成学习材料':'Generate materials',exact:true}).click();
-  await page.waitForSelector('[role=alert]');assert.equal(generations,1);assert.equal(await page.locator('.scanw').count(),0);
+  await page.waitForSelector('.quota-operation-notice');assert.equal(generations,1);assert.equal(await page.locator('.scanw').count(),0);
   console.log(`${lang}: exhausted guest is blocked without local generation`);
   await context.close();
  }
@@ -73,7 +73,7 @@ try {
   return route.fulfill({status:204,body:''});
  });
  await page.goto(`${url}/find`);await page.waitForSelector('.generated-card');
- await page.locator('.material-results-head .btn-primary').click();await page.waitForSelector('[role=alert]');
+ await page.locator('.material-results-head .btn-primary').click();await page.waitForSelector('.quota-operation-notice');
  assert.equal(attempts,1);assert.equal(await page.locator('.scanw').count(),0);
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.endsWith(':currentLesson')).length),0);
  console.log('permission failure: no local generation and no lesson stored');await context.close();
@@ -139,14 +139,14 @@ try {
   assert.equal(newCourses,2);assert.equal(accountUsed,1);assert.equal(guestUsed,1);
   // Two tabs receive quota changes without replacing the active lesson state.
   const second=await context.newPage();await second.goto(`${url}/find`);
-  await second.getByText('2 generations available',{exact:false}).waitFor();
+  await second.getByText('2 free generations left',{exact:false}).waitFor();
   await page.goto(`${url}/find`);await page.locator('.material-results-head .btn-primary').click();await page.waitForURL('**/scan');
   await page.getByText('This new lesson has used 1 generation. Reopening it is free.',{exact:true}).waitFor();
-  await second.getByText('1 generation available',{exact:false}).waitFor();
+  await second.getByText('1 free generation left',{exact:false}).waitFor();
   assert.equal(accountUsed,2);assert.deepEqual(errors,[]);
   // Signing in again cannot refill the allowance or generate a course.
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('lingua-auth-complete')));
-  await page.goto(`${url}/find`);await page.getByText('1 generation available',{exact:false}).waitFor();
+  await page.goto(`${url}/find`);await page.getByText('1 free generation left',{exact:false}).waitFor();
   assert.equal(newCourses,3);assert.equal(accountUsed,2);
   console.log('guest -> sign-in -> explicit continuation; extra 3 credits, no auto-generation; two-tab quota sync');
   await context.close();
@@ -172,25 +172,26 @@ try {
    if(path==='/api/lesson')posts++;
    return route.fulfill({status:204,body:''});
   });
-  await page.goto(`${url}/find`);await page.getByText('可生成 1 次',{exact:true}).waitFor();
+  await page.goto(`${url}/find`);await page.getByText('剩余 1 次免费生成',{exact:true}).waitFor();
   assert.equal(await page.locator('.quota-status-identity').innerText(),'免费账户');
   await page.getByText('1 次处理中',{exact:true}).waitFor();
   await page.locator('.quota-status-details>summary').click();
-  assert.deepEqual(await page.locator('.quota-status-breakdown dd').allTextContents(),['3 次','1 次','1 次','1 次']);
+  assert.equal(await page.locator('.quota-status-policy li').count(),3);
   assert.equal(await page.locator('body').evaluate(el=>el.scrollWidth<=window.innerWidth+1),true);
   if(process.env.PHASE1_SCREENSHOT_DIR)await page.screenshot({path:`${process.env.PHASE1_SCREENSHOT_DIR}/zh-free-reserved.png`,fullPage:true});
   fail=true;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
-  await page.getByRole('button',{name:'重新查询额度',exact:true}).waitFor();
-  assert.equal(await page.locator('.quota-status-summary').innerText(),'暂时无法读取额度，请重新查询。');
-  assert.equal(await page.getByText('可生成 0 次',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'重试',exact:true}).waitFor();
+  await page.getByText('上次余额 · 暂未更新',{exact:true}).waitFor();
+  await page.getByText('剩余 1 次免费生成',{exact:true}).waitFor();
+  assert.equal(await page.getByText('剩余 0 次免费生成',{exact:true}).count(),0);
   assert.equal(await page.locator('.quota-status-breakdown').count(),0);
   fail=false;hold=true;
-  await page.getByRole('button',{name:'重新查询额度',exact:true}).click();
-  await page.getByText('正在查询生成额度……',{exact:true}).waitFor();
-  assert.equal(await page.getByText('可生成 0 次',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'重试',exact:true}).click();
+  await page.getByText('更新中…',{exact:true}).waitFor();
+  assert.equal(await page.getByText('剩余 0 次免费生成',{exact:true}).count(),0);
   await heldStarted;balance={...balance,used:3,remaining:0,reserved:0,available:0,canGenerate:false};hold=false;release();
-  await page.getByText('可生成 0 次',{exact:true}).waitFor();
-  await page.getByText('免费生成额度已用完，已保存课程仍可无限次免费复习。',{exact:true}).waitFor();
+  await page.getByText('剩余 0 次免费生成',{exact:true}).waitFor();
+  await page.getByText('免费生成次数已用完，已保存课程仍可免费复习。',{exact:true}).waitFor();
   assert.equal(posts,0);console.log('quota hints: available excludes holds; failed/loading reads never appear as zero');await context.close();
  }
  // Exhausted users can still open saved lessons, and saved material distinguishes new generation.
@@ -212,9 +213,9 @@ try {
    if(path==='/api/lesson')posts++;
    return route.fulfill({status:204,body:''});
   });
-  await page.goto(`${url}/progress`);await page.getByText('0 generations available',{exact:true}).waitFor();
+  await page.goto(`${url}/progress`);await page.getByText('0 free generations left',{exact:true}).waitFor();
   await page.locator('.history-card summary').click();await page.getByRole('button',{name:'Review · free',exact:true}).click();
-  await page.waitForURL('**/preview');await page.getByText('This lesson has already been generated. Continuing or reviewing it uses no further generations.',{exact:true}).waitFor();
+  await page.waitForURL('**/preview');await page.getByText('Continue or review this lesson for free.',{exact:true}).waitFor();
   await page.goto(`${url}/collection/materials`);
   await page.getByRole('button',{name:'Generate next lesson',exact:true}).waitFor();
   await page.getByRole('button',{name:'Review · free',exact:true}).waitFor();
@@ -228,4 +229,56 @@ try {
   assert.equal(await page.locator('.quota-status').count(),0);assert.equal(await page.locator('.quota-cost-hint').count(),0);
   console.log('quota hints: feature-off preview has no fabricated balance or benefits badge');await context.close();
  }
+ // Failed quota reads must never block either login entry or email submission.
+ for(const entry of ['sidebar','progress']){
+  const context=await browser.newContext({viewport:{width:1280,height:900}}),page=await context.newPage();
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));let posts=0;
+  await page.route('**/api/**',route=>{
+   if(route.request().method()==='POST')posts++;
+   return route.fulfill({status:503,json:{error:'database_unavailable'}});
+  });
+  await page.route('**/auth/v1/otp?**',route=>route.fulfill({status:200,json:{}}));
+  await page.goto(`${url}/${entry==='progress'?'progress':'find'}`);
+  await page.getByText('Remaining lessons unavailable.',{exact:true}).waitFor();
+  assert.equal(await page.locator('.quota-status-details').getAttribute('open'),null);
+  assert.equal(await page.locator('.quota-operation-notice').count(),0);
+  await page.getByRole('button',{name:entry==='progress'?'Sign in to save progress':'Sign in to save',exact:true}).click();
+  await page.waitForURL('**/login');
+  assert.equal(await page.locator('.quota-status').count(),0);
+  await page.locator('#login-email').fill('preview@example.com');
+  await page.locator('button[type="submit"]').click();
+  await page.getByText(/Check your email for your account link/).waitFor();
+  assert.equal(posts,0);
+  await page.evaluate(()=>{
+   localStorage.setItem('lingua:authSession',JSON.stringify({accessToken:'test-signed-in',expiresAt:Math.floor(Date.now()/1000)+3600,user:{id:'88888888-8888-4888-8888-888888888888'}}));
+   window.dispatchEvent(new Event('lingua-auth-complete'));
+  });
+  await page.waitForURL(`**/${entry==='progress'?'progress':'find'}`);
+  await page.getByText('Remaining lessons unavailable.',{exact:true}).waitFor();
+  assert.deepEqual(errors,[]);
+  await context.close();
+ }
+ console.log('quota service failure does not block sidebar/progress login or email submission');
+ // An uncertain generation can only be checked by its original request ID.
+ {
+  const context=await browser.newContext({viewport:{width:1280,height:900}}),page=await context.newPage();
+  let posts=0,checks=0,requestId;
+  await page.addInitScript(material=>localStorage.setItem('lingua:genMaterials',JSON.stringify([material])),material);
+  await page.route('**/api/**',route=>{
+   const path=new URL(route.request().url()).pathname;
+   if(path==='/api/account/entitlements')return route.fulfill({json:{enabled:true,environment:'test',signedIn:false,granted:1,used:0,remaining:1,available:1,reserved:0,canGenerate:true}});
+   if(path==='/api/lesson') {posts++;requestId=route.request().postDataJSON().requestId;return route.fulfill({status:503,json:{error:'service_unavailable'}});}
+   if(path.startsWith('/api/lesson/requests/')) {checks++;if(requestId)assert.ok(path.endsWith(requestId));return route.fulfill({status:503,json:{error:'service_unavailable'}});}
+   return route.fulfill({status:204,body:''});
+  });
+  await page.goto(`${url}/find`);await page.locator('.material-results-head .btn-primary').click();
+  await page.getByRole('button',{name:'Check status',exact:true}).click();
+  await page.waitForFunction(()=>!!document.querySelector('.quota-operation-notice button:not([disabled])'));
+  assert.equal(posts,1);assert.equal(checks,2);
+  await page.getByRole('button',{name:'Dismiss',exact:true}).click();
+  assert.equal(await page.locator('.quota-operation-notice').count(),0);
+  assert.equal(await page.evaluate(()=>Object.keys(sessionStorage).some(k=>k.endsWith('pendingGeneration'))),true);
+  await context.close();
+ }
+ console.log('uncertain generation: check original request without a second POST; dismissal preserves recovery');
 } finally {await browser.close();}
