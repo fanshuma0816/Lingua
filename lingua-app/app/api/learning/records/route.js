@@ -1,5 +1,3 @@
-import { configuredMode, learningContext, database, learningFailure } from "../../../../lib/server/learning-access";
-import { claimGuestCourses, courseRecord } from "../../../../lib/server/lesson-usage";
 export const runtime = "nodejs";
 
 function supabaseEnv() {
@@ -39,11 +37,11 @@ async function readRows(path, env, optional = false) {
   return response.json();
 }
 
-async function readLessonRows(userId, env, page) {
-  const richSelect = "created_at,id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at,input_text,lesson_snapshot,interaction_snapshot,saved_options";
-  const basicSelect = "created_at,id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at";
-  const richPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${richSelect}&order=created_at.desc,id.desc&limit=20&offset=${page*20}`;
-  const basicPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${basicSelect}&order=created_at.desc,id.desc&limit=20&offset=${page*20}`;
+async function readLessonRows(userId, env) {
+  const richSelect = "id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at,input_text,lesson_snapshot,interaction_snapshot,saved_options";
+  const basicSelect = "id,local_lesson_id,lang,level,goal,material_title,material_source,material_summary,stats,completed_steps,completed_at";
+  const richPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${richSelect}&order=completed_at.desc&limit=20`;
+  const basicPath = `/rest/v1/lesson_sessions?user_id=eq.${userId}&select=${basicSelect}&order=completed_at.desc&limit=20`;
   try {
     return await readRows(richPath, env);
   } catch (e) {
@@ -71,23 +69,10 @@ export async function GET(req) {
     }
 
     const userId = encodeURIComponent(user.id);
-    const page=Math.max(0,Math.min(100000,Number(new URL(req.url).searchParams.get("page"))||0));
-    if(!Number.isInteger(page)) return Response.json({error:"invalid_page"},{status:400});
-    const legacy = await readLessonRows(userId, env,page);
-    let managed=[];
-    // Existing managed courses stay readable even when enforcement is switched off.
-    try {
-      const ctx=await learningContext(req,{force:true});
-      await claimGuestCourses(ctx);
-      const rows=await database(`/rest/v1/learning_courses_v1?owner_key=eq.${encodeURIComponent(ctx.owner)}&status=eq.confirmed&saved_at=not.is.null&order=created_at.desc,id.desc&limit=20&offset=${page*20}`);
-      managed=(rows||[]).map(courseRecord);
-    } catch(error){if(configuredMode()!=="off")return learningFailure(error);}
-    const lessons=[...(legacy||[]),...managed].sort((a,b)=>String(b.saved_at||b.completed_at||b.created_at||"").localeCompare(String(a.saved_at||a.completed_at||a.created_at||"")));
-
+    const lessons = await readLessonRows(userId, env);
 
     return Response.json({
       lessons: Array.isArray(lessons) ? lessons : [],
-      nextPage: legacy.length===20||managed.length===20?page+1:null,
       stats: {
         lessonCount: Array.isArray(lessons) ? lessons.length : 0,
       },

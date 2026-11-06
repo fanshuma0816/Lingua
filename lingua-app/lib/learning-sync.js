@@ -44,7 +44,7 @@ function buildInteractionSnapshot({ includePractice = true } = {}) {
   };
 }
 
-function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, includePractice = true, completed = true, resumePath = "/scan" }) {
+function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, includePractice = true }) {
   const focusWords = Array.isArray(lesson?.focus?.vocab) ? lesson.focus.vocab : [];
   const lessonWords = Array.isArray(lesson?.vocab) ? lesson.vocab : [];
   const words = uniqueWords([
@@ -53,10 +53,7 @@ function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, 
     ...lessonWords.map((item) => ({ ...item, source: "lesson" })),
   ]);
   return {
-    localLessonId: lesson?.serverLessonId || lesson?.localLessonId || lesson?.id || null,
-    serverLessonId: lesson?.serverLessonId || null,
-    legacySessionId: lesson?.legacySessionId || null,
-    completed, resumePath,
+    localLessonId: lesson?.material?.id || lesson?.id || null,
     lang: lesson?.lang || null,
     level: lesson?.level || null,
     goal: lesson?.goal || null,
@@ -64,9 +61,8 @@ function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, 
     material: lessonMaterialSummary(lesson),
     materialHash: lesson?.material?.id || null,
     lessonSnapshot: {
-      ...lesson,
       id: lesson?.id || null,
-      material: { ...lesson?.material, ...lessonMaterialSummary(lesson) },
+      material: lessonMaterialSummary(lesson),
       sentences: Array.isArray(lesson?.sents) ? lesson.sents : [],
       watch: Array.isArray(lesson?.watch) ? lesson.watch : [],
       vocab: Array.isArray(lesson?.vocab) ? lesson.vocab : [],
@@ -77,7 +73,7 @@ function buildCompletedLessonPayload({ lesson, text, userWords, completedSteps, 
       lessonWords: words,
     },
     interactionSnapshot: buildInteractionSnapshot({ includePractice }),
-    savedOptions: { includePractice, completed, resumePath },
+    savedOptions: { includePractice },
     stats: {
       charCount: lesson?.charCount || String(text || "").length || null,
       sentenceCount: Array.isArray(lesson?.sents) ? lesson.sents.length : null,
@@ -101,12 +97,11 @@ async function saveCompletedLesson(payload, accessToken) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data?.error || "Could not save learning progress.");
   DB.remove("pendingSaveAfterLogin");
-  DB.set("courseSaved:" + payload.localLessonId, true);
   return data;
 }
 
-async function fetchLearningRecords(accessToken, page = 0) {
-  const response = await fetch("/api/learning/records?page="+page, {
+async function fetchLearningRecords(accessToken) {
+  const response = await fetch("/api/learning/records", {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

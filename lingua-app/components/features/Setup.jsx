@@ -44,7 +44,7 @@ function SourceIdeas({tips,hint}){
   </div>);
 }
 
-function InputScreen({onNext,initialMode=null,onRouteChange,access,onResumePending,busy=false}){
+function InputScreen({onNext,initialMode=null,onRouteChange}){
   const {t}=useUI();
   const [mode,setMode]=useState(initialMode);
   const [raw,setRaw]=useState(DB.get("draft","")); const cleaned=cleanText(raw); const count=cleaned.length; const LIMIT=1200; const over=count>LIMIT;
@@ -161,15 +161,9 @@ function InputScreen({onNext,initialMode=null,onRouteChange,access,onResumePendi
       targetUserLevel:m.targetUserLevel||level.slice(0,2), validatedTextLevel:m.validatedTextLevel||m.level||level.slice(0,2),
       difficultyTier:m.difficultyTier||null, hardWordRatio:m.hardWordRatio??null,
       vocabularyAnnotations:Array.isArray(m.vocabularyAnnotations)?m.vocabularyAnnotations:[], estimatedLessonTime:targetMin };
-    if(!busy)onNext({text,lang,level,goal,targetMin,material});
+    onNext({text,lang,level,goal,targetMin,material});
   }
-  const allowanceNote=access?.enabled?<aside className="learning-allowance" role="status">
-    <b>{access.pro?t.learningAccess.pro:t.learningAccess.remaining+access.remaining}</b>
-    <p>{t.learningAccess.before}</p>
-    {access.pendingLessonId && <button className="btn btn-outline btn-sm" onClick={()=>onResumePending?.(access.pendingLessonId)}>{t.learningAccess.resumePending}</button>}
-  </aside>:null;
   if(!mode) return (<div className="start-screen">
-    {allowanceNote}
     <div className="start-head">
       <h1>{t.startTitle}</h1>
       <p className="sub">{t.startSub}</p>
@@ -213,7 +207,6 @@ function InputScreen({onNext,initialMode=null,onRouteChange,access,onResumePendi
       <div className="row" style={{justifyContent:"space-between",marginTop:18}}>
         {!lang && <span className="tiny muted">{t.chooseTarget}</span>}
         <span/>
-        {allowanceNote}
         <button className="btn btn-primary" disabled={!lang||generating} onClick={generateMaterials}>{generating?t.generatingMaterials:t.generateMaterials}</button>
       </div>
       {generating && <><div className="track" style={{marginTop:14,overflow:"hidden"}}><span className="indet"/></div><div className="tiny muted" style={{marginTop:8}}>{t.materialWaitHint}</div></>}
@@ -224,7 +217,7 @@ function InputScreen({onNext,initialMode=null,onRouteChange,access,onResumePendi
     {(materials.length>0||generating) && <div className="material-results">
       <div className="row material-results-head" style={{justifyContent:"space-between",marginBottom:10}}>
         <div><h2 style={{margin:0}}>{t.chooseMaterial}</h2><div className="tiny muted">{t.switchAnytime}</div></div>
-        <button className="btn btn-primary btn-sm" disabled={!materials.length||busy} onClick={startGenerated}>{t.useThisText} →</button>
+        <button className="btn btn-primary btn-sm" disabled={!materials.length} onClick={startGenerated}>{t.useThisText} →</button>
       </div>
       <div className="generated-grid">
         {Array.from({length:MATERIAL_COUNT},(_,i)=>i).map(i=>{ const m=materials[i];
@@ -269,9 +262,8 @@ function InputScreen({onNext,initialMode=null,onRouteChange,access,onResumePendi
     </div>
     {over && <p className="tiny" style={{color:"hsl(0 72% 45%)",marginTop:12}}>{t.overLimit}</p>}
     {!lang && <p className="tiny muted" style={{marginTop:12}}>{t.chooseTarget}</p>}
-    {allowanceNote}
     <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}>
-      <button className="btn btn-primary" disabled={!ready||busy} onClick={()=>{DB.set("draft",raw);DB.set("lang",lang);DB.set("level",level);DB.set("goal",goal);onNext({text:cleaned,lang,level,goal});}}>{t.analyzeText} →</button>
+      <button className="btn btn-primary" disabled={!ready} onClick={()=>{DB.set("draft",raw);DB.set("lang",lang);DB.set("level",level);DB.set("goal",goal);onNext({text:cleaned,lang,level,goal});}}>{t.analyzeText} →</button>
     </div>
   </div>);
 }
